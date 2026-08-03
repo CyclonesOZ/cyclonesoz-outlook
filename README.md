@@ -1,5 +1,4 @@
-hello-line1
-hello-line2# CyclonesOZ — Automated Severe Storm Outlook
+# CyclonesOZ — Automated Severe Storm Outlook
 
 A free, daily severe-storm outlook for Australia. It uses the **thundeR** package (the same engine behind ASTORP) on GFS model data, and publishes an SPC-style map you can embed in cyclonesoz.
 
