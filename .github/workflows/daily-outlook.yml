@@ -1,7 +1,7 @@
 name: Daily storm outlook
 
-# Runs once a day (07:00 UTC ≈ afternoon in Australia, after the 00Z GFS is in),
-# and can be run manually from the Actions tab.
+# Runs once a day (07:00 UTC ≈ afternoon in Australia), and can be run
+# manually from the Actions tab.
 on:
   schedule:
     - cron: "0 7 * * *"
@@ -21,15 +21,13 @@ jobs:
         uses: r-lib/actions/setup-r@v2
         with:
           r-version: "release"
+          use-public-rspm: true   # install precompiled Ubuntu binaries (fast, reliable)
 
-      - name: Cache R packages
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.R_LIBS_USER }}
-          key: r-thunder-${{ runner.os }}
+      - name: System libraries
+        run: sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev libssl-dev libxml2-dev
 
       - name: Install R packages
-        run: Rscript -e 'install.packages(c("thunder","jsonlite"), repos="https://cloud.r-project.org")'
+        run: Rscript -e 'install.packages(c("thunder","jsonlite")); if (!requireNamespace("thunder", quietly=TRUE)) stop("thunder failed to install")'
 
       - name: Build outlook
         run: Rscript pipeline/build_outlook.R
