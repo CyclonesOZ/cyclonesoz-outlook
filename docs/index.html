@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Automated Severe Storm Outlook</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root{ --bg:#0F1929; --panel:#16223a; --border:#26344f; --text:#e7edf6; --muted:#9fb0c8; }
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}
+  #wrap{position:relative;height:100vh;width:100%;overflow:hidden;}
+  #map{position:absolute;inset:0;background:var(--bg);}
+  .leaflet-container{background:var(--bg);}
+  #topbar{position:absolute;top:0;left:0;right:0;z-index:1000;display:flex;align-items:center;gap:10px;padding:10px 12px;flex-wrap:wrap;
+    background:linear-gradient(180deg,rgba(15,25,41,.92),rgba(15,25,41,0));pointer-events:none;}
+  #topbar .title{font-weight:800;font-size:14px;pointer-events:auto;}
+  #topbar .title small{display:block;font-weight:500;font-size:11px;color:var(--muted);}
+  #days{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto;pointer-events:auto;}
+  .dbtn{background:var(--panel);border:1px solid var(--border);color:var(--text);font-size:12px;font-weight:600;padding:6px 12px;border-radius:7px;cursor:pointer;white-space:nowrap;}
+  .dbtn.active{background:#2563eb;border-color:#2563eb;color:#fff;}
+  .dbtn small{display:block;font-weight:500;font-size:10px;opacity:.8;}
+  #info{position:absolute;top:60px;left:12px;z-index:1000;background:rgba(22,34,58,.92);border:1px solid var(--border);border-radius:9px;padding:10px 12px;max-width:230px;font-size:12px;line-height:1.45;backdrop-filter:blur(4px);pointer-events:none;}
+  #info .cat{font-weight:700;font-size:13px;}
+  #info .hint{color:var(--muted);} #info .sm{color:var(--muted);font-size:11px;}
+  #legend{position:absolute;bottom:14px;right:12px;z-index:1000;background:rgba(22,34,58,.92);border:1px solid var(--border);border-radius:9px;padding:10px 12px;font-size:11px;backdrop-filter:blur(4px);}
+  #legend .cap{color:var(--muted);margin-bottom:5px;font-weight:600;text-transform:uppercase;font-size:10px;}
+  #legend .row{display:flex;align-items:center;gap:7px;margin:3px 0;} #legend .sw{width:16px;height:12px;border-radius:2px;border:1px solid rgba(255,255,255,.15);}
+  #caption{position:absolute;bottom:14px;left:12px;z-index:1000;max-width:330px;font-size:11px;color:var(--muted);line-height:1.4;background:rgba(15,25,41,.6);padding:6px 8px;border-radius:7px;}
+  #updated{color:var(--muted);font-size:10px;margin-top:2px;}
+  #load{position:absolute;inset:0;z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(15,25,41,.96);text-align:center;padding:24px;}
+  #load .sp{width:34px;height:34px;border:4px solid var(--border);border-top-color:#2563eb;border-radius:50%;animation:spin 1s linear infinite;}
+  #load .msg{font-size:13px;color:var(--muted);max-width:320px;} .err{color:#fca5a5;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .town{font-size:10px;font-weight:700;color:#fff;text-shadow:0 1px 3px #000,0 0 2px #000;white-space:nowrap;}
+  @media (max-width:640px){#info{max-width:180px;}#caption{max-width:190px;}#topbar .title small{display:none;}}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="map"></div>
+  <div id="topbar"><div class="title">Automated Severe Storm Outlook<small>thundeR parameters · SPC-style categories</small></div><div id="days"></div></div>
+  <div id="info"><span class="hint">Hover the map for storm risk at that spot.</span></div>
+  <div id="legend"></div>
+  <div id="caption">Automated guidance from GFS + thundeR. Not an official warning — always check the Bureau of Meteorology.<div id="updated"></div></div>
+  <div id="load"><div class="sp"></div><div class="msg" id="loadmsg">Loading outlook…</div></div>
+</div>
+<script>
+(function(){
+  "use strict";
+  var params=new URLSearchParams(location.search); var THEME=(params.get('theme')||'dark').toLowerCase();
+  var TOWNS=[{n:'Darwin',lat:-12.46,lon:130.84},{n:'Perth',lat:-31.95,lon:115.86},{n:'Adelaide',lat:-34.93,lon:138.60},{n:'Brisbane',lat:-27.47,lon:153.03},{n:'Sydney',lat:-33.87,lon:151.21},{n:'Melbourne',lat:-37.81,lon:144.96},{n:'Hobart',lat:-42.88,lon:147.33},{n:'Canberra',lat:-35.28,lon:149.13}];
+  var CAT=[{name:'—',color:null},{abbr:'TSTM',name:'General storms',color:[193,233,193]},{abbr:'MRGL',name:'Marginal',color:[102,163,102]},{abbr:'SLGT',name:'Slight',color:[255,224,102]},{abbr:'ENH',name:'Enhanced',color:[255,163,102]},{abbr:'MDT',name:'Moderate',color:[224,102,102]},{abbr:'HIGH',name:'High',color:[238,153,238]}];
+  var map=L.map('map',{zoomControl:true,attributionControl:false,minZoom:3,maxZoom:9,worldCopyJump:false,maxBounds:[[-46,108],[-8,157]],maxBoundsViscosity:0.7}).setView([-27.5,134],4);
+  var baseUrl=THEME==='light'?'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}':'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png';
+  L.tileLayer(baseUrl,{maxNativeZoom:13,opacity:THEME==='light'?0.7:0.9,className:THEME==='light'?'hs':''}).addTo(map);
+  if(THEME==='light'){var s=document.createElement('style');s.textContent='.hs{filter:contrast(1.4) saturate(0);}';document.head.appendChild(s);}
+  TOWNS.forEach(function(t){L.marker([t.lat,t.lon],{interactive:false,icon:L.divIcon({className:'',html:'<div class="town">'+t.n+'</div>',iconSize:[0,0]})}).addTo(map);});
+
+  var GRID=[],results=[],DAYS=[],selDay=0,overlay=null,minLat,maxLat,minLon,maxLon,W,H,pxPerDeg,RADIUS;
+  function lonToX(lo){return (lo-minLon)/(maxLon-minLon)*W;} function latToY(la){return (maxLat-la)/(maxLat-minLat)*H;}
+  function buildSurface(){
+    var sx=[],sy=[],sc=[],sh=[];
+    for(var i=0;i<GRID.length;i++){var r=results[i]?results[i][selDay]:null;if(!r)continue;
+      sx.push(lonToX(GRID[i][1]));sy.push(latToY(GRID[i][0]));sc.push(r.cat);sh.push(r.hatch);}
+    var cv=document.createElement('canvas');cv.width=W;cv.height=H;var ctx=cv.getContext('2d');
+    if(sx.length<3)return cv;
+    var img=ctx.createImageData(W,H),d=img.data,R2=RADIUS*RADIUS,P=3.0;
+    for(var y=0;y<H;y++){for(var x=0;x<W;x++){
+      var num=0,den=0,hn=0,near=false;
+      for(var i=0;i<sx.length;i++){var dx=x-sx[i],dy=y-sy[i],d2=dx*dx+dy*dy;if(d2>R2)continue;near=true;var w=1/Math.pow(d2+1,P/2);num+=w*sc[i];den+=w;hn+=w*sh[i];}
+      var idx=(y*W+x)*4; if(!near||den===0){d[idx+3]=0;continue;}
+      var cat=Math.round(num/den); if(cat<1){d[idx+3]=0;continue;}
+      var col=CAT[cat].color,r=col[0],g=col[1],b=col[2];
+      if((hn/den)>0.4 && cat>=2 && ((x+y)%8)<2){r=15;g=15;b=15;}
+      d[idx]=r;d[idx+1]=g;d[idx+2]=b;d[idx+3]=205;
+    }}
+    ctx.putImageData(img,0,0);return cv;
+  }
+  function renderSurface(){var url=buildSurface().toDataURL('image/png');var b=[[minLat,minLon],[maxLat,maxLon]];
+    if(overlay)overlay.setUrl(url);else overlay=L.imageOverlay(url,b,{opacity:0.88,interactive:false}).addTo(map);}
+  map.on('mousemove',function(e){
+    if(!results.length)return;var la=e.latlng.lat,lo=e.latlng.lng,best=-1,bd=1e9;
+    for(var i=0;i<GRID.length;i++){var dd=(GRID[i][0]-la)*(GRID[i][0]-la)+(GRID[i][1]-lo)*(GRID[i][1]-lo);if(dd<bd){bd=dd;best=i;}}
+    var box=document.getElementById('info');
+    if(best<0||bd>4||!results[best]){box.innerHTML='<span class="hint">No data here.</span>';return;}
+    var r=results[best][selDay],c=CAT[r.cat],col=c.color?('rgb('+c.color[0]+','+c.color[1]+','+c.color[2]+')'):'#9fb0c8';
+    box.innerHTML='<div class="cat" style="color:'+col+'">'+(r.cat===0?'No storms':c.abbr+' · '+c.name)+(r.hatch&&r.cat>=2?' (sig)':'')+'</div>'+
+      'CAPE '+Math.round(r.cape)+' J/kg · Shear '+Math.round(r.shear)+' kt'+
+      '<div class="sm">SCP '+r.scp+' · STP '+r.stp+' · SHIP '+r.ship+'</div>';
+  });
+  function buildLegend(){var h='<div class="cap">Storm risk</div>';for(var k=6;k>=1;k--){var c=CAT[k];h+='<div class="row"><span class="sw" style="background:rgb('+c.color[0]+','+c.color[1]+','+c.color[2]+')"></span>'+c.abbr+' — '+c.name+'</div>';}
+    h+='<div class="row"><span class="sw" style="background:repeating-linear-gradient(45deg,#0f0f0f,#0f0f0f 2px,transparent 2px,transparent 5px),#E06666"></span>Hatched — significant</div>';document.getElementById('legend').innerHTML=h;}
+  function buildDayButtons(){var wrap=document.getElementById('days');wrap.innerHTML='';DAYS.forEach(function(lbl,i){var b=document.createElement('button');b.className='dbtn'+(i===selDay?' active':'');b.innerHTML='Day '+(i+1)+'<small>'+lbl+'</small>';b.onclick=function(){selDay=i;[].forEach.call(wrap.children,function(c){c.classList.remove('active');});b.classList.add('active');renderSurface();};wrap.appendChild(b);});}
+  function setErr(m){document.getElementById('loadmsg').innerHTML='<span class="err">'+m+'</span>';}
+
+  fetch('./outlook.json?_='+Date.now()).then(function(r){if(!r.ok)throw new Error('no outlook.json');return r.json();}).then(function(o){
+    DAYS=o.days||['Day 1','Day 2','Day 3'];
+    o.points.forEach(function(p){GRID.push([p.lat,p.lon]);results.push(p.d);});
+    minLat=1e9;maxLat=-1e9;minLon=1e9;maxLon=-1e9;
+    GRID.forEach(function(p){if(p[0]<minLat)minLat=p[0];if(p[0]>maxLat)maxLat=p[0];if(p[1]<minLon)minLon=p[1];if(p[1]>maxLon)maxLon=p[1];});
+    minLat-=1;maxLat+=1;minLon-=1;maxLon+=1;
+    W=560;H=Math.max(360,Math.round(W*((maxLat-minLat)/(maxLon-minLon))));pxPerDeg=W/(maxLon-minLon);RADIUS=1.6*pxPerDeg;
+    buildLegend();buildDayButtons();renderSurface();
+    document.getElementById('updated').textContent='Updated '+(o.run_date?new Date(o.run_date).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'—');
+    document.getElementById('load').style.display='none';
+  }).catch(function(){setErr('No outlook yet. Run the GitHub Action once, then reload.');});
+})();
+</script>
+</body>
+</html>
