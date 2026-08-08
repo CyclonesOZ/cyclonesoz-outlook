@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Automated Severe Storm Outlook</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Turf.js/7.1.0/turf.min.js"></script>
+<style>
+  :root{ --bg:#acc4d6; --panel:rgba(255,255,255,.94); --border:#c4d0dd; --text:#1a2a3a; --muted:#5c6c7d; }
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}
+  #wrap{position:relative;height:100vh;width:100%;overflow:hidden;}
+  #map{position:absolute;inset:0;background:var(--bg);}
+  .leaflet-container{background:var(--bg);}
+  #topbar{position:absolute;top:0;left:0;right:0;z-index:1000;display:flex;align-items:center;gap:10px;padding:11px 14px;flex-wrap:wrap;
+    background:linear-gradient(180deg,rgba(240,245,250,.95),rgba(240,245,250,0));pointer-events:none;}
+  #topbar .title{font-weight:800;font-size:15px;letter-spacing:.01em;pointer-events:auto;color:#152232;}
+  #topbar .title small{display:block;font-weight:500;font-size:11px;color:var(--muted);margin-top:1px;}
+  #days{display:flex;gap:5px;flex-wrap:wrap;margin-left:auto;pointer-events:auto;}
+  .dbtn{background:rgba(255,255,255,.9);border:1px solid var(--border);color:var(--text);font-size:11px;font-weight:600;padding:5px 9px;border-radius:8px;cursor:pointer;white-space:nowrap;transition:.15s;box-shadow:0 1px 4px rgba(20,40,70,.08);text-align:center;}
+  .dbtn:hover{border-color:#7ea3d8;}
+  .dbtn.active{background:#2563eb;border-color:#2563eb;color:#fff;box-shadow:0 2px 10px rgba(37,99,235,.35);}
+  .dbtn.ext.active{background:#0f9d8f;border-color:#0f9d8f;}
+  .dbtn small{display:block;font-weight:500;font-size:9px;opacity:.85;}
+  #info{position:absolute;top:64px;left:14px;z-index:1000;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:11px 13px;max-width:240px;font-size:12px;line-height:1.45;backdrop-filter:blur(6px);pointer-events:none;box-shadow:0 4px 18px rgba(20,40,70,.18);}
+  #info .cat{font-weight:700;font-size:13px;}
+  #info .hint{color:var(--muted);} #info .sm{color:var(--muted);font-size:11px;margin-top:2px;}
+  #legend{position:absolute;bottom:16px;right:14px;z-index:1000;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:11px 13px;font-size:11px;backdrop-filter:blur(6px);box-shadow:0 4px 18px rgba(20,40,70,.18);}
+  #legend .cap{color:var(--muted);margin-bottom:6px;font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.06em;}
+  #legend .row{display:flex;align-items:center;gap:8px;margin:4px 0;} #legend .sw{width:18px;height:12px;border-radius:3px;border:1.5px solid rgba(20,40,70,.4);}
+  #caption{position:absolute;bottom:16px;left:14px;z-index:1000;max-width:340px;font-size:11px;color:var(--muted);line-height:1.45;background:rgba(255,255,255,.82);padding:7px 9px;border-radius:8px;backdrop-filter:blur(4px);box-shadow:0 2px 10px rgba(20,40,70,.1);}
+  #updated{color:var(--muted);font-size:10px;margin-top:3px;}
+  #load{position:absolute;inset:0;z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(172,196,214,.97);text-align:center;padding:24px;}
+  #load .sp{width:34px;height:34px;border:4px solid var(--border);border-top-color:#2563eb;border-radius:50%;animation:spin 1s linear infinite;}
+  #load .msg{font-size:13px;color:var(--muted);max-width:320px;} .err{color:#b02a2a;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .town{font-size:11px;font-weight:600;color:#15263a;text-shadow:0 0 3px #fff,0 0 3px #fff,0 1px 2px #fff;white-space:nowrap;}
+  .town .dot{display:inline-block;width:3px;height:3px;border-radius:50%;background:#15263a;margin-right:3px;vertical-align:middle;box-shadow:0 0 2px #fff;}
+  @media (max-width:640px){#info{max-width:170px;}#caption{max-width:190px;}#topbar .title small{display:none;}}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="map"></div>
+  <div id="topbar"><div class="title">Automated Severe Storm Outlook<small>Daily risk (worst 6 hours) &middot; 8-day outlook</small></div><div id="days"></div></div>
+  <div id="info"><span class="hint">Hover the map for storm risk at that spot.</span></div>
+  <div id="legend"></div>
+  <div id="caption">Automated guidance from forecast model data. Not an official warning &mdash; always check the Bureau of Meteorology.<div id="updated"></div></div>
+  <div id="load"><div class="sp"></div><div class="msg" id="loadmsg">Loading outlook&hellip;</div></div>
+</div>
+<script>
+(function(){
+  "use strict";
+  var TOWNS=[
+    {n:'Perth',lat:-31.95,lon:115.86},{n:'Adelaide',lat:-34.93,lon:138.60},{n:'Darwin',lat:-12.46,lon:130.84},
+    {n:'Brisbane',lat:-27.47,lon:153.03},{n:'Sydney',lat:-33.87,lon:151.21},{n:'Melbourne',lat:-37.81,lon:144.96},
+    {n:'Hobart',lat:-42.88,lon:147.33},{n:'Canberra',lat:-35.28,lon:149.13},{n:'Broome',lat:-17.96,lon:122.24},
+    {n:'Port Hedland',lat:-20.31,lon:118.61},{n:'Karratha',lat:-20.74,lon:116.85},{n:'Geraldton',lat:-28.77,lon:114.61},
+    {n:'Kalgoorlie',lat:-30.75,lon:121.47},{n:'Esperance',lat:-33.86,lon:121.89},{n:'Albany',lat:-35.02,lon:117.88},
+    {n:'Alice Springs',lat:-23.70,lon:133.88},{n:'Katherine',lat:-14.46,lon:132.26},{n:'Tennant Creek',lat:-19.65,lon:134.19},
+    {n:'Mount Isa',lat:-20.72,lon:139.49},{n:'Cairns',lat:-16.92,lon:145.77},{n:'Townsville',lat:-19.26,lon:146.82},
+    {n:'Mackay',lat:-21.14,lon:149.19},{n:'Rockhampton',lat:-23.38,lon:150.51},{n:'Bundaberg',lat:-24.87,lon:152.35},
+    {n:'Toowoomba',lat:-27.56,lon:151.95},{n:'Gold Coast',lat:-28.02,lon:153.40},{n:'Coffs Harbour',lat:-30.30,lon:153.12},
+    {n:'Newcastle',lat:-32.93,lon:151.78},{n:'Wollongong',lat:-34.42,lon:150.89},{n:'Dubbo',lat:-32.24,lon:148.60},
+    {n:'Wagga Wagga',lat:-35.11,lon:147.37},{n:'Mildura',lat:-34.19,lon:142.16},{n:'Bendigo',lat:-36.76,lon:144.28},
+    {n:'Ballarat',lat:-37.56,lon:143.86},{n:'Launceston',lat:-41.43,lon:147.14},{n:'Broken Hill',lat:-31.95,lon:141.47},
+    {n:'Port Augusta',lat:-32.49,lon:137.77},{n:'Ceduna',lat:-32.13,lon:133.70},{n:'Longreach',lat:-23.44,lon:144.25},
+    {n:'Charleville',lat:-26.40,lon:146.24},{n:'Weipa',lat:-12.68,lon:141.87},{n:'Kununurra',lat:-15.77,lon:128.74},
+    {n:'Port Lincoln',lat:-34.73,lon:135.86},{n:'Warrnambool',lat:-38.38,lon:142.48},{n:'Bourke',lat:-30.09,lon:145.94}
+  ];
+  // fine scale (days 1-4)
+  var FINE=[null,
+    {abbr:'',name:'Increased chance of storm activity',color:[150,205,150]},
+    {abbr:'MRGL',name:'Marginal',color:[86,158,86]},
+    {abbr:'SLGT',name:'Slight',color:[248,220,90]},
+    {abbr:'ENH',name:'Enhanced',color:[247,158,84]},
+    {abbr:'MDT',name:'Moderate',color:[224,96,96]},
+    {abbr:'HIGH',name:'High',color:[236,140,236]}];
+  var FINE_TH=[{t:0.5,c:1},{t:1.5,c:2},{t:2.5,c:3},{t:3.5,c:4},{t:4.5,c:5},{t:5.5,c:6}];
+  // coarse scale (days 5-8)
+  var COARSE=[{t:0.5,color:[120,192,120],name:'Chance of storm'},{t:3.5,color:[228,120,86],name:'Chance of severe storm'}];
+
+  var map=L.map('map',{zoomControl:true,attributionControl:false,minZoom:3,maxZoom:10,worldCopyJump:false,maxBounds:[[-46,108],[-8,157]],maxBoundsViscosity:0.7,preferCanvas:false}).setView([-27.5,134],4);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png',{maxNativeZoom:13,detectRetina:true}).addTo(map);
+
+  var GRID=[],results=[],DAYS=[],selDay=0,LAND=null,minLat,maxLat,minLon,maxLon,nx,ny;
+  var layerCache={};
+
+  function darker(col,f){return 'rgb('+Math.round(col[0]*f)+','+Math.round(col[1]*f)+','+Math.round(col[2]*f)+')';}
+  function rgb(col){return 'rgb('+col[0]+','+col[1]+','+col[2]+')';}
+
+  function bounds(){
+    minLat=1e9;maxLat=-1e9;minLon=1e9;maxLon=-1e9;
+    LAND.features.forEach(function(f){
+      var polys=f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.coordinates;
+      polys.forEach(function(poly){poly[0].forEach(function(c){if(c[0]<minLon)minLon=c[0];if(c[0]>maxLon)maxLon=c[0];if(c[1]<minLat)minLat=c[1];if(c[1]>maxLat)maxLat=c[1];});});
+    });
+    minLat-=0.5;maxLat+=0.5;minLon-=0.5;maxLon+=0.5;
+    nx=Math.round((maxLon-minLon)/0.2); ny=Math.round((maxLat-minLat)/0.2);
+  }
+  // grid cell (gx,gy) -> [lon,lat]; row 0 = top = maxLat
+  function g2ll(gx,gy){return [minLon+(gx/nx)*(maxLon-minLon), maxLat-(gy/ny)*(maxLat-minLat)];}
+
+  // interpolate the category field for a day onto the nx*ny mesh (IDW)
+  function field(dayIdx){
+    var sx=[],sy=[],sc=[];
+    for(var i=0;i<GRID.length;i++){var r=results[i]?results[i][dayIdx]:null;if(!r)continue;sx.push(GRID[i][1]);sy.push(GRID[i][0]);sc.push(r.cat);}
+    var vals=new Float64Array(nx*ny),P=3;
+    var dLon=(maxLon-minLon)/nx,dLat=(maxLat-minLat)/ny;
+    for(var gy=0;gy<ny;gy++){
+      var lat=maxLat-gy*dLat;
+      for(var gx=0;gx<nx;gx++){
+        var lon=minLon+gx*dLon,num=0,den=0;
+        for(var k=0;k<sx.length;k++){var dx=lon-sx[k],dy=lat-sy[k],d2=dx*dx+dy*dy;var w=Math.pow(d2+0.02,-P/2);num+=w*sc[k];den+=w;}
+        vals[gy*nx+gx]=num/den;
+      }
+    }
+    return vals;
+  }
+
+  function tryIntersect(bandFeat){
+    try{ return turf.intersect(turf.featureCollection([bandFeat,LAND.features[0]])); }
+    catch(e){ try{ return turf.intersect(bandFeat,LAND.features[0]); }catch(e2){ return bandFeat; } }
+  }
+
+  // build a Leaflet layerGroup of clipped contour bands for a day
+  function buildDayLayer(dayIdx){
+    if(layerCache[dayIdx]) return layerCache[dayIdx];
+    var vals=field(dayIdx);
+    var ext=dayIdx>=4;                     // days 5-8 use coarse scale
+    var spec=ext?COARSE.map(function(s){return {t:s.t,color:s.color};}):FINE_TH.map(function(s){return {t:s.t,color:FINE[s.c].color};});
+    var ths=spec.map(function(s){return s.t;});
+    var contours=d3.contours().size([nx,ny]).thresholds(ths)(vals);
+    var group=L.layerGroup();
+    contours.forEach(function(geo){
+      var sp=null; for(var m=0;m<spec.length;m++){if(Math.abs(spec[m].t-geo.value)<1e-6){sp=spec[m];break;}}
+      if(!sp||!geo.coordinates.length) return;
+      var coords=geo.coordinates.map(function(poly){return poly.map(function(ring){return ring.map(function(pt){return g2ll(pt[0],pt[1]);});});});
+      var feat={type:'Feature',properties:{},geometry:{type:'MultiPolygon',coordinates:coords}};
+      var clipped=tryIntersect(feat);
+      if(!clipped) return;
+      L.geoJSON(clipped,{interactive:false,style:{color:darker(sp.color,0.45),weight:1.1,opacity:0.9,fillColor:rgb(sp.color),fillOpacity:0.62}}).addTo(group);
+    });
+    layerCache[dayIdx]=group;
+    return group;
+  }
+
+  var currentLayer=null;
+  function showDay(dayIdx){
+    selDay=dayIdx;
+    var lyr=buildDayLayer(dayIdx);
+    if(currentLayer&&currentLayer!==lyr)map.removeLayer(currentLayer);
+    if(!map.hasLayer(lyr))lyr.addTo(map);
+    currentLayer=lyr;
+    buildLegend(dayIdx>=4);
+  }
+
+  map.on('mousemove',function(e){
+    if(!results.length)return;var la=e.latlng.lat,lo=e.latlng.lng,best=-1,bd=1e9;
+    for(var i=0;i<GRID.length;i++){var dd=(GRID[i][0]-la)*(GRID[i][0]-la)+(GRID[i][1]-lo)*(GRID[i][1]-lo);if(dd<bd){bd=dd;best=i;}}
+    var box=document.getElementById('info');
+    if(best<0||bd>3||!results[best]){box.innerHTML='<span class="hint">No data here.</span>';return;}
+    var r=results[best][selDay];
+    if(selDay>=4){
+      var lbl=r.cat>=4?'Chance of severe storm':(r.cat>=1?'Chance of storm':'No storms');
+      var col=r.cat>=4?rgb(COARSE[1].color):(r.cat>=1?rgb(COARSE[0].color):'#5c6c7d');
+      box.innerHTML='<div class="cat" style="color:'+col+'">'+lbl+'</div><div class="sm">Extended range &middot; broad guidance</div>';
+      return;
+    }
+    var c=FINE[r.cat]||FINE[1],col2=r.cat===0?'#5c6c7d':rgb(c.color);
+    box.innerHTML='<div class="cat" style="color:'+col2+'">'+(r.cat===0?'No storms':(c.abbr?c.abbr+' · ':'')+c.name)+(r.hatch&&r.cat>=2?' (sig)':'')+'</div>'+
+      'CAPE '+Math.round(r.cape)+' J/kg · Shear '+Math.round(r.shear)+' kt<div class="sm">SCP '+r.scp+' · STP '+r.stp+' · SHIP '+r.ship+'</div>';
+  });
+
+  function buildLegend(ext){
+    var h='<div class="cap">Storm risk</div>';
+    if(ext){
+      [COARSE[1],COARSE[0]].forEach(function(c){h+='<div class="row"><span class="sw" style="background:'+rgb(c.color)+'"></span>'+c.name+'</div>';});
+      h+='<div class="cap" style="margin-top:8px;margin-bottom:0">Extended range (days 5-8)</div>';
+    }else{
+      for(var k=6;k>=1;k--){var c=FINE[k];h+='<div class="row"><span class="sw" style="background:'+rgb(c.color)+'"></span>'+(c.abbr?c.abbr+' — ':'')+c.name+'</div>';}
+    }
+    document.getElementById('legend').innerHTML=h;
+  }
+  function buildDayButtons(){
+    var wrap=document.getElementById('days');wrap.innerHTML='';
+    DAYS.forEach(function(lbl,i){
+      var b=document.createElement('button');b.className='dbtn'+(i>=4?' ext':'')+(i===selDay?' active':'');
+      b.innerHTML='Day '+(i+1)+'<small>'+lbl+'</small>';
+      b.onclick=function(){[].forEach.call(wrap.children,function(c){c.classList.remove('active');});b.classList.add('active');showDay(i);};
+      wrap.appendChild(b);
+    });
+  }
+  function setErr(m){document.getElementById('loadmsg').innerHTML='<span class="err">'+m+'</span>';}
+
+  Promise.all([
+    fetch('./coastline.geo.json').then(function(r){return r.json();}),
+    fetch('./outlook.json?_='+Date.now()).then(function(r){if(!r.ok)throw new Error('no outlook.json');return r.json();})
+  ]).then(function(res){
+    LAND=res[0]; var o=res[1];
+    TOWNS.forEach(function(t){L.marker([t.lat,t.lon],{interactive:false,icon:L.divIcon({className:'',html:'<div class="town"><span class="dot"></span>'+t.n+'</div>',iconSize:[0,0]})}).addTo(map);});
+    DAYS=o.days||['Day 1','Day 2','Day 3','Day 4','Day 5','Day 6','Day 7','Day 8'];
+    o.points.forEach(function(p){GRID.push([p.lat,p.lon]);results.push(p.d);});
+    bounds();
+    buildDayButtons();showDay(0);
+    document.getElementById('updated').textContent='Updated '+(o.run_date?new Date(o.run_date).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'—');
+    document.getElementById('load').style.display='none';
+  }).catch(function(err){setErr('No outlook yet, or failed to load. Run the GitHub Action once, then reload. ('+err.message+')');});
+})();
+</script>
+</body>
+</html>
