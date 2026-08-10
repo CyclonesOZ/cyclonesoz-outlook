@@ -33,12 +33,27 @@ sev_score <- function(p){
   2*scp + 2*stp + 2*ship + cape/500 + shr/20
 }
 
+# daily accumulated rainfall (mm, GFS's own total precip forecast) -> the same 0-6 scale,
+# folded into the composite category below: any hazard capable of occurring on the day --
+# hail, wind, tornado, or flash-flood rain -- lifts the overall risk shown on the map.
+rain_cat <- function(mm){
+  if (mm >= 150) return(6)
+  if (mm >= 100) return(5)
+  if (mm >= 75)  return(4)
+  if (mm >= 50)  return(3)
+  if (mm >= 35)  return(2)
+  if (mm >= 10)  return(1)
+  0
+}
+
 # SPC-style category from averaged parameters: 0 none,1 TSTM,2 MRGL,3 SLGT,4 ENH,5 MDT,6 HIGH
-# cin = MU_CIN (J/kg, <=0, from the same sounding as cape/shr) and shw = GFS's own
-# forecast convective showers (mm) act as an initiation check: strong CAPE/shear with a
-# stout cap and nothing in the model's own convection scheme means storms likely won't
-# fire, so the category gets pulled back rather than firing on environment alone.
-categorise_vals <- function(cape, shr, scp, stp, ship, cin, shw){
+# cin = MU_CIN (J/kg, <=0, from the same sounding as cape/shr) and shw = GFS's own forecast
+# convective showers (mm, max over the whole day) act as an initiation check: CAPE alone is
+# a very low bar in the moist tropics, so if the model's own convection scheme sees nothing
+# forming all day, the category is zeroed rather than firing on bare environment. rain_mm is
+# the day's accumulated total precip, independently folded in via rain_cat() so heavy-rain
+# days show up even when the severe-hazard parameters alone wouldn't flag anything.
+categorise_vals <- function(cape, shr, scp, stp, ship, cin, shw, rain_mm){
   shr_kt <- shr * 1.94384
   c <- 0
   if (cape >= 150) c <- 1
@@ -49,13 +64,16 @@ categorise_vals <- function(cape, shr, scp, stp, ship, cin, shw){
   if (scp >= 10 | stp >= 5)            c <- max(c, 6)
 
   capped  <- nz(cin) <= -75      # stout cap even on the best hour of the day
-  no_trig <- nz(shw) < 0.1       # GFS's own cumulus scheme sees nothing breaking it
-  if (capped & no_trig)          c <- min(c, 2)
+  no_trig <- nz(shw) < 0.1       # GFS's own cumulus scheme sees nothing forming all day
+  if (no_trig)                    c <- 0
   if (capped & !no_trig & c >= 4) c <- c - 1
 
-  hatch <- as.integer(stp >= 1 | ship >= 1 | scp >= 4)
+  rc <- rain_cat(nz(rain_mm))
+  c  <- max(c, rc)
+
+  hatch <- as.integer(stp >= 1 | ship >= 1 | scp >= 4 | rc >= 4)
   list(cat=c, cape=round(cape), shear=round(shr_kt), scp=round(scp,1),
-       stp=round(stp,1), ship=round(ship,1), cin=round(cin), hatch=hatch)
+       stp=round(stp,1), ship=round(ship,1), cin=round(cin), rain=round(nz(rain_mm)), hatch=hatch)
 }
 
 om_url <- function(lat, lon){
@@ -65,7 +83,7 @@ om_url <- function(lat, lon){
     paste0("wind_speed_",LEVELS,"hPa"),
     paste0("wind_direction_",LEVELS,"hPa"),
     paste0("geopotential_height_",LEVELS,"hPa")), collapse=",")
-  sfc <- "temperature_2m,dew_point_2m,surface_pressure,wind_speed_10m,wind_direction_10m,showers"
+  sfc <- "temperature_2m,dew_point_2m,surface_pressure,wind_speed_10m,wind_direction_10m,showers,precipitation"
   sprintf(paste0("https://api.open-meteo.com/v1/forecast?latitude=%.3f&longitude=%.3f",
     "&hourly=%s,%s&forecast_days=%d&timezone=auto&wind_speed_unit=kn&cell_selection=nearest"),
     lat, lon, sfc, lv, FDAYS)
@@ -111,7 +129,10 @@ day_groups <- function(times){
   list(idx = lapply(days, function(d) which(dts == d)), days = days)
 }
 
-# a day's value = average of the TOPN highest-severity hours
+# a day's value = average of the TOPN highest-severity hours. shw/rain are checked across
+# the WHOLE day (not just the top-N severity hours) since those hours are picked by an
+# instability score, not a precip score -- the day's actual rain chance/total can peak at
+# an hour that score didn't select.
 day_topN <- function(h, idxs, elev){
   rows <- list()
   for (i in idxs){
@@ -125,14 +146,19 @@ day_topN <- function(h, idxs, elev){
       sev  = sev_score(par),
       cape = nz(par[["MU_CAPE"]]), shr = nz(par[["BS_EFF_MU"]]),
       scp  = nz(par[["SCP_new"]]), stp = nz(par[["STP_new"]]), ship = nz(par[["SHIP"]]),
-      cin  = nz(par[["MU_CIN"]]), shw = nz(h[["showers"]][i]))
+      cin  = nz(par[["MU_CIN"]]))
   }
-  if (length(rows) == 0) return(list(cat=0,cape=0,shear=0,scp=0,stp=0,ship=0,cin=0,hatch=0))
+  shw_day  <- max(sapply(idxs, function(i) nz(h[["showers"]][i])))
+  rain_day <- sum(sapply(idxs, function(i) nz(h[["precipitation"]][i])))
+
+  if (length(rows) == 0){
+    rc <- rain_cat(rain_day)
+    return(list(cat=rc, cape=0, shear=0, scp=0, stp=0, ship=0, cin=0, rain=round(rain_day), hatch=as.integer(rc>=4)))
+  }
   sev <- sapply(rows, function(r) r$sev)
   top <- rows[order(sev, decreasing=TRUE)[seq_len(min(TOPN, length(rows)))]]
   m <- function(k) mean(sapply(top, function(r) r[[k]]))
-  shw_max <- max(sapply(top, function(r) r$shw))
-  categorise_vals(m("cape"), m("shr"), m("scp"), m("stp"), m("ship"), m("cin"), shw_max)
+  categorise_vals(m("cape"), m("shr"), m("scp"), m("stp"), m("ship"), m("cin"), shw_day, rain_day)
 }
 
 cat(sprintf("Processing %d grid points (%d days, avg of top %d hours)...\n", nrow(GRID), FDAYS, TOPN))
