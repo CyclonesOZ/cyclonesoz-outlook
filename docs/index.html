@@ -164,14 +164,14 @@
     if(best<0||bd>3||!results[best]){box.innerHTML='<span class="hint">No data here.</span>';return;}
     var r=results[best][selDay];
     if(selDay>=4){
-      var lbl=r.cat>=4?'Chance of severe storm':(r.cat>=1?'Chance of storm':'No storms');
+      var lbl=r.cat>=4?'Chance of severe weather':(r.cat>=1?'Chance of storm':'No storms');
       var col=r.cat>=4?rgb(COARSE[1].color):(r.cat>=1?rgb(COARSE[0].color):'#5c6c7d');
       box.innerHTML='<div class="cat" style="color:'+col+'">'+lbl+'</div><div class="sm">Extended range &middot; broad guidance</div>';
       return;
     }
     var c=FINE[r.cat]||FINE[1],col2=r.cat===0?'#5c6c7d':rgb(c.color);
     box.innerHTML='<div class="cat" style="color:'+col2+'">'+(r.cat===0?'No storms':(c.abbr?c.abbr+' · ':'')+c.name)+(r.hatch&&r.cat>=2?' (sig)':'')+'</div>'+
-      'CAPE '+Math.round(r.cape)+' J/kg · Shear '+Math.round(r.shear)+' kt<div class="sm">SCP '+r.scp+' · STP '+r.stp+' · SHIP '+r.ship+'</div>';
+      'CAPE '+Math.round(r.cape)+' J/kg · Shear '+Math.round(r.shear)+' kt<div class="sm">SCP '+r.scp+' · STP '+r.stp+' · SHIP '+r.ship+' · Rain '+Math.round(r.rain||0)+'mm</div>';
   });
 
   function buildLegend(ext){
