@@ -34,7 +34,11 @@ sev_score <- function(p){
 }
 
 # SPC-style category from averaged parameters: 0 none,1 TSTM,2 MRGL,3 SLGT,4 ENH,5 MDT,6 HIGH
-categorise_vals <- function(cape, shr, scp, stp, ship){
+# cin = MU_CIN (J/kg, <=0, from the same sounding as cape/shr) and shw = GFS's own
+# forecast convective showers (mm) act as an initiation check: strong CAPE/shear with a
+# stout cap and nothing in the model's own convection scheme means storms likely won't
+# fire, so the category gets pulled back rather than firing on environment alone.
+categorise_vals <- function(cape, shr, scp, stp, ship, cin, shw){
   shr_kt <- shr * 1.94384
   c <- 0
   if (cape >= 150) c <- 1
@@ -43,9 +47,15 @@ categorise_vals <- function(cape, shr, scp, stp, ship){
   if (scp >= 4 | stp >= 2 | ship >= 2) c <- max(c, 4)
   if (scp >= 6 | stp >= 3 | ship >= 3) c <- max(c, 5)
   if (scp >= 10 | stp >= 5)            c <- max(c, 6)
+
+  capped  <- nz(cin) <= -75      # stout cap even on the best hour of the day
+  no_trig <- nz(shw) < 0.1       # GFS's own cumulus scheme sees nothing breaking it
+  if (capped & no_trig)          c <- min(c, 2)
+  if (capped & !no_trig & c >= 4) c <- c - 1
+
   hatch <- as.integer(stp >= 1 | ship >= 1 | scp >= 4)
   list(cat=c, cape=round(cape), shear=round(shr_kt), scp=round(scp,1),
-       stp=round(stp,1), ship=round(ship,1), hatch=hatch)
+       stp=round(stp,1), ship=round(ship,1), cin=round(cin), hatch=hatch)
 }
 
 om_url <- function(lat, lon){
@@ -55,7 +65,7 @@ om_url <- function(lat, lon){
     paste0("wind_speed_",LEVELS,"hPa"),
     paste0("wind_direction_",LEVELS,"hPa"),
     paste0("geopotential_height_",LEVELS,"hPa")), collapse=",")
-  sfc <- "temperature_2m,dew_point_2m,surface_pressure,wind_speed_10m,wind_direction_10m"
+  sfc <- "temperature_2m,dew_point_2m,surface_pressure,wind_speed_10m,wind_direction_10m,showers"
   sprintf(paste0("https://api.open-meteo.com/v1/forecast?latitude=%.3f&longitude=%.3f",
     "&hourly=%s,%s&forecast_days=%d&timezone=auto&wind_speed_unit=kn&cell_selection=nearest"),
     lat, lon, sfc, lv, FDAYS)
@@ -114,13 +124,15 @@ day_topN <- function(h, idxs, elev){
     rows[[length(rows)+1]] <- list(
       sev  = sev_score(par),
       cape = nz(par[["MU_CAPE"]]), shr = nz(par[["BS_EFF_MU"]]),
-      scp  = nz(par[["SCP_new"]]), stp = nz(par[["STP_new"]]), ship = nz(par[["SHIP"]]))
+      scp  = nz(par[["SCP_new"]]), stp = nz(par[["STP_new"]]), ship = nz(par[["SHIP"]]),
+      cin  = nz(par[["MU_CIN"]]), shw = nz(h[["showers"]][i]))
   }
-  if (length(rows) == 0) return(list(cat=0,cape=0,shear=0,scp=0,stp=0,ship=0,hatch=0))
+  if (length(rows) == 0) return(list(cat=0,cape=0,shear=0,scp=0,stp=0,ship=0,cin=0,hatch=0))
   sev <- sapply(rows, function(r) r$sev)
   top <- rows[order(sev, decreasing=TRUE)[seq_len(min(TOPN, length(rows)))]]
   m <- function(k) mean(sapply(top, function(r) r[[k]]))
-  categorise_vals(m("cape"), m("shr"), m("scp"), m("stp"), m("ship"))
+  shw_max <- max(sapply(top, function(r) r$shw))
+  categorise_vals(m("cape"), m("shr"), m("scp"), m("stp"), m("ship"), m("cin"), shw_max)
 }
 
 cat(sprintf("Processing %d grid points (%d days, avg of top %d hours)...\n", nrow(GRID), FDAYS, TOPN))
