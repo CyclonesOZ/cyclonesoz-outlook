@@ -131,6 +131,34 @@
     catch(e){ return feat; }
   }
 
+  // Chaikin corner-cutting: replaces each polygon edge with two points 1/4 and 3/4 along it,
+  // which converges to a rounded quadratic-B-spline-like curve after a couple of passes --
+  // turns the blocky/angular contour+clip output into the flowing, organic-looking outlines
+  // SPC-style outlooks use, instead of straight polygon edges.
+  function chaikinRing(ring, iterations){
+    var pts = ring.slice(0, ring.length - 1); // drop the duplicated closing point
+    if (pts.length < 4) return ring;
+    for (var it = 0; it < iterations; it++){
+      var next = []; var n = pts.length;
+      for (var i = 0; i < n; i++){
+        var p0 = pts[i], p1 = pts[(i + 1) % n];
+        next.push([0.75 * p0[0] + 0.25 * p1[0], 0.75 * p0[1] + 0.25 * p1[1]]);
+        next.push([0.25 * p0[0] + 0.75 * p1[0], 0.25 * p0[1] + 0.75 * p1[1]]);
+      }
+      pts = next;
+    }
+    pts.push(pts[0]);
+    return pts;
+  }
+  function trySmooth(feat, iterations){
+    try{
+      var g = feat.geometry;
+      function smoothPoly(poly){ return poly.map(function(ring){ return chaikinRing(ring, iterations); }); }
+      var coords = g.type === 'Polygon' ? smoothPoly(g.coordinates) : g.coordinates.map(smoothPoly);
+      return {type:'Feature', properties: feat.properties || {}, geometry:{type: g.type, coordinates: coords}};
+    } catch(e){ return feat; }
+  }
+
   // build a Leaflet layerGroup of clipped contour bands for a day
   function buildDayLayer(dayIdx){
     if(layerCache[dayIdx]) return layerCache[dayIdx];
@@ -148,6 +176,7 @@
       var clipped=tryIntersect(feat);
       if(!clipped) return;
       clipped=trySimplify(clipped);
+      clipped=trySmooth(clipped,2);
       L.geoJSON(clipped,{interactive:false,style:{color:darker(sp.color,0.45),weight:1.1,opacity:0.9,fillColor:rgb(sp.color),fillOpacity:0.62}}).addTo(group);
     });
     layerCache[dayIdx]=group;
