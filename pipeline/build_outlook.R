@@ -53,15 +53,26 @@ rain_cat <- function(mm){
 # forming all day, the category is zeroed rather than firing on bare environment. rain_mm is
 # the day's accumulated total precip, independently folded in via rain_cat() so heavy-rain
 # days show up even when the severe-hazard parameters alone wouldn't flag anything.
+#
+# CAPE/SCP/STP/SHIP threshold NOTE: the numeric cutoffs below (SCP 1/2/4/6/10, STP 1/2/3/5,
+# SHIP 0.5/1/2/3, and the CAPE+shear combo gates) are the US Storm Prediction Center's own
+# values, calibrated against the US Great Plains severe-report climatology. Published Australian
+# work (Allen, Karoly & Mills 2011, Aust. Met. Ocean. J. 61; Allen & Karoly 2014, Int. J.
+# Climatol. 34) finds Australian severe thunderstorms commonly occur at lower CAPE than their US
+# counterparts for a comparable severe outcome -- but a proper regional discriminant needs a fit
+# against Australian report data this pipeline doesn't have access to. The ~20% reduction applied
+# here (~10% on the wind-speed terms, since shear is measured directly rather than a derived proxy)
+# is a directional nudge in that documented direction, not a fitted recalibration -- treat category
+# boundaries as approximate until validated against real Australian severe reports.
 categorise_vals <- function(cape, shr, scp, stp, ship, cin, shw, rain_mm){
   shr_kt <- shr * 1.94384
   c <- 0
   if (cape >= 150) c <- 1
-  if ((cape >= 500 & shr_kt >= 20) | scp >= 1 | ship >= 0.5) c <- max(c, 2)
-  if (scp >= 2 | stp >= 1 | ship >= 1 | (cape >= 1000 & shr_kt >= 30)) c <- max(c, 3)
-  if (scp >= 4 | stp >= 2 | ship >= 2) c <- max(c, 4)
-  if (scp >= 6 | stp >= 3 | ship >= 3) c <- max(c, 5)
-  if (scp >= 10 | stp >= 5)            c <- max(c, 6)
+  if ((cape >= 400 & shr_kt >= 18) | scp >= 0.8 | ship >= 0.4) c <- max(c, 2)
+  if (scp >= 1.6 | stp >= 0.8 | ship >= 0.8 | (cape >= 800 & shr_kt >= 27)) c <- max(c, 3)
+  if (scp >= 3.2 | stp >= 1.6 | ship >= 1.6) c <- max(c, 4)
+  if (scp >= 4.8 | stp >= 2.4 | ship >= 2.4) c <- max(c, 5)
+  if (scp >= 8   | stp >= 4)                 c <- max(c, 6)
 
   capped  <- nz(cin) <= -75      # stout cap even on the best hour of the day
   no_trig <- nz(shw) < 0.1       # GFS's own cumulus scheme sees nothing forming all day
@@ -71,7 +82,7 @@ categorise_vals <- function(cape, shr, scp, stp, ship, cin, shw, rain_mm){
   rc <- rain_cat(nz(rain_mm))
   c  <- max(c, rc)
 
-  hatch <- as.integer(stp >= 1 | ship >= 1 | scp >= 4 | rc >= 4)
+  hatch <- as.integer(stp >= 0.8 | ship >= 0.8 | scp >= 3.2 | rc >= 4)
   list(cat=c, cape=round(cape), shear=round(shr_kt), scp=round(scp,1),
        stp=round(stp,1), ship=round(ship,1), cin=round(cin), rain=round(nz(rain_mm)), hatch=hatch)
 }
