@@ -125,6 +125,12 @@
     catch(e){ try{ return turf.intersect(bandFeat,LAND.features[0]); }catch(e2){ return bandFeat; } }
   }
 
+  // smooths the jagged edges left behind where the coarse contour grid met the coastline
+  function trySimplify(feat){
+    try{ return turf.simplify(feat,{tolerance:0.02,highQuality:true}); }
+    catch(e){ return feat; }
+  }
+
   // build a Leaflet layerGroup of clipped contour bands for a day
   function buildDayLayer(dayIdx){
     if(layerCache[dayIdx]) return layerCache[dayIdx];
@@ -141,6 +147,7 @@
       var feat={type:'Feature',properties:{},geometry:{type:'MultiPolygon',coordinates:coords}};
       var clipped=tryIntersect(feat);
       if(!clipped) return;
+      clipped=trySimplify(clipped);
       L.geoJSON(clipped,{interactive:false,style:{color:darker(sp.color,0.45),weight:1.1,opacity:0.9,fillColor:rgb(sp.color),fillOpacity:0.62}}).addTo(group);
     });
     layerCache[dayIdx]=group;
