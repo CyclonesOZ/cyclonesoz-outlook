@@ -40,12 +40,32 @@
   @keyframes spin{to{transform:rotate(360deg)}}
   .town{font-size:11px;font-weight:600;color:#15263a;text-shadow:0 0 3px #fff,0 0 3px #fff,0 1px 2px #fff;white-space:nowrap;}
   .town .dot{display:inline-block;width:3px;height:3px;border-radius:50%;background:#15263a;margin-right:3px;vertical-align:middle;box-shadow:0 0 2px #fff;}
-  @media (max-width:640px){#info{max-width:170px;}#caption{max-width:190px;}#topbar .title small{display:none;}.dbtn.hz small{display:none;}}
+  .dbtn.back{border-color:#94a3b8;}
+  #wrap.gridmode #map{display:none;}
+  #wrap.gridmode #hazards{display:none;}
+  #wrap.gridmode #info{display:none;}
+  #wrap.gridmode #legend{display:none;}
+  #wrap:not(.gridmode) #gridWrap{display:none;}
+  #gridWrap{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:2px;background:#7f97ab;padding-top:96px;box-sizing:border-box;}
+  .gridPanel{position:relative;overflow:hidden;cursor:pointer;background:var(--bg);}
+  .gridPanel:hover{outline:2px solid #2563eb;outline-offset:-2px;z-index:1;}
+  .gridmap{position:absolute;inset:0;}
+  .gridTitle{position:absolute;top:8px;left:9px;z-index:500;font-weight:700;font-size:11px;color:#152232;background:rgba(255,255,255,.88);padding:3px 8px;border-radius:6px;pointer-events:none;box-shadow:0 1px 4px rgba(20,40,70,.12);}
+  .gridLegend{position:absolute;bottom:8px;left:8px;z-index:500;background:rgba(255,255,255,.92);border-radius:6px;padding:5px 7px;font-size:9px;pointer-events:none;box-shadow:0 2px 8px rgba(20,40,70,.15);max-width:52%;}
+  .gridLegend .row{display:flex;align-items:center;gap:4px;margin:1px 0;line-height:1.2;}
+  .gridLegend .sw{width:11px;height:8px;border-radius:2px;border:1px solid rgba(20,40,70,.35);flex:none;}
+  @media (max-width:640px){#info{max-width:170px;}#caption{max-width:190px;}#topbar .title small{display:none;}.dbtn.hz small{display:none;}#gridWrap{padding-top:64px;}.gridTitle{font-size:9px;padding:2px 5px;}.gridLegend{font-size:7.5px;}}
 </style>
 </head>
 <body>
 <div id="wrap">
   <div id="map"></div>
+  <div id="gridWrap">
+    <div class="gridPanel" data-hz="cat"><div class="gridTitle">Category Outlook</div><div class="gridmap" id="gridmap-cat"></div><div class="gridLegend" id="gridLegend-cat"></div></div>
+    <div class="gridPanel" data-hz="tprob"><div class="gridTitle">Thunderstorm Outlook</div><div class="gridmap" id="gridmap-tprob"></div><div class="gridLegend" id="gridLegend-tprob"></div></div>
+    <div class="gridPanel" data-hz="hail"><div class="gridTitle">Hail Outlook</div><div class="gridmap" id="gridmap-hail"></div><div class="gridLegend" id="gridLegend-hail"></div></div>
+    <div class="gridPanel" data-hz="flood"><div class="gridTitle">Flash Flood Outlook</div><div class="gridmap" id="gridmap-flood"></div><div class="gridLegend" id="gridLegend-flood"></div></div>
+  </div>
   <div id="topbar"><div class="title">Automated Severe Storm Outlook<small>Daily risk (worst 6 hours) &middot; 8-day outlook</small></div><div id="days"></div><div id="hazards"></div></div>
   <div id="info"><span class="hint">Hover the map for storm risk at that spot.</span></div>
   <div id="legend"></div>
@@ -101,18 +121,25 @@
     hail:  function(r){ return r.hail||0; },
     flood: function(r){ return r.flood||0; }
   };
+  // colors follow the real SPC convective-outlook families: thunderstorm probability uses its own
+  // tan/cyan/pink ramp, while hazard-specific (hail/wind/tornado-style) panels share the brown-gold-
+  // red-magenta-purple severe-probability ramp. We only have 3 tiers per hazard (vs SPC's 5-6), so each
+  // picks a representative subset of that ramp rather than the full percentage scale.
   var HAZ_SPECS={
-    tprob:{thresholds:[20,50,80],colors:[[150,205,150],[248,220,90],[247,158,84]],labels:['20% or higher','50% or higher','80% or higher']},
-    hail: {thresholds:[1,2,3],colors:[[110,180,220],[240,140,40],[190,60,190]],labels:['Small (<2cm)','Large (2-5cm)','Giant (>5cm)']},
-    flood:{thresholds:[1],colors:[[214,64,64]],labels:['High risk of flash flooding']}
+    tprob:{thresholds:[20,50,80],colors:[[196,178,120],[120,206,206],[233,120,140]],labels:['20% or higher','50% or higher','80% or higher']},
+    hail: {thresholds:[1,2,3],colors:[[224,180,40],[214,44,44],[142,44,196]],labels:['Small (<2cm)','Large (2-5cm)','Giant (>5cm)']},
+    flood:{thresholds:[1],colors:[[40,110,200]],labels:['High risk of flash flooding']}
   };
   var selHazard='cat';
+  var GRID_ORDER=['cat','tprob','hail','flood'];
+  var viewMode='grid';
+  var gridMaps={},gridLayers={};
 
   var map=L.map('map',{zoomControl:true,attributionControl:false,minZoom:3,maxZoom:10,worldCopyJump:false,maxBounds:[[-46,108],[-8,157]],maxBoundsViscosity:0.7,preferCanvas:false}).setView([-27.5,134],4);
   L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png',{maxNativeZoom:13,detectRetina:true}).addTo(map);
 
-  var GRID=[],results=[],DAYS=[],selDay=0,LAND=null,minLat,maxLat,minLon,maxLon,nx,ny;
-  var layerCache={};
+  var GRID=[],results=[],DAYS=[],selDay=0,LAND=null,STATES=null,minLat,maxLat,minLon,maxLon,nx,ny;
+  var featureCache={};
 
   function darker(col,f){return 'rgb('+Math.round(col[0]*f)+','+Math.round(col[1]*f)+','+Math.round(col[2]*f)+')';}
   function rgb(col){return 'rgb('+col[0]+','+col[1]+','+col[2]+')';}
@@ -185,10 +212,12 @@
     } catch(e){ return feat; }
   }
 
-  // build a Leaflet layerGroup of clipped contour bands for a day + hazard
-  function buildDayLayer(dayIdx,hz){
+  // compute clipped+smoothed contour bands for a day + hazard (expensive: IDW, d3 contours, turf
+  // clip/simplify, Chaikin smoothing) -- cached, and independent of any particular Leaflet map so the
+  // same bands can be drawn on the main focused map and on the small overview-grid maps.
+  function buildDayFeatures(dayIdx,hz){
     var key=hz+'|'+dayIdx;
-    if(layerCache[key]) return layerCache[key];
+    if(featureCache[key]) return featureCache[key];
     var vals=field(dayIdx,HAZ_GET[hz]);
     var spec;
     if(hz==='cat'){
@@ -200,7 +229,7 @@
     }
     var ths=spec.map(function(s){return s.t;});
     var contours=d3.contours().size([nx,ny]).thresholds(ths)(vals);
-    var group=L.layerGroup();
+    var out=[];
     contours.forEach(function(geo){
       var sp=null; for(var m=0;m<spec.length;m++){if(Math.abs(spec[m].t-geo.value)<1e-6){sp=spec[m];break;}}
       if(!sp||!geo.coordinates.length) return;
@@ -210,22 +239,60 @@
       if(!clipped) return;
       clipped=trySimplify(clipped);
       clipped=trySmooth(clipped,2);
-      L.geoJSON(clipped,{interactive:false,style:{color:darker(sp.color,0.45),weight:1.1,opacity:0.9,fillColor:rgb(sp.color),fillOpacity:0.62}}).addTo(group);
+      out.push({geo:clipped,style:{color:darker(sp.color,0.45),weight:1.1,opacity:0.9,fillColor:rgb(sp.color),fillOpacity:0.62}});
     });
-    layerCache[key]=group;
+    featureCache[key]=out;
+    return out;
+  }
+  // cheap: builds a fresh Leaflet layerGroup from cached feature data for one specific map instance
+  function renderOnMap(m,dayIdx,hz){
+    var group=L.layerGroup();
+    buildDayFeatures(dayIdx,hz).forEach(function(f){ L.geoJSON(f.geo,{interactive:false,style:f.style}).addTo(group); });
+    group.addTo(m);
     return group;
   }
 
   var currentLayer=null;
   function render(){
-    var lyr=buildDayLayer(selDay,selHazard);
-    if(currentLayer&&currentLayer!==lyr)map.removeLayer(currentLayer);
-    if(!map.hasLayer(lyr))lyr.addTo(map);
-    currentLayer=lyr;
+    if(currentLayer) map.removeLayer(currentLayer);
+    currentLayer=renderOnMap(map,selDay,selHazard);
     buildLegend();
   }
-  function showDay(dayIdx){ selDay=dayIdx; render(); }
   function showHazard(hz){ selHazard=hz; render(); }
+
+  function initGridMaps(){
+    GRID_ORDER.forEach(function(hz){
+      var gm=L.map('gridmap-'+hz,{zoomControl:false,attributionControl:false,dragging:false,scrollWheelZoom:false,
+        doubleClickZoom:false,boxZoom:false,keyboard:false,touchZoom:false,tap:false,minZoom:3,maxZoom:10,
+        maxBounds:[[-46,108],[-8,157]]}).setView([-27.5,134],3.15);
+      L.geoJSON(LAND,{interactive:false,style:{color:'#9fb3c4',weight:1,fillColor:'#f2ecd9',fillOpacity:1}}).addTo(gm);
+      if(STATES) L.geoJSON(STATES,{interactive:false,style:{color:'#b9c4cd',weight:0.8,fillOpacity:0}}).addTo(gm);
+      gm.getContainer().addEventListener('click',function(){ enterFocused(hz); });
+      gridMaps[hz]=gm;
+    });
+  }
+  function renderGrid(){
+    GRID_ORDER.forEach(function(hz){
+      var gm=gridMaps[hz]; if(!gm) return;
+      if(gridLayers[hz]) gm.removeLayer(gridLayers[hz]);
+      gridLayers[hz]=renderOnMap(gm,selDay,hz);
+    });
+    buildGridLegends();
+  }
+  function enterFocused(hz){
+    selHazard=hz; viewMode='focused';
+    document.getElementById('wrap').classList.remove('gridmode');
+    [].forEach.call(document.querySelectorAll('#hazards .dbtn.hz'),function(b){b.classList.toggle('active',b.dataset.hz===hz);});
+    map.invalidateSize();
+    render();
+  }
+  function enterGrid(){
+    viewMode='grid';
+    document.getElementById('wrap').classList.add('gridmode');
+    GRID_ORDER.forEach(function(hz){ if(gridMaps[hz]) gridMaps[hz].invalidateSize(); });
+    renderGrid();
+  }
+  function showDay(dayIdx){ selDay=dayIdx; if(viewMode==='grid') renderGrid(); else render(); }
 
   map.on('mousemove',function(e){
     if(!results.length)return;var la=e.latlng.lat,lo=e.latlng.lng,best=-1,bd=1e9;
@@ -263,9 +330,10 @@
       'CAPE '+Math.round(r.cape)+' J/kg · Shear '+Math.round(r.shear)+' kt<div class="sm">SCP '+r.scp+' · STP '+r.stp+' · SHIP '+r.ship+' · Rain '+Math.round(r.rain||0)+'mm</div>';
   });
 
-  function buildLegend(){
-    var h='<div class="cap">'+HAZ_TITLES[selHazard]+'</div>';
-    if(selHazard==='cat'){
+  // legend rows for one hazard (no title) -- shared by the focused-view legend and the grid mini-legends
+  function legendRows(hz){
+    var h='';
+    if(hz==='cat'){
       var ext=selDay>=4;
       if(ext){
         [COARSE[1],COARSE[0]].forEach(function(c){h+='<div class="row"><span class="sw" style="background:'+rgb(c.color)+'"></span>'+c.name+'</div>';});
@@ -274,10 +342,19 @@
         for(var k=6;k>=1;k--){var c=FINE[k];h+='<div class="row"><span class="sw" style="background:'+rgb(c.color)+'"></span>'+(c.abbr?c.abbr+' — ':'')+c.name+'</div>';}
       }
     }else{
-      var hs=HAZ_SPECS[selHazard];
+      var hs=HAZ_SPECS[hz];
       for(var i=hs.thresholds.length-1;i>=0;i--){h+='<div class="row"><span class="sw" style="background:'+rgb(hs.colors[i])+'"></span>'+hs.labels[i]+'</div>';}
     }
-    document.getElementById('legend').innerHTML=h;
+    return h;
+  }
+  function buildLegend(){
+    document.getElementById('legend').innerHTML='<div class="cap">'+HAZ_TITLES[selHazard]+'</div>'+legendRows(selHazard);
+  }
+  function buildGridLegends(){
+    GRID_ORDER.forEach(function(hz){
+      var el=document.getElementById('gridLegend-'+hz);
+      if(el) el.innerHTML=legendRows(hz);
+    });
   }
   function buildDayButtons(){
     var wrap=document.getElementById('days');wrap.innerHTML='';
@@ -290,10 +367,13 @@
   }
   function buildHazardButtons(){
     var wrap=document.getElementById('hazards');wrap.innerHTML='';
+    var back=document.createElement('button');back.className='dbtn back';back.textContent='‹ All hazards';
+    back.onclick=function(){ enterGrid(); };
+    wrap.appendChild(back);
     HAZARDS_LIST.forEach(function(hzd){
-      var b=document.createElement('button');b.className='dbtn hz'+(hzd.key===selHazard?' active':'');
+      var b=document.createElement('button');b.className='dbtn hz'+(hzd.key===selHazard?' active':'');b.dataset.hz=hzd.key;
       b.innerHTML=hzd.label+'<small>'+hzd.sub+'</small>';
-      b.onclick=function(){[].forEach.call(wrap.children,function(c){c.classList.remove('active');});b.classList.add('active');showHazard(hzd.key);};
+      b.onclick=function(){[].forEach.call(wrap.querySelectorAll('.hz'),function(c){c.classList.remove('active');});b.classList.add('active');showHazard(hzd.key);};
       wrap.appendChild(b);
     });
   }
@@ -301,14 +381,15 @@
 
   Promise.all([
     fetch('./coastline.geo.json').then(function(r){return r.json();}),
-    fetch('./outlook.json?_='+Date.now()).then(function(r){if(!r.ok)throw new Error('no outlook.json');return r.json();})
+    fetch('./outlook.json?_='+Date.now()).then(function(r){if(!r.ok)throw new Error('no outlook.json');return r.json();}),
+    fetch('./states.geo.json').then(function(r){return r.ok?r.json():null;}).catch(function(){return null;})
   ]).then(function(res){
-    LAND=res[0]; var o=res[1];
+    LAND=res[0]; var o=res[1]; STATES=res[2];
     TOWNS.forEach(function(t){L.marker([t.lat,t.lon],{interactive:false,icon:L.divIcon({className:'',html:'<div class="town"><span class="dot"></span>'+t.n+'</div>',iconSize:[0,0]})}).addTo(map);});
     DAYS=o.days||['Day 1','Day 2','Day 3','Day 4','Day 5','Day 6','Day 7','Day 8'];
     o.points.forEach(function(p){GRID.push([p.lat,p.lon]);results.push(p.d);});
     bounds();
-    buildDayButtons();buildHazardButtons();showDay(0);
+    buildDayButtons();buildHazardButtons();initGridMaps();enterGrid();
     document.getElementById('updated').textContent='Updated '+(o.run_date?new Date(o.run_date).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'—');
     document.getElementById('load').style.display='none';
   }).catch(function(err){setErr('No outlook yet, or failed to load. Run the GitHub Action once, then reload. ('+err.message+')');});
