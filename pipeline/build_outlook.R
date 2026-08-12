@@ -176,19 +176,20 @@ day_topN <- function(h, idxs, elev){
       sev  = sev_score(par),
       cape = nz(par[["MU_CAPE"]]), shr = nz(par[["BS_EFF_MU"]]),
       scp  = nz(par[["SCP_new"]]), stp = nz(par[["STP_new"]]), ship = nz(par[["SHIP"]]),
-      cin  = nz(par[["MU_CIN"]]), frz = h[["freezing_level_height"]][i])
+      cin  = nz(par[["MU_CIN"]]), frz = h[["freezing_level_height"]][i],
+      tprob = nz(h[["precipitation_probability"]][i]))
   }
   shw_day   <- max(sapply(idxs, function(i) nz(h[["showers"]][i])))
   rain_day  <- sum(sapply(idxs, function(i) nz(h[["precipitation"]][i])))
-  # thunderstorm chance: Open-Meteo's own ensemble-based precipitation_probability (%), not a
-  # value this pipeline derives -- the day's figure is the highest hourly reading, matching how
-  # a daily rain/storm chance is normally reported (best chance at any point in the day).
-  tprob_day <- max(sapply(idxs, function(i) nz(h[["precipitation_probability"]][i])))
 
   if (length(rows) == 0){
     rc <- rain_cat(rain_day)
+    # no successful soundings this day -- no instability-based hour selection to lean on, so fall
+    # back to the day's mean precip-probability (still whole-day, but mean rather than max keeps a
+    # single spurious overnight-drizzle hour from dominating the fallback the way max did before).
+    tprob_fallback <- mean(sapply(idxs, function(i) nz(h[["precipitation_probability"]][i])))
     return(list(cat=rc, cape=0, shear=0, scp=0, stp=0, ship=0, cin=0, rain=round(rain_day), hatch=as.integer(rc>=4),
-                tprob=round(tprob_day), hail=0, flood=flood_risk(rain_day)))
+                tprob=round(tprob_fallback), hail=0, flood=flood_risk(rain_day)))
   }
   sev <- sapply(rows, function(r) r$sev)
   top <- rows[order(sev, decreasing=TRUE)[seq_len(min(TOPN, length(rows)))]]
@@ -197,7 +198,11 @@ day_topN <- function(h, idxs, elev){
   frz_day <- suppressWarnings(min(sapply(top, function(r) r$frz), na.rm=TRUE))
   if (!is.finite(frz_day)) frz_day <- NA
   cv <- categorise_vals(m("cape"), m("shr"), m("scp"), m("stp"), m("ship"), m("cin"), shw_day, rain_day)
-  c(cv, list(tprob=round(tprob_day), hail=hail_tier(m("ship"), m("cape"), frz_day), flood=flood_risk(rain_day)))
+  # thunderstorm chance: Open-Meteo's own ensemble-based precipitation_probability (%), averaged
+  # over the SAME top-N instability-ranked hours as cape/shear/ship, not the whole day -- a whole-day
+  # max picks up unrelated overnight drizzle (Open-Meteo's ensemble can be very confident about light,
+  # non-convective rain at 7am) and reports it as a dramatic "thunderstorm chance" for the day.
+  c(cv, list(tprob=round(m("tprob")), hail=hail_tier(m("ship"), m("cape"), frz_day), flood=flood_risk(rain_day)))
 }
 
 cat(sprintf("Processing %d grid points (%d days, avg of top %d hours)...\n", nrow(GRID), FDAYS, TOPN))
