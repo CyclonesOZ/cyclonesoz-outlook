@@ -46,6 +46,25 @@ rain_cat <- function(mm){
   0
 }
 
+# hail size tier: 0 none/sub-severe, 1 small (<2cm), 2 large (2-5cm), 3 giant (>5cm).
+# SHIP is SPC's own significant-hail parameter (calibrated to >=2in/5cm hail potential), so
+# its own 1/2 breakpoints are kept as the primary driver. frz_lvl_m is the altitude of the 0C
+# level during the day's most unstable hours: a lower freezing level gives a falling hailstone
+# less distance to melt, so unusually cold air aloft can support larger hail than SHIP alone
+# would suggest on a modest-CAPE day. 3400m and the resulting one-tier bump are our own working
+# threshold from general hail-forecasting practice (lower 0C level -> bigger hail, all else
+# equal), not a published Australian-calibrated number -- same caveat as the category thresholds.
+hail_tier <- function(ship, cape, frz_lvl_m){
+  base <- if (ship >= 2) 3 else if (ship >= 1) 2 else if (ship >= 0.5 | cape >= 500) 1 else 0
+  cold_aloft <- !is.na(frz_lvl_m) & frz_lvl_m < 3400 & cape >= 300
+  if (cold_aloft & base >= 1 & base < 3) base <- base + 1
+  base
+}
+
+# flash-flood risk: 0 low, 1 high. Reuses the same daily-rain total already computed for
+# rain_cat(); 50mm/day is the same threshold that lifts the main category to SLGT-equivalent.
+flood_risk <- function(rain_mm){ as.integer(nz(rain_mm) >= 50) }
+
 # SPC-style category from averaged parameters: 0 none,1 TSTM,2 MRGL,3 SLGT,4 ENH,5 MDT,6 HIGH
 # cin = MU_CIN (J/kg, <=0, from the same sounding as cape/shr) and shw = GFS's own forecast
 # convective showers (mm, max over the whole day) act as an initiation check: CAPE alone is
@@ -94,7 +113,7 @@ om_url <- function(lat, lon){
     paste0("wind_speed_",LEVELS,"hPa"),
     paste0("wind_direction_",LEVELS,"hPa"),
     paste0("geopotential_height_",LEVELS,"hPa")), collapse=",")
-  sfc <- "temperature_2m,dew_point_2m,surface_pressure,wind_speed_10m,wind_direction_10m,showers,precipitation"
+  sfc <- "temperature_2m,dew_point_2m,surface_pressure,wind_speed_10m,wind_direction_10m,showers,precipitation,precipitation_probability,freezing_level_height"
   sprintf(paste0("https://api.open-meteo.com/v1/forecast?latitude=%.3f&longitude=%.3f",
     "&hourly=%s,%s&forecast_days=%d&timezone=auto&wind_speed_unit=kn&cell_selection=nearest"),
     lat, lon, sfc, lv, FDAYS)
@@ -157,19 +176,28 @@ day_topN <- function(h, idxs, elev){
       sev  = sev_score(par),
       cape = nz(par[["MU_CAPE"]]), shr = nz(par[["BS_EFF_MU"]]),
       scp  = nz(par[["SCP_new"]]), stp = nz(par[["STP_new"]]), ship = nz(par[["SHIP"]]),
-      cin  = nz(par[["MU_CIN"]]))
+      cin  = nz(par[["MU_CIN"]]), frz = h[["freezing_level_height"]][i])
   }
-  shw_day  <- max(sapply(idxs, function(i) nz(h[["showers"]][i])))
-  rain_day <- sum(sapply(idxs, function(i) nz(h[["precipitation"]][i])))
+  shw_day   <- max(sapply(idxs, function(i) nz(h[["showers"]][i])))
+  rain_day  <- sum(sapply(idxs, function(i) nz(h[["precipitation"]][i])))
+  # thunderstorm chance: Open-Meteo's own ensemble-based precipitation_probability (%), not a
+  # value this pipeline derives -- the day's figure is the highest hourly reading, matching how
+  # a daily rain/storm chance is normally reported (best chance at any point in the day).
+  tprob_day <- max(sapply(idxs, function(i) nz(h[["precipitation_probability"]][i])))
 
   if (length(rows) == 0){
     rc <- rain_cat(rain_day)
-    return(list(cat=rc, cape=0, shear=0, scp=0, stp=0, ship=0, cin=0, rain=round(rain_day), hatch=as.integer(rc>=4)))
+    return(list(cat=rc, cape=0, shear=0, scp=0, stp=0, ship=0, cin=0, rain=round(rain_day), hatch=as.integer(rc>=4),
+                tprob=round(tprob_day), hail=0, flood=flood_risk(rain_day)))
   }
   sev <- sapply(rows, function(r) r$sev)
   top <- rows[order(sev, decreasing=TRUE)[seq_len(min(TOPN, length(rows)))]]
   m <- function(k) mean(sapply(top, function(r) r[[k]]))
-  categorise_vals(m("cape"), m("shr"), m("scp"), m("stp"), m("ship"), m("cin"), shw_day, rain_day)
+  # coldest freezing level among the day's most unstable hours -- see hail_tier() for why
+  frz_day <- suppressWarnings(min(sapply(top, function(r) r$frz), na.rm=TRUE))
+  if (!is.finite(frz_day)) frz_day <- NA
+  cv <- categorise_vals(m("cape"), m("shr"), m("scp"), m("stp"), m("ship"), m("cin"), shw_day, rain_day)
+  c(cv, list(tprob=round(tprob_day), hail=hail_tier(m("ship"), m("cape"), frz_day), flood=flood_risk(rain_day)))
 }
 
 cat(sprintf("Processing %d grid points (%d days, avg of top %d hours)...\n", nrow(GRID), FDAYS, TOPN))
