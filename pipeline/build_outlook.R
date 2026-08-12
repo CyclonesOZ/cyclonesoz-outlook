@@ -49,15 +49,23 @@ rain_cat <- function(mm){
 # hail size tier: 0 none/sub-severe, 1 small (<2cm), 2 large (2-5cm), 3 giant (>5cm).
 # SHIP is SPC's own significant-hail parameter (calibrated to >=2in/5cm hail potential), so
 # its own 1/2 breakpoints are kept as the primary driver. frz_lvl_m is the altitude of the 0C
-# level during the day's most unstable hours: a lower freezing level gives a falling hailstone
-# less distance to melt, so unusually cold air aloft can support larger hail than SHIP alone
-# would suggest on a modest-CAPE day. 3400m and the resulting one-tier bump are our own working
-# threshold from general hail-forecasting practice (lower 0C level -> bigger hail, all else
-# equal), not a published Australian-calibrated number -- same caveat as the category thresholds.
+# level during the day's most unstable hours -- Raupach et al. 2023 (Mon. Wea. Rev. 151,
+# doi:10.1175/mwr-d-22-0127.1) found melting-level height is the key variable needed to correct
+# naive instability-shear hail proxies for Australia, and specifically that proxies without it
+# OVERESTIMATE hail probability in Australia's tropical north. Both directions here follow that
+# finding: a lower freezing level gives a falling hailstone less distance to melt (cold_aloft
+# bumps the tier up), while an unusually high freezing level -- common in the tropics -- gives
+# it much more distance to melt before reaching the ground (warm_aloft pulls the tier back down).
+# The specific 3400m/4900m cutoffs are our own working thresholds from general hail-forecasting
+# practice, not numbers taken from the paper (which uses a continuous correction, not a step),
+# so treat the exact breakpoints as approximate even though the melting-level concept is now
+# directly evidenced for Australia.
 hail_tier <- function(ship, cape, frz_lvl_m){
   base <- if (ship >= 2) 3 else if (ship >= 1) 2 else if (ship >= 0.5 | cape >= 500) 1 else 0
   cold_aloft <- !is.na(frz_lvl_m) & frz_lvl_m < 3400 & cape >= 300
+  warm_aloft <- !is.na(frz_lvl_m) & frz_lvl_m > 4900
   if (cold_aloft & base >= 1 & base < 3) base <- base + 1
+  if (warm_aloft & base >= 1) base <- base - 1
   base
 }
 
@@ -76,13 +84,22 @@ flood_risk <- function(rain_mm){ as.integer(nz(rain_mm) >= 50) }
 # CAPE/SCP/STP/SHIP threshold NOTE: the numeric cutoffs below (SCP 1/2/4/6/10, STP 1/2/3/5,
 # SHIP 0.5/1/2/3, and the CAPE+shear combo gates) are the US Storm Prediction Center's own
 # values, calibrated against the US Great Plains severe-report climatology. Published Australian
-# work (Allen, Karoly & Mills 2011, Aust. Met. Ocean. J. 61; Allen & Karoly 2014, Int. J.
-# Climatol. 34) finds Australian severe thunderstorms commonly occur at lower CAPE than their US
-# counterparts for a comparable severe outcome -- but a proper regional discriminant needs a fit
-# against Australian report data this pipeline doesn't have access to. The ~20% reduction applied
-# here (~10% on the wind-speed terms, since shear is measured directly rather than a derived proxy)
-# is a directional nudge in that documented direction, not a fitted recalibration -- treat category
-# boundaries as approximate until validated against real Australian severe reports.
+# work -- Allen, Karoly & Mills 2011, "A severe thunderstorm climatology for Australia and
+# associated thunderstorm environments," Aust. Met. Ocean. J. 61, doi:10.22499/2.6103.001; Allen
+# & Karoly 2013, "A climatology of Australian severe thunderstorm environments 1979-2011," Int.
+# J. Climatol., doi:10.1002/joc.3667 -- built a real Australian severe-thunderstorm-report
+# database (2003-2010) and derived their own CAPE/deep-layer-shear discriminants from proximity
+# soundings against it, rather than reusing the US SPC numbers unmodified. That confirms
+# region-specific recalibration is the right thing to do here in principle. What this pipeline
+# does NOT have: the actual fitted discriminant values from those papers, or the underlying
+# report database to fit its own. Both papers are paywalled past their abstracts, and web-search
+# summaries of their content returned mutually inconsistent numbers for the same discriminant
+# (checked and rejected during this session rather than trusted) -- so no specific numeric
+# threshold from them has been verified well enough to put into a live public product. The ~20%
+# reduction applied here (~10% on the wind-speed terms, since shear is measured directly rather
+# than a derived proxy) remains an unvalidated directional nudge, not a fitted recalibration --
+# treat category boundaries as approximate until either the papers' actual numbers or a real
+# Australian severe-report dataset are available to fit against.
 categorise_vals <- function(cape, shr, scp, stp, ship, cin, shw, rain_mm){
   shr_kt <- shr * 1.94384
   c <- 0
