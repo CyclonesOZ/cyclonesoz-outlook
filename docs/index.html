@@ -19,12 +19,14 @@
   #topbar .title{font-weight:800;font-size:15px;letter-spacing:.01em;pointer-events:auto;color:#152232;}
   #topbar .title small{display:block;font-weight:500;font-size:11px;color:var(--muted);margin-top:1px;}
   #days{display:flex;gap:5px;flex-wrap:wrap;margin-left:auto;pointer-events:auto;}
+  #hazards{display:flex;gap:5px;flex-wrap:wrap;flex-basis:100%;pointer-events:auto;margin-top:3px;}
   .dbtn{background:rgba(255,255,255,.9);border:1px solid var(--border);color:var(--text);font-size:11px;font-weight:600;padding:5px 9px;border-radius:8px;cursor:pointer;white-space:nowrap;transition:.15s;box-shadow:0 1px 4px rgba(20,40,70,.08);text-align:center;}
   .dbtn:hover{border-color:#7ea3d8;}
   .dbtn.active{background:#2563eb;border-color:#2563eb;color:#fff;box-shadow:0 2px 10px rgba(37,99,235,.35);}
   .dbtn.ext.active{background:#0f9d8f;border-color:#0f9d8f;}
+  .dbtn.hz.active{background:#7c3aed;border-color:#7c3aed;color:#fff;box-shadow:0 2px 10px rgba(124,58,237,.35);}
   .dbtn small{display:block;font-weight:500;font-size:9px;opacity:.85;}
-  #info{position:absolute;top:64px;left:14px;z-index:1000;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:11px 13px;max-width:240px;font-size:12px;line-height:1.45;backdrop-filter:blur(6px);pointer-events:none;box-shadow:0 4px 18px rgba(20,40,70,.18);}
+  #info{position:absolute;top:96px;left:14px;z-index:1000;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:11px 13px;max-width:240px;font-size:12px;line-height:1.45;backdrop-filter:blur(6px);pointer-events:none;box-shadow:0 4px 18px rgba(20,40,70,.18);}
   #info .cat{font-weight:700;font-size:13px;}
   #info .hint{color:var(--muted);} #info .sm{color:var(--muted);font-size:11px;margin-top:2px;}
   #legend{position:absolute;bottom:16px;right:14px;z-index:1000;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:11px 13px;font-size:11px;backdrop-filter:blur(6px);box-shadow:0 4px 18px rgba(20,40,70,.18);}
@@ -38,13 +40,13 @@
   @keyframes spin{to{transform:rotate(360deg)}}
   .town{font-size:11px;font-weight:600;color:#15263a;text-shadow:0 0 3px #fff,0 0 3px #fff,0 1px 2px #fff;white-space:nowrap;}
   .town .dot{display:inline-block;width:3px;height:3px;border-radius:50%;background:#15263a;margin-right:3px;vertical-align:middle;box-shadow:0 0 2px #fff;}
-  @media (max-width:640px){#info{max-width:170px;}#caption{max-width:190px;}#topbar .title small{display:none;}}
+  @media (max-width:640px){#info{max-width:170px;}#caption{max-width:190px;}#topbar .title small{display:none;}.dbtn.hz small{display:none;}}
 </style>
 </head>
 <body>
 <div id="wrap">
   <div id="map"></div>
-  <div id="topbar"><div class="title">Automated Severe Storm Outlook<small>Daily risk (worst 6 hours) &middot; 8-day outlook</small></div><div id="days"></div></div>
+  <div id="topbar"><div class="title">Automated Severe Storm Outlook<small>Daily risk (worst 6 hours) &middot; 8-day outlook</small></div><div id="days"></div><div id="hazards"></div></div>
   <div id="info"><span class="hint">Hover the map for storm risk at that spot.</span></div>
   <div id="legend"></div>
   <div id="caption">Automated guidance from forecast model data. Not an official warning &mdash; always check the Bureau of Meteorology.<div id="updated"></div></div>
@@ -82,6 +84,30 @@
   // coarse scale (days 5-8)
   var COARSE=[{t:0.5,color:[120,192,120],name:'Chance of storm'},{t:3.5,color:[228,120,86],name:'Chance of severe storm'}];
 
+  // hazard-specific views: each day's outlook.json entry also carries tprob (thunderstorm chance %,
+  // Open-Meteo's own ensemble precipitation_probability), hail (0-3 size tier) and flood (0/1 flash-flood
+  // risk) -- see pipeline/build_outlook.R. These render the same way as the category view (IDW field +
+  // d3 contour bands + coastline clip + smoothing) but with their own getter, thresholds and colors.
+  var HAZARDS_LIST=[
+    {key:'cat',   label:'Category',    sub:'SPC-style'},
+    {key:'tprob', label:'Thunder %',   sub:'20/50/80%'},
+    {key:'hail',  label:'Hail',        sub:'small/large/giant'},
+    {key:'flood', label:'Flash Flood', sub:'low/high risk'}
+  ];
+  var HAZ_TITLES={cat:'Storm risk',tprob:'Thunderstorm chance',hail:'Hail size potential',flood:'Flash flood risk'};
+  var HAZ_GET={
+    cat:   function(r){ return r.cat; },
+    tprob: function(r){ return r.tprob||0; },
+    hail:  function(r){ return r.hail||0; },
+    flood: function(r){ return r.flood||0; }
+  };
+  var HAZ_SPECS={
+    tprob:{thresholds:[20,50,80],colors:[[150,205,150],[248,220,90],[247,158,84]],labels:['20% or higher','50% or higher','80% or higher']},
+    hail: {thresholds:[1,2,3],colors:[[110,180,220],[240,140,40],[190,60,190]],labels:['Small (<2cm)','Large (2-5cm)','Giant (>5cm)']},
+    flood:{thresholds:[1],colors:[[214,64,64]],labels:['High risk of flash flooding']}
+  };
+  var selHazard='cat';
+
   var map=L.map('map',{zoomControl:true,attributionControl:false,minZoom:3,maxZoom:10,worldCopyJump:false,maxBounds:[[-46,108],[-8,157]],maxBoundsViscosity:0.7,preferCanvas:false}).setView([-27.5,134],4);
   L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png',{maxNativeZoom:13,detectRetina:true}).addTo(map);
 
@@ -103,10 +129,10 @@
   // grid cell (gx,gy) -> [lon,lat]; row 0 = top = maxLat
   function g2ll(gx,gy){return [minLon+(gx/nx)*(maxLon-minLon), maxLat-(gy/ny)*(maxLat-minLat)];}
 
-  // interpolate the category field for a day onto the nx*ny mesh (IDW)
-  function field(dayIdx){
+  // interpolate a hazard field (category, thunder %, hail tier, flood risk...) for a day onto the nx*ny mesh (IDW)
+  function field(dayIdx,getter){
     var sx=[],sy=[],sc=[];
-    for(var i=0;i<GRID.length;i++){var r=results[i]?results[i][dayIdx]:null;if(!r)continue;sx.push(GRID[i][1]);sy.push(GRID[i][0]);sc.push(r.cat);}
+    for(var i=0;i<GRID.length;i++){var r=results[i]?results[i][dayIdx]:null;if(!r)continue;sx.push(GRID[i][1]);sy.push(GRID[i][0]);sc.push(getter(r));}
     var vals=new Float64Array(nx*ny),P=3;
     var dLon=(maxLon-minLon)/nx,dLat=(maxLat-minLat)/ny;
     for(var gy=0;gy<ny;gy++){
@@ -159,12 +185,19 @@
     } catch(e){ return feat; }
   }
 
-  // build a Leaflet layerGroup of clipped contour bands for a day
-  function buildDayLayer(dayIdx){
-    if(layerCache[dayIdx]) return layerCache[dayIdx];
-    var vals=field(dayIdx);
-    var ext=dayIdx>=4;                     // days 5-8 use coarse scale
-    var spec=ext?COARSE.map(function(s){return {t:s.t,color:s.color};}):FINE_TH.map(function(s){return {t:s.t,color:FINE[s.c].color};});
+  // build a Leaflet layerGroup of clipped contour bands for a day + hazard
+  function buildDayLayer(dayIdx,hz){
+    var key=hz+'|'+dayIdx;
+    if(layerCache[key]) return layerCache[key];
+    var vals=field(dayIdx,HAZ_GET[hz]);
+    var spec;
+    if(hz==='cat'){
+      var ext=dayIdx>=4;                   // days 5-8 use coarse scale
+      spec=ext?COARSE.map(function(s){return {t:s.t,color:s.color};}):FINE_TH.map(function(s){return {t:s.t,color:FINE[s.c].color};});
+    }else{
+      var hs=HAZ_SPECS[hz];
+      spec=hs.thresholds.map(function(t,i){return {t:t,color:hs.colors[i]};});
+    }
     var ths=spec.map(function(s){return s.t;});
     var contours=d3.contours().size([nx,ny]).thresholds(ths)(vals);
     var group=L.layerGroup();
@@ -179,19 +212,20 @@
       clipped=trySmooth(clipped,2);
       L.geoJSON(clipped,{interactive:false,style:{color:darker(sp.color,0.45),weight:1.1,opacity:0.9,fillColor:rgb(sp.color),fillOpacity:0.62}}).addTo(group);
     });
-    layerCache[dayIdx]=group;
+    layerCache[key]=group;
     return group;
   }
 
   var currentLayer=null;
-  function showDay(dayIdx){
-    selDay=dayIdx;
-    var lyr=buildDayLayer(dayIdx);
+  function render(){
+    var lyr=buildDayLayer(selDay,selHazard);
     if(currentLayer&&currentLayer!==lyr)map.removeLayer(currentLayer);
     if(!map.hasLayer(lyr))lyr.addTo(map);
     currentLayer=lyr;
-    buildLegend(dayIdx>=4);
+    buildLegend();
   }
+  function showDay(dayIdx){ selDay=dayIdx; render(); }
+  function showHazard(hz){ selHazard=hz; render(); }
 
   map.on('mousemove',function(e){
     if(!results.length)return;var la=e.latlng.lat,lo=e.latlng.lng,best=-1,bd=1e9;
@@ -199,6 +233,25 @@
     var box=document.getElementById('info');
     if(best<0||bd>3||!results[best]){box.innerHTML='<span class="hint">No data here.</span>';return;}
     var r=results[best][selDay];
+    if(!r){box.innerHTML='<span class="hint">No data here.</span>';return;}
+    if(selHazard==='tprob'){
+      var tv=r.tprob||0,tc=HAZ_SPECS.tprob;
+      var tcol=tv>=80?rgb(tc.colors[2]):tv>=50?rgb(tc.colors[1]):tv>=20?rgb(tc.colors[0]):'#5c6c7d';
+      box.innerHTML='<div class="cat" style="color:'+tcol+'">'+tv+'% thunderstorm chance</div><div class="sm">Highest hourly chance during the day (model ensemble)</div>';
+      return;
+    }
+    if(selHazard==='hail'){
+      var ht=r.hail||0,hc=HAZ_SPECS.hail,hnames=['No hail expected'].concat(hc.labels);
+      var hcol=ht===0?'#5c6c7d':rgb(hc.colors[ht-1]);
+      box.innerHTML='<div class="cat" style="color:'+hcol+'">'+hnames[ht]+'</div><div class="sm">SHIP '+r.ship+' &middot; CAPE '+Math.round(r.cape)+' J/kg</div>';
+      return;
+    }
+    if(selHazard==='flood'){
+      var fv=r.flood||0;
+      var fcol=fv?rgb(HAZ_SPECS.flood.colors[0]):'#5c6c7d';
+      box.innerHTML='<div class="cat" style="color:'+fcol+'">'+(fv?'High risk of flash flooding':'Low risk of flash flooding')+'</div><div class="sm">Forecast rainfall '+Math.round(r.rain||0)+'mm</div>';
+      return;
+    }
     if(selDay>=4){
       var lbl=r.cat>=4?'Chance of severe weather':(r.cat>=1?'Chance of storm':'No storms');
       var col=r.cat>=4?rgb(COARSE[1].color):(r.cat>=1?rgb(COARSE[0].color):'#5c6c7d');
@@ -210,13 +263,19 @@
       'CAPE '+Math.round(r.cape)+' J/kg · Shear '+Math.round(r.shear)+' kt<div class="sm">SCP '+r.scp+' · STP '+r.stp+' · SHIP '+r.ship+' · Rain '+Math.round(r.rain||0)+'mm</div>';
   });
 
-  function buildLegend(ext){
-    var h='<div class="cap">Storm risk</div>';
-    if(ext){
-      [COARSE[1],COARSE[0]].forEach(function(c){h+='<div class="row"><span class="sw" style="background:'+rgb(c.color)+'"></span>'+c.name+'</div>';});
-      h+='<div class="cap" style="margin-top:8px;margin-bottom:0">Extended range (days 5-8)</div>';
+  function buildLegend(){
+    var h='<div class="cap">'+HAZ_TITLES[selHazard]+'</div>';
+    if(selHazard==='cat'){
+      var ext=selDay>=4;
+      if(ext){
+        [COARSE[1],COARSE[0]].forEach(function(c){h+='<div class="row"><span class="sw" style="background:'+rgb(c.color)+'"></span>'+c.name+'</div>';});
+        h+='<div class="cap" style="margin-top:8px;margin-bottom:0">Extended range (days 5-8)</div>';
+      }else{
+        for(var k=6;k>=1;k--){var c=FINE[k];h+='<div class="row"><span class="sw" style="background:'+rgb(c.color)+'"></span>'+(c.abbr?c.abbr+' — ':'')+c.name+'</div>';}
+      }
     }else{
-      for(var k=6;k>=1;k--){var c=FINE[k];h+='<div class="row"><span class="sw" style="background:'+rgb(c.color)+'"></span>'+(c.abbr?c.abbr+' — ':'')+c.name+'</div>';}
+      var hs=HAZ_SPECS[selHazard];
+      for(var i=hs.thresholds.length-1;i>=0;i--){h+='<div class="row"><span class="sw" style="background:'+rgb(hs.colors[i])+'"></span>'+hs.labels[i]+'</div>';}
     }
     document.getElementById('legend').innerHTML=h;
   }
@@ -226,6 +285,15 @@
       var b=document.createElement('button');b.className='dbtn'+(i>=4?' ext':'')+(i===selDay?' active':'');
       b.innerHTML='Day '+(i+1)+'<small>'+lbl+'</small>';
       b.onclick=function(){[].forEach.call(wrap.children,function(c){c.classList.remove('active');});b.classList.add('active');showDay(i);};
+      wrap.appendChild(b);
+    });
+  }
+  function buildHazardButtons(){
+    var wrap=document.getElementById('hazards');wrap.innerHTML='';
+    HAZARDS_LIST.forEach(function(hzd){
+      var b=document.createElement('button');b.className='dbtn hz'+(hzd.key===selHazard?' active':'');
+      b.innerHTML=hzd.label+'<small>'+hzd.sub+'</small>';
+      b.onclick=function(){[].forEach.call(wrap.children,function(c){c.classList.remove('active');});b.classList.add('active');showHazard(hzd.key);};
       wrap.appendChild(b);
     });
   }
@@ -240,7 +308,7 @@
     DAYS=o.days||['Day 1','Day 2','Day 3','Day 4','Day 5','Day 6','Day 7','Day 8'];
     o.points.forEach(function(p){GRID.push([p.lat,p.lon]);results.push(p.d);});
     bounds();
-    buildDayButtons();showDay(0);
+    buildDayButtons();buildHazardButtons();showDay(0);
     document.getElementById('updated').textContent='Updated '+(o.run_date?new Date(o.run_date).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'—');
     document.getElementById('load').style.display='none';
   }).catch(function(err){setErr('No outlook yet, or failed to load. Run the GitHub Action once, then reload. ('+err.message+')');});
