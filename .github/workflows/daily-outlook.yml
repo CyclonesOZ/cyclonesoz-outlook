@@ -33,9 +33,23 @@ jobs:
         run: Rscript pipeline/build_outlook.R
 
       - name: Commit result
+        # Build outlook can take anywhere from ~10 minutes to several hours depending on
+        # Open-Meteo's response times, so main may have moved on by the time we're ready to
+        # push (this has caused real same-day push failures). Rebase onto the latest main and
+        # retry instead of assuming a clean fast-forward -- this job only ever touches
+        # docs/outlook.json, so a rebase has nothing else to conflict with.
         run: |
           git config user.name  "outlook-bot"
           git config user.email "actions@github.com"
           git add docs/outlook.json
           git commit -m "Update outlook $(date -u +%Y-%m-%d)" || echo "no change"
-          git push
+          for i in 1 2 3 4 5; do
+            git push && break
+            echo "push rejected (attempt $i/5) -- rebasing onto latest main and retrying"
+            git fetch origin main
+            git rebase origin/main
+            if [ "$i" -eq 5 ]; then
+              echo "::error::push still failing after 5 rebase attempts"
+              exit 1
+            fi
+          done
