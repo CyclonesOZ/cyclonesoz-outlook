@@ -61,7 +61,7 @@ rain_cat <- function(mm){
 # so treat the exact breakpoints as approximate even though the melting-level concept is now
 # directly evidenced for Australia.
 hail_tier <- function(ship, cape, frz_lvl_m){
-  base <- if (ship >= 2) 3 else if (ship >= 1) 2 else if (ship >= 0.5 | cape >= 500) 1 else 0
+  base <- if (ship >= 2) 3 else if (ship >= 1) 2 else if (ship >= 0.5 & cape >= 300) 1 else 0
   cold_aloft <- !is.na(frz_lvl_m) & frz_lvl_m < 3400 & cape >= 300
   warm_aloft <- !is.na(frz_lvl_m) & frz_lvl_m > 4900
   if (cold_aloft & base >= 1 & base < 3) base <- base + 1
