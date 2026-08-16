@@ -69,9 +69,27 @@ hail_tier <- function(ship, cape, frz_lvl_m){
   base
 }
 
-# flash-flood risk: 0 low, 1 high. Reuses the same daily-rain total already computed for
-# rain_cat(); 50mm/day is the same threshold that lifts the main category to SLGT-equivalent.
-flood_risk <- function(rain_mm){ as.integer(nz(rain_mm) >= 50) }
+# flash-flood risk: 0 low, 1 high. Flash flooding is a RATE problem -- water arriving faster than
+# drains/waterways can carry it away -- not a daily-total problem: 50mm spread evenly over 24 hours
+# of steady rain is a non-event, 50mm falling in one convective hour is the textbook flash-flood
+# setup. rate_mm is the day's single highest hourly total; 30mm/hr is a working threshold for an
+# intense convective rain rate (an approximate, unfitted number, same caveat as the category/hail
+# thresholds above). The daily total is kept as a secondary trigger at a higher bar, for sustained
+# multi-hour rain that never spikes in any one hour but still overwhelms drainage over the day.
+flood_risk <- function(rain_mm, rate_mm){ as.integer(nz(rate_mm) >= 30 | nz(rain_mm) >= 80) }
+
+# thunderstorm-chance gate: Open-Meteo's precipitation_probability is "probability of any rain",
+# not thunderstorm-specific, and there's no real thunderstorm-probability field available for this
+# region/model (checked: ECMWF's lightning_density field exists in Open-Meteo's UI but returns no
+# data for any location when queried live, so it isn't usable). This keeps the raw rain-probability
+# proxy from showing a nontrivial "thunderstorm chance" on days with no real convective potential --
+# zeroed on the same no-trigger day the category already zeroes on, heavily discounted when the
+# day's CAPE is negligible even if some rain probability remains.
+thunder_prob <- function(tprob, cape, shw_day){
+  if (nz(shw_day) < 0.1) return(0L)
+  if (nz(cape) < 100)    return(as.integer(round(nz(tprob) * 0.3)))
+  as.integer(round(nz(tprob)))
+}
 
 # SPC-style category from averaged parameters: 0 none,1 TSTM,2 MRGL,3 SLGT,4 ENH,5 MDT,6 HIGH
 # cin = MU_CIN (J/kg, <=0, from the same sounding as cape/shr) and shw = GFS's own forecast
@@ -198,6 +216,7 @@ day_topN <- function(h, idxs, elev){
   }
   shw_day   <- max(sapply(idxs, function(i) nz(h[["showers"]][i])))
   rain_day  <- sum(sapply(idxs, function(i) nz(h[["precipitation"]][i])))
+  rain_rate <- max(sapply(idxs, function(i) nz(h[["precipitation"]][i])))  # peak single-hour rate, for flood_risk()
 
   if (length(rows) == 0){
     rc <- rain_cat(rain_day)
@@ -206,7 +225,7 @@ day_topN <- function(h, idxs, elev){
     # single spurious overnight-drizzle hour from dominating the fallback the way max did before).
     tprob_fallback <- mean(sapply(idxs, function(i) nz(h[["precipitation_probability"]][i])))
     return(list(cat=rc, cape=0, shear=0, scp=0, stp=0, ship=0, cin=0, rain=round(rain_day), hatch=as.integer(rc>=4),
-                tprob=round(tprob_fallback), hail=0, flood=flood_risk(rain_day)))
+                tprob=thunder_prob(tprob_fallback, 0, shw_day), hail=0, flood=flood_risk(rain_day, rain_rate)))
   }
   sev <- sapply(rows, function(r) r$sev)
   top <- rows[order(sev, decreasing=TRUE)[seq_len(min(TOPN, length(rows)))]]
@@ -219,7 +238,7 @@ day_topN <- function(h, idxs, elev){
   # over the SAME top-N instability-ranked hours as cape/shear/ship, not the whole day -- a whole-day
   # max picks up unrelated overnight drizzle (Open-Meteo's ensemble can be very confident about light,
   # non-convective rain at 7am) and reports it as a dramatic "thunderstorm chance" for the day.
-  c(cv, list(tprob=round(m("tprob")), hail=hail_tier(m("ship"), m("cape"), frz_day), flood=flood_risk(rain_day)))
+  c(cv, list(tprob=thunder_prob(m("tprob"), m("cape"), shw_day), hail=hail_tier(m("ship"), m("cape"), frz_day), flood=flood_risk(rain_day, rain_rate)))
 }
 
 cat(sprintf("Processing %d grid points (%d days, avg of top %d hours)...\n", nrow(GRID), FDAYS, TOPN))
