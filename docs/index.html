@@ -9,7 +9,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Turf.js/7.1.0/turf.min.js"></script>
 <style>
-  :root{ --bg:#acc4d6; --panel:rgba(255,255,255,.94); --border:#c4d0dd; --text:#1a2a3a; --muted:#5c6c7d; }
+  :root{ --bg:#dfe7ec; --panel:rgba(255,255,255,.94); --border:#c4d0dd; --text:#1a2a3a; --muted:#5c6c7d; }
   html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}
   #wrap{position:relative;height:100vh;width:100%;overflow:hidden;}
   #map{position:absolute;inset:0;background:var(--bg);}
@@ -34,7 +34,7 @@
   #legend .row{display:flex;align-items:center;gap:8px;margin:4px 0;} #legend .sw{width:18px;height:12px;border-radius:3px;border:1.5px solid rgba(20,40,70,.4);}
   #caption{position:absolute;bottom:16px;left:14px;z-index:1000;max-width:340px;font-size:11px;color:var(--muted);line-height:1.45;background:rgba(255,255,255,.82);padding:7px 9px;border-radius:8px;backdrop-filter:blur(4px);box-shadow:0 2px 10px rgba(20,40,70,.1);}
   #updated{color:var(--muted);font-size:10px;margin-top:3px;}
-  #load{position:absolute;inset:0;z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(172,196,214,.97);text-align:center;padding:24px;}
+  #load{position:absolute;inset:0;z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(223,231,236,.97);text-align:center;padding:24px;}
   #load .sp{width:34px;height:34px;border:4px solid var(--border);border-top-color:#2563eb;border-radius:50%;animation:spin 1s linear infinite;}
   #load .msg{font-size:13px;color:var(--muted);max-width:320px;} .err{color:#b02a2a;}
   @keyframes spin{to{transform:rotate(360deg)}}
@@ -46,14 +46,18 @@
   #wrap.gridmode #info{display:none;}
   #wrap.gridmode #legend{display:none;}
   #wrap:not(.gridmode) #gridWrap{display:none;}
-  #gridWrap{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:2px;background:#7f97ab;padding-top:96px;box-sizing:border-box;}
-  .gridPanel{position:relative;overflow:hidden;cursor:pointer;background:var(--bg);}
+  #gridWrap{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:2px;background:#b9c8d1;padding-top:96px;box-sizing:border-box;}
+  .gridPanel{position:relative;overflow:hidden;background:var(--bg);}
   .gridPanel:hover{outline:2px solid #2563eb;outline-offset:-2px;z-index:1;}
   .gridmap{position:absolute;inset:0;}
-  .gridTitle{position:absolute;top:8px;left:9px;z-index:500;font-weight:700;font-size:11px;color:#152232;background:rgba(255,255,255,.88);padding:3px 8px;border-radius:6px;pointer-events:none;box-shadow:0 1px 4px rgba(20,40,70,.12);}
+  .gridTitle{position:absolute;top:8px;left:9px;z-index:500;font-weight:700;font-size:11px;color:#152232;background:rgba(255,255,255,.9);padding:4px 9px;border-radius:6px;pointer-events:auto;cursor:pointer;box-shadow:0 1px 4px rgba(20,40,70,.12);}
+  .gridTitle:hover{background:#2563eb;color:#fff;}
   .gridLegend{position:absolute;bottom:8px;left:8px;z-index:500;background:rgba(255,255,255,.92);border-radius:6px;padding:5px 7px;font-size:9px;pointer-events:none;box-shadow:0 2px 8px rgba(20,40,70,.15);max-width:52%;}
   .gridLegend .row{display:flex;align-items:center;gap:4px;margin:1px 0;line-height:1.2;}
   .gridLegend .sw{width:11px;height:8px;border-radius:2px;border:1px solid rgba(20,40,70,.35);flex:none;}
+  .dbtn.hz.disabled{opacity:.4;cursor:not-allowed;pointer-events:none;}
+  .gridPlaceholder{position:absolute;inset:0;z-index:400;display:none;align-items:center;justify-content:center;text-align:center;padding:20px 32px;font-size:12px;color:var(--muted);background:rgba(255,255,255,.7);}
+  .gridPlaceholder.show{display:flex;}
   @media (max-width:640px){#info{max-width:170px;}#caption{max-width:190px;}#topbar .title small{display:none;}.dbtn.hz small{display:none;}#gridWrap{padding-top:64px;}.gridTitle{font-size:9px;padding:2px 5px;}.gridLegend{font-size:7.5px;}}
 </style>
 </head>
@@ -62,9 +66,9 @@
   <div id="map"></div>
   <div id="gridWrap">
     <div class="gridPanel" data-hz="cat"><div class="gridTitle">Category Outlook</div><div class="gridmap" id="gridmap-cat"></div><div class="gridLegend" id="gridLegend-cat"></div></div>
-    <div class="gridPanel" data-hz="tprob"><div class="gridTitle">Thunderstorm Outlook</div><div class="gridmap" id="gridmap-tprob"></div><div class="gridLegend" id="gridLegend-tprob"></div></div>
-    <div class="gridPanel" data-hz="hail"><div class="gridTitle">Hail Outlook</div><div class="gridmap" id="gridmap-hail"></div><div class="gridLegend" id="gridLegend-hail"></div></div>
-    <div class="gridPanel" data-hz="flood"><div class="gridTitle">Flash Flood Outlook</div><div class="gridmap" id="gridmap-flood"></div><div class="gridLegend" id="gridLegend-flood"></div></div>
+    <div class="gridPanel" data-hz="tprob"><div class="gridTitle">Thunderstorm Outlook</div><div class="gridmap" id="gridmap-tprob"></div><div class="gridLegend" id="gridLegend-tprob"></div><div class="gridPlaceholder" id="gridPlaceholder-tprob">Extended range (days 5&ndash;8) shows general risk only &mdash; see Category</div></div>
+    <div class="gridPanel" data-hz="hail"><div class="gridTitle">Hail Outlook</div><div class="gridmap" id="gridmap-hail"></div><div class="gridLegend" id="gridLegend-hail"></div><div class="gridPlaceholder" id="gridPlaceholder-hail">Extended range (days 5&ndash;8) shows general risk only &mdash; see Category</div></div>
+    <div class="gridPanel" data-hz="flood"><div class="gridTitle">Flash Flood Outlook</div><div class="gridmap" id="gridmap-flood"></div><div class="gridLegend" id="gridLegend-flood"></div><div class="gridPlaceholder" id="gridPlaceholder-flood">Extended range (days 5&ndash;8) shows general risk only &mdash; see Category</div></div>
   </div>
   <div id="topbar"><div class="title">Automated Severe Storm Outlook<small>Daily risk (worst 6 hours) &middot; 8-day outlook</small></div><div id="days"></div><div id="hazards"></div></div>
   <div id="info"><span class="hint">Hover the map for storm risk at that spot.</span></div>
@@ -136,9 +140,37 @@
   var gridMaps={},gridLayers={};
 
   var map=L.map('map',{zoomControl:true,attributionControl:false,minZoom:3,maxZoom:10,worldCopyJump:false,maxBounds:[[-46,108],[-8,157]],maxBoundsViscosity:0.7,preferCanvas:false}).setView([-27.5,134],4);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png',{maxNativeZoom:13,detectRetina:true}).addTo(map);
 
-  var GRID=[],results=[],DAYS=[],selDay=0,LAND=null,STATES=null,minLat,maxLat,minLon,maxLon,nx,ny;
+  // coastline.geo.json is simplified for a whole-of-country view (~40km between vertices on the
+  // mainland ring) -- fine zoomed out, visibly blocky/angular once the grid maps became zoomable.
+  // Chaikin-smooth it once at load, same technique already used for the hazard bands, so panning
+  // in doesn't reveal straight-line facets. Coordinates here are [lon,lat] degrees rather than the
+  // grid pixel space the hazard-band pipeline uses, but chaikinRing is just linear interpolation
+  // between consecutive ring points, so it works unchanged on either.
+  function smoothPolyCoords(coords, iterations){ return coords.map(function(ring){ return chaikinRing(ring, iterations); }); }
+  function smoothGeoJSON(gj, iterations){
+    if(!gj || !gj.features) return gj;
+    gj.features.forEach(function(f){
+      var g=f.geometry; if(!g) return;
+      if(g.type==='Polygon') g.coordinates=smoothPolyCoords(g.coordinates, iterations);
+      else if(g.type==='MultiPolygon') g.coordinates=g.coordinates.map(function(poly){return smoothPolyCoords(poly, iterations);});
+    });
+    return gj;
+  }
+
+  // flat vector basemap (no raster tiles) styled after SPC's convective-outlook maps: near-white
+  // land, plain gray state/coast lines, no terrain/place clutter competing with the hazard bands.
+  var LAND_STYLE={color:'#7f95a6',weight:1,fillColor:'#fbfbf8',fillOpacity:1};
+  var DISTRICT_STYLE={color:'#9aa7b2',weight:0.7,fillOpacity:0};
+  function drawBasemap(m){
+    L.geoJSON(LAND,{interactive:false,style:LAND_STYLE}).addTo(m);
+    if(DISTRICTS) L.geoJSON(DISTRICTS,{interactive:false,style:DISTRICT_STYLE}).addTo(m);
+  }
+  function drawTowns(m){
+    TOWNS.forEach(function(t){L.marker([t.lat,t.lon],{interactive:false,icon:L.divIcon({className:'',html:'<div class="town"><span class="dot"></span>'+t.n+'</div>',iconSize:[0,0],iconAnchor:[2,7]})}).addTo(m);});
+  }
+
+  var GRID=[],results=[],DAYS=[],selDay=0,LAND=null,DISTRICTS=null,minLat,maxLat,minLon,maxLon,nx,ny;
   var featureCache={};
 
   function darker(col,f){return 'rgb('+Math.round(col[0]*f)+','+Math.round(col[1]*f)+','+Math.round(col[2]*f)+')';}
@@ -258,31 +290,66 @@
     currentLayer=renderOnMap(map,selDay,selHazard);
     buildLegend();
   }
-  function showHazard(hz){ selHazard=hz; render(); }
+  function showHazard(hz){ if(hz!=='cat' && extendedRange(selDay)) return; selHazard=hz; render(); }
 
-  function initGridMaps(){
+  // keep all 4 grid maps looking at the same place: panning/zooming any one mirrors the other
+  // three to the same center+zoom, each still showing its own hazard's data there. Guarded by
+  // gridSyncing so the setView() calls below don't re-trigger this same handler on each other.
+  var gridSyncing=false;
+  function syncGridView(source){
+    if(gridSyncing) return;
+    gridSyncing=true;
+    var center=source.getCenter(), zoom=source.getZoom();
     GRID_ORDER.forEach(function(hz){
-      var gm=L.map('gridmap-'+hz,{zoomControl:false,attributionControl:false,dragging:false,scrollWheelZoom:false,
-        doubleClickZoom:false,boxZoom:false,keyboard:false,touchZoom:false,tap:false,minZoom:3,maxZoom:10,
-        maxBounds:[[-46,108],[-8,157]]}).setView([-27.5,134],3.15);
-      L.geoJSON(LAND,{interactive:false,style:{color:'#9fb3c4',weight:1,fillColor:'#f2ecd9',fillOpacity:1}}).addTo(gm);
-      if(STATES) L.geoJSON(STATES,{interactive:false,style:{color:'#b9c4cd',weight:0.8,fillOpacity:0}}).addTo(gm);
-      gm.getContainer().addEventListener('click',function(){ enterFocused(hz); });
+      var m=gridMaps[hz];
+      if(m && m!==source) m.setView(center,zoom,{animate:false});
+    });
+    gridSyncing=false;
+  }
+  function initGridMaps(){
+    var fitB=[[minLat,minLon],[maxLat,maxLon]];
+    GRID_ORDER.forEach(function(hz){
+      var gm=L.map('gridmap-'+hz,{zoomControl:true,attributionControl:false,minZoom:3,maxZoom:10,
+        maxBounds:[[-46,108],[-8,157]],maxBoundsViscosity:0.7}).fitBounds(fitB,{padding:[4,4]});
+      gm.zoomControl.setPosition('topright');
+      drawBasemap(gm);
+      var titleEl=document.querySelector('.gridPanel[data-hz="'+hz+'"] .gridTitle');
+      if(titleEl) titleEl.addEventListener('click',function(){ enterFocused(hz); });
+      gm.on('move zoom',function(){ syncGridView(gm); });
       gridMaps[hz]=gm;
     });
   }
+  // Days 5-8 are extended-range: the model-native numeric parameters (thunderstorm %, hail tier,
+  // flood risk) get noisy and overconfident that far out, so -- matching how SPC's own Day 4-8
+  // outlook only ever shows one general risk category, never hazard-specific breakdowns -- those
+  // three views fall back to a placeholder and the UI forces the Category view instead.
+  function extendedRange(dayIdx){ return dayIdx>=4; }
+  function syncHazardAvailability(){
+    [].forEach.call(document.querySelectorAll('#hazards .dbtn.hz'),function(b){
+      b.classList.toggle('disabled', b.dataset.hz!=='cat' && extendedRange(selDay));
+    });
+  }
   function renderGrid(){
+    var ext=extendedRange(selDay);
     GRID_ORDER.forEach(function(hz){
       var gm=gridMaps[hz]; if(!gm) return;
       if(gridLayers[hz]) gm.removeLayer(gridLayers[hz]);
-      gridLayers[hz]=renderOnMap(gm,selDay,hz);
+      var placeholder=document.getElementById('gridPlaceholder-'+hz);
+      if(hz!=='cat' && ext){
+        gridLayers[hz]=null;
+        if(placeholder) placeholder.classList.add('show');
+      }else{
+        if(placeholder) placeholder.classList.remove('show');
+        gridLayers[hz]=renderOnMap(gm,selDay,hz);
+      }
     });
     buildGridLegends();
   }
   function enterFocused(hz){
-    selHazard=hz; viewMode='focused';
+    selHazard=(hz!=='cat' && extendedRange(selDay))?'cat':hz; viewMode='focused';
     document.getElementById('wrap').classList.remove('gridmode');
-    [].forEach.call(document.querySelectorAll('#hazards .dbtn.hz'),function(b){b.classList.toggle('active',b.dataset.hz===hz);});
+    [].forEach.call(document.querySelectorAll('#hazards .dbtn.hz'),function(b){b.classList.toggle('active',b.dataset.hz===selHazard);});
+    syncHazardAvailability();
     map.invalidateSize();
     render();
   }
@@ -292,7 +359,16 @@
     GRID_ORDER.forEach(function(hz){ if(gridMaps[hz]) gridMaps[hz].invalidateSize(); });
     renderGrid();
   }
-  function showDay(dayIdx){ selDay=dayIdx; if(viewMode==='grid') renderGrid(); else render(); }
+  function showDay(dayIdx){
+    selDay=dayIdx;
+    syncHazardAvailability();
+    if(viewMode==='grid'){ renderGrid(); return; }
+    if(selHazard!=='cat' && extendedRange(selDay)){
+      selHazard='cat';
+      [].forEach.call(document.querySelectorAll('#hazards .dbtn.hz'),function(b){b.classList.toggle('active',b.dataset.hz==='cat');});
+    }
+    render();
+  }
 
   map.on('mousemove',function(e){
     if(!results.length)return;var la=e.latlng.lat,lo=e.latlng.lng,best=-1,bd=1e9;
@@ -382,14 +458,18 @@
   Promise.all([
     fetch('./coastline.geo.json').then(function(r){return r.json();}),
     fetch('./outlook.json?_='+Date.now()).then(function(r){if(!r.ok)throw new Error('no outlook.json');return r.json();}),
-    fetch('./states.geo.json').then(function(r){return r.ok?r.json():null;}).catch(function(){return null;})
+    fetch('./districts.geo.json').then(function(r){return r.ok?r.json():null;}).catch(function(){return null;})
   ]).then(function(res){
-    LAND=res[0]; var o=res[1]; STATES=res[2];
-    TOWNS.forEach(function(t){L.marker([t.lat,t.lon],{interactive:false,icon:L.divIcon({className:'',html:'<div class="town"><span class="dot"></span>'+t.n+'</div>',iconSize:[0,0]})}).addTo(map);});
+    LAND=smoothGeoJSON(res[0],2); var o=res[1]; DISTRICTS=res[2]; // real BOM forecast district boundaries -- already properly detailed, don't Chaikin-smooth them like the crude coastline
+    drawBasemap(map);
+    drawTowns(map);
     DAYS=o.days||['Day 1','Day 2','Day 3','Day 4','Day 5','Day 6','Day 7','Day 8'];
     o.points.forEach(function(p){GRID.push([p.lat,p.lon]);results.push(p.d);});
     bounds();
-    buildDayButtons();buildHazardButtons();initGridMaps();enterGrid();
+    map.fitBounds([[minLat,minLon],[maxLat,maxLon]],{padding:[16,16]});
+    buildDayButtons();buildHazardButtons();syncHazardAvailability();
+    document.getElementById('wrap').classList.add('gridmode'); // panels must be visible/sized before Leaflet measures them for fitBounds
+    initGridMaps();enterGrid();
     document.getElementById('updated').textContent='Updated '+(o.run_date?new Date(o.run_date).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'—');
     document.getElementById('load').style.display='none';
   }).catch(function(err){setErr('No outlook yet, or failed to load. Run the GitHub Action once, then reload. ('+err.message+')');});
