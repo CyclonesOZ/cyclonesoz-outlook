@@ -185,6 +185,18 @@
     minLat-=0.5;maxLat+=0.5;minLon-=0.5;maxLon+=0.5;
     nx=Math.round((maxLon-minLon)/0.2); ny=Math.round((maxLat-minLat)/0.2);
   }
+  // fitBounds() always "contains" (never crops), so a panel much wider than Australia's
+  // shape (true for the 4-across grid panels) leaves large empty margins on the wide axis.
+  // This instead picks the zoom that fills the panel on its DOMINANT axis, cropping a little
+  // off the other axis if needed -- the same "cover" tradeoff SPC's own outlook maps make.
+  function coverFit(m,padPx){
+    var size=m.getSize(), availW=Math.max(1,size.x-2*padPx), availH=Math.max(1,size.y-2*padPx);
+    var p1=m.project([maxLat,minLon],0), p2=m.project([minLat,maxLon],0);
+    var wAtZ0=Math.abs(p2.x-p1.x), hAtZ0=Math.abs(p2.y-p1.y);
+    var z=Math.max(Math.log(availW/wAtZ0)/Math.LN2, Math.log(availH/hAtZ0)/Math.LN2);
+    z=Math.min(z,m.getMaxZoom()); z=Math.max(z,m.getMinZoom());
+    m.setView([(minLat+maxLat)/2,(minLon+maxLon)/2], z, {animate:false});
+  }
   // grid cell (gx,gy) -> [lon,lat]; row 0 = top = maxLat
   function g2ll(gx,gy){return [minLon+(gx/nx)*(maxLon-minLon), maxLat-(gy/ny)*(maxLat-minLat)];}
 
@@ -307,16 +319,20 @@
     gridSyncing=false;
   }
   function initGridMaps(){
-    var fitB=[[minLat,minLon],[maxLat,maxLon]];
     GRID_ORDER.forEach(function(hz){
       var gm=L.map('gridmap-'+hz,{zoomControl:true,attributionControl:false,minZoom:3,maxZoom:10,
-        maxBounds:[[-46,108],[-8,157]],maxBoundsViscosity:0.7}).fitBounds(fitB,{padding:[4,4]});
+        maxBounds:[[-46,108],[-8,157]],maxBoundsViscosity:0.7});
+      coverFit(gm,4);
       gm.zoomControl.setPosition('topright');
       drawBasemap(gm);
       var titleEl=document.querySelector('.gridPanel[data-hz="'+hz+'"] .gridTitle');
       if(titleEl) titleEl.addEventListener('click',function(){ enterFocused(hz); });
       gm.on('move zoom',function(){ syncGridView(gm); });
       gridMaps[hz]=gm;
+      // the gridmode class (and CSS Grid track sizing it triggers) may not have finished
+      // laying out yet on this same tick, so coverFit above can measure a too-small
+      // container and under-zoom -- correct it once the browser has actually painted.
+      requestAnimationFrame(function(){ gm.invalidateSize(); coverFit(gm,4); });
     });
   }
   // Days 5-8 are extended-range: the model-native numeric parameters (thunderstorm %, hail tier,
@@ -466,7 +482,7 @@
     DAYS=o.days||['Day 1','Day 2','Day 3','Day 4','Day 5','Day 6','Day 7','Day 8'];
     o.points.forEach(function(p){GRID.push([p.lat,p.lon]);results.push(p.d);});
     bounds();
-    map.fitBounds([[minLat,minLon],[maxLat,maxLon]],{padding:[16,16]});
+    coverFit(map,16);
     buildDayButtons();buildHazardButtons();syncHazardAvailability();
     document.getElementById('wrap').classList.add('gridmode'); // panels must be visible/sized before Leaflet measures them for fitBounds
     initGridMaps();enterGrid();
