@@ -233,12 +233,27 @@ day_topN <- function(h, idxs, elev){
   # coldest freezing level among the day's most unstable hours -- see hail_tier() for why
   frz_day <- suppressWarnings(min(sapply(top, function(r) r$frz), na.rm=TRUE))
   if (!is.finite(frz_day)) frz_day <- NA
+  # hail comes from a brief, sharp peak (a supercell's giant-hail window is often 1-2 hours),
+  # not a sustained multi-hour condition the way overall category risk is -- so unlike cape/shr/
+  # scp/stp/ship/cin above (deliberately averaged across the top-N hours to represent the day's
+  # sustained risk), hail_tier() is fed the SINGLE peak-SHIP hour among the top-N, using that
+  # same hour's cape (not an independently-maxed cape from a different hour) so the two stay
+  # physically paired. Backtested against 4 known Australian hail days (Canberra Jan 2022, SE
+  # QLD Dec 2023, Casterton VIC Oct 2024, Boggabri NSW Dec 2024): averaging suppressed the one
+  # case (SE QLD) where the peak hour's SHIP was itself borderline-favorable (1.09) down below
+  # the tier-2 threshold; the other three cases showed a low SHIP even at their single best hour,
+  # which this change does not fix -- that shortfall looks like GFS's synoptic-scale resolution
+  # not capturing these often highly localized supercell environments, a harder problem than a
+  # threshold or averaging tweak.
+  peak_ship_hr <- top[[which.max(sapply(top, function(r) r$ship))]]
   cv <- categorise_vals(m("cape"), m("shr"), m("scp"), m("stp"), m("ship"), m("cin"), shw_day, rain_day)
   # thunderstorm chance: Open-Meteo's own ensemble-based precipitation_probability (%), averaged
   # over the SAME top-N instability-ranked hours as cape/shear/ship, not the whole day -- a whole-day
   # max picks up unrelated overnight drizzle (Open-Meteo's ensemble can be very confident about light,
   # non-convective rain at 7am) and reports it as a dramatic "thunderstorm chance" for the day.
-  c(cv, list(tprob=thunder_prob(m("tprob"), m("cape"), shw_day), hail=hail_tier(m("ship"), m("cape"), frz_day), flood=flood_risk(rain_day, rain_rate)))
+  c(cv, list(tprob=thunder_prob(m("tprob"), m("cape"), shw_day),
+             hail=hail_tier(peak_ship_hr$ship, peak_ship_hr$cape, frz_day),
+             flood=flood_risk(rain_day, rain_rate)))
 }
 
 cat(sprintf("Processing %d grid points (%d days, avg of top %d hours)...\n", nrow(GRID), FDAYS, TOPN))
