@@ -118,15 +118,26 @@ thunder_prob <- function(tprob, cape, shw_day){
 # than a derived proxy) remains an unvalidated directional nudge, not a fitted recalibration --
 # treat category boundaries as approximate until either the papers' actual numbers or a real
 # Australian severe-report dataset are available to fit against.
+#
+# SCP CAPE-FLOOR NOTE: STP and SHIP both have CAPE as a direct multiplicative term in their own
+# formula, so a high STP/SHIP already implies decent instability was present -- they self-limit.
+# SCP does not: its shear term saturates (capped at 1.0 past 20 m/s) but its SRH term does not,
+# so strong deep-layer shear/helicity alone can push SCP past these thresholds even with fairly
+# ordinary CAPE, which is exactly the cool-season "strong shear, modest instability" pattern
+# common with vigorous southern-Australia winter fronts -- confirmed live 16 Aug 2026 (SW WA,
+# cape ~600-800 J/kg, scp 1.7-2.3 firing SLGT with hail/flood both 0 and tprob only ~25%, i.e.
+# no other hazard signal at all). Every scp branch below now also requires cape >= 800, matching
+# the bar the tier-3 cape+shear branch already uses -- the shear-only path shouldn't reach a
+# higher tier with less instability than the explicitly CAPE-gated path at the same tier.
 categorise_vals <- function(cape, shr, scp, stp, ship, cin, shw, rain_mm){
   shr_kt <- shr * 1.94384
   c <- 0
   if (cape >= 150) c <- 1
-  if ((cape >= 400 & shr_kt >= 18) | scp >= 0.8 | ship >= 0.4) c <- max(c, 2)
-  if (scp >= 1.6 | stp >= 0.8 | ship >= 0.8 | (cape >= 800 & shr_kt >= 27)) c <- max(c, 3)
-  if (scp >= 3.2 | stp >= 1.6 | ship >= 1.6) c <- max(c, 4)
-  if (scp >= 4.8 | stp >= 2.4 | ship >= 2.4) c <- max(c, 5)
-  if (scp >= 8   | stp >= 4)                 c <- max(c, 6)
+  if ((cape >= 400 & shr_kt >= 18) | (scp >= 0.8 & cape >= 800) | ship >= 0.4) c <- max(c, 2)
+  if ((scp >= 1.6 & cape >= 800) | stp >= 0.8 | ship >= 0.8 | (cape >= 800 & shr_kt >= 27)) c <- max(c, 3)
+  if ((scp >= 3.2 & cape >= 800) | stp >= 1.6 | ship >= 1.6) c <- max(c, 4)
+  if ((scp >= 4.8 & cape >= 800) | stp >= 2.4 | ship >= 2.4) c <- max(c, 5)
+  if ((scp >= 8   & cape >= 800) | stp >= 4)                 c <- max(c, 6)
 
   capped  <- nz(cin) <= -75      # stout cap even on the best hour of the day
   no_trig <- nz(shw) < 0.1       # GFS's own cumulus scheme sees nothing forming all day
