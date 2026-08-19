@@ -160,8 +160,13 @@ om_url <- function(lat, lon){
     paste0("wind_direction_",LEVELS,"hPa"),
     paste0("geopotential_height_",LEVELS,"hPa")), collapse=",")
   sfc <- "temperature_2m,dew_point_2m,surface_pressure,wind_speed_10m,wind_direction_10m,showers,precipitation,precipitation_probability,freezing_level_height"
+  # timezone=UTC (not auto): with per-point local time, "Day 1" boundaries fell at a
+  # different UTC instant in WA (UTC+8) vs the east coast (UTC+10/11), so the same day
+  # label covered different absolute windows depending where a grid point sat. Forcing
+  # UTC makes every point's day_groups() split on the same 00Z-24Z boundary, matching how
+  # SPC-style outlooks use one fixed reference frame instead of each location's own midnight.
   sprintf(paste0("https://api.open-meteo.com/v1/forecast?latitude=%.3f&longitude=%.3f",
-    "&hourly=%s,%s&forecast_days=%d&timezone=auto&wind_speed_unit=kn&cell_selection=nearest"),
+    "&hourly=%s,%s&forecast_days=%d&timezone=UTC&wind_speed_unit=kn&cell_selection=nearest"),
     lat, lon, sfc, lv, FDAYS)
 }
 
