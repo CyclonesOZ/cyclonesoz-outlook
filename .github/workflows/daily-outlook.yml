@@ -1,10 +1,10 @@
 name: Daily storm outlook
 
-# Runs once a day (07:00 UTC ≈ afternoon in Australia), and can be run
-# manually from the Actions tab.
+# Runs once a day at 18:00 UTC (02:00 AWST / 04:00 AEST) so the outlook is fresh and
+# waiting by the time Australia wakes up, and can be run manually from the Actions tab.
 on:
   schedule:
-    - cron: "0 7 * * *"
+    - cron: "0 18 * * *"
   workflow_dispatch: {}
 
 permissions:
