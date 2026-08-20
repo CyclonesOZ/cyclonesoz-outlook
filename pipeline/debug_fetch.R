@@ -26,14 +26,29 @@ for (p in pts) {
   cat("\n--- point", lat, lon, "---\n")
   cat("URL length:", nchar(u), "\n")
   t0 <- Sys.time()
-  r <- tryCatch(fromJSON(u), error = function(e) { cat("ERROR:", conditionMessage(e), "\n"); NULL })
+  r <- tryCatch(fromJSON(u), error = function(e) { cat("ERROR (direct url):", conditionMessage(e), "\n"); NULL })
   t1 <- Sys.time()
-  cat("elapsed:", as.numeric(difftime(t1, t0, units="secs")), "s\n")
+  cat("elapsed (direct url):", as.numeric(difftime(t1, t0, units="secs")), "s\n")
   if (!is.null(r)) {
     cat("names(r):", paste(names(r), collapse=", "), "\n")
     cat("has hourly:", !is.null(r$hourly), "\n")
-    if (!is.null(r$error)) cat("r$error:", r$error, " reason:", r$reason, "\n")
   } else {
-    cat("r is NULL\n")
+    cat("r is NULL (direct url)\n")
+  }
+
+  # candidate fix: fetch the body ourselves via readLines so fromJSON always
+  # receives raw JSON text (starts with '{'), never ambiguous with a URL/path
+  t2 <- Sys.time()
+  r2 <- tryCatch({
+    raw <- paste(readLines(u, warn=FALSE), collapse="")
+    fromJSON(raw)
+  }, error = function(e) { cat("ERROR (readLines fix):", conditionMessage(e), "\n"); NULL })
+  t3 <- Sys.time()
+  cat("elapsed (readLines fix):", as.numeric(difftime(t3, t2, units="secs")), "s\n")
+  if (!is.null(r2)) {
+    cat("names(r2):", paste(names(r2), collapse=", "), "\n")
+    cat("has hourly (fix):", !is.null(r2$hourly), "\n")
+  } else {
+    cat("r2 is NULL (readLines fix)\n")
   }
 }
