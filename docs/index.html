@@ -45,8 +45,7 @@
   #info .cat{font-weight:700;font-size:13px;}
   #info .hint{color:var(--muted);} #info .sm{color:var(--muted);font-size:11px;margin-top:2px;}
   #legend{position:absolute;bottom:10px;right:10px;z-index:1000;background:var(--panel);border:1px solid var(--border);border-radius:3px;padding:9px 11px;font-size:11px;box-shadow:0 2px 6px rgba(0,0,0,.1);}
-  #legend .cap{color:var(--muted);margin-bottom:6px;font-weight:700;text-transform:uppercase;font-size:9.5px;letter-spacing:.05em;}
-  #legend .row{display:flex;align-items:center;gap:8px;margin:4px 0;} #legend .sw{width:16px;height:11px;border-radius:1px;border:1px solid rgba(0,0,0,.35);}
+  #legend .cap{color:var(--muted);margin-bottom:6px;font-weight:700;text-transform:uppercase;font-size:9.5px;letter-spacing:.05em;}  #legend .row{display:flex;align-items:center;gap:8px;margin:4px 0;} #legend .sw{width:16px;height:11px;border-radius:1px;border:1px solid rgba(0,0,0,.35);}
 
   #load{position:absolute;inset:0;z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:var(--panel);text-align:center;padding:24px;}
   #load .sp{width:30px;height:30px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;}
@@ -88,8 +87,7 @@
     <div class="gridPanel" data-hz="cat"><div class="gridTitle">Category Outlook</div><div class="gridmap" id="gridmap-cat"></div><div class="gridLegend" id="gridLegend-cat"></div></div>
     <div class="gridPanel" data-hz="tprob"><div class="gridTitle">Thunderstorm Outlook</div><div class="gridmap" id="gridmap-tprob"></div><div class="gridLegend" id="gridLegend-tprob"></div><div class="gridPlaceholder" id="gridPlaceholder-tprob">Extended range (days 5&ndash;8) shows general risk only &mdash; see Category</div></div>
     <div class="gridPanel" data-hz="hail"><div class="gridTitle">Hail Outlook</div><div class="gridmap" id="gridmap-hail"></div><div class="gridLegend" id="gridLegend-hail"></div><div class="gridPlaceholder" id="gridPlaceholder-hail">Extended range (days 5&ndash;8) shows general risk only &mdash; see Category</div></div>
-    <div class="gridPanel" data-hz="flood"><div class="gridTitle">Flash Flood Outlook</div><div class="gridmap" id="gridmap-flood"></div><div class="gridLegend" id="gridLegend-flood"></div><div class="gridPlaceholder" id="gridPlaceholder-flood">Extended range (days 5&ndash;8) shows general risk only &mdash; see Category</div></div>
-  </div>
+    <div class="gridPanel" data-hz="flood"><div class="gridTitle">Flash Flood Outlook</div><div class="gridmap" id="gridmap-flood"></div><div class="gridLegend" id="gridLegend-flood"></div><div class="gridPlaceholder" id="gridPlaceholder-flood">Extended range (days 5&ndash;8) shows general risk only &mdash; see Category</div></div>  </div>
   <div id="topbar"><div class="title">CyclonesOZ<small>Automated severe storm outlook &middot; 8-day, worst 6hr/day</small></div><div id="hazards"></div><div id="caption">Automated guidance from forecast model data. Not an official warning &mdash; always check the Bureau of Meteorology.<div id="updated"></div></div></div>
   <div id="days"></div>
   <div id="info"><span class="hint">Hover the map for storm risk at that spot.</span></div>
@@ -114,7 +112,28 @@
     {n:'Ballarat',lat:-37.56,lon:143.86},{n:'Launceston',lat:-41.43,lon:147.14},{n:'Broken Hill',lat:-31.95,lon:141.47},
     {n:'Port Augusta',lat:-32.49,lon:137.77},{n:'Ceduna',lat:-32.13,lon:133.70},{n:'Longreach',lat:-23.44,lon:144.25},
     {n:'Charleville',lat:-26.40,lon:146.24},{n:'Weipa',lat:-12.68,lon:141.87},{n:'Kununurra',lat:-15.77,lon:128.74},
-    {n:'Port Lincoln',lat:-34.73,lon:135.86},{n:'Warrnambool',lat:-38.38,lon:142.48},{n:'Bourke',lat:-30.09,lon:145.94}
+    {n:'Port Lincoln',lat:-34.73,lon:135.86},{n:'Warrnambool',lat:-38.38,lon:142.48},{n:'Bourke',lat:-30.09,lon:145.94},
+    // close-zoom-only towns (z:7) -- rounds the national set out to ~100 without cluttering the default nationwide view
+    {n:'Bunbury',lat:-33.33,lon:115.64,z:7},{n:'Busselton',lat:-33.65,lon:115.35,z:7},{n:'Margaret River',lat:-33.95,lon:115.07,z:7},
+    {n:'Narrogin',lat:-32.93,lon:117.18,z:7},{n:'Carnarvon',lat:-24.89,lon:113.66,z:7},{n:'Exmouth',lat:-21.93,lon:114.13,z:7},
+    {n:'Newman',lat:-23.35,lon:119.73,z:7},{n:'Meekatharra',lat:-26.59,lon:118.49,z:7},{n:'Halls Creek',lat:-18.23,lon:127.66,z:7},
+    {n:'Derby',lat:-17.30,lon:123.62,z:7},{n:'Wyndham',lat:-15.48,lon:128.10,z:7},
+    {n:'Whyalla',lat:-33.04,lon:137.59,z:7},{n:'Mount Gambier',lat:-37.83,lon:140.78,z:7},{n:'Renmark',lat:-34.17,lon:140.75,z:7},
+    {n:'Coober Pedy',lat:-29.01,lon:134.75,z:7},{n:'Murray Bridge',lat:-35.12,lon:139.27,z:7},{n:'Victor Harbor',lat:-35.55,lon:138.62,z:7},
+    {n:'Clare',lat:-33.83,lon:138.61,z:7},
+    {n:'Nhulunbuy',lat:-12.18,lon:136.78,z:7},{n:'Yulara',lat:-25.24,lon:130.99,z:7},{n:'Jabiru',lat:-12.66,lon:132.84,z:7},
+    {n:'Gladstone',lat:-23.85,lon:151.26,z:7},{n:'Hervey Bay',lat:-25.29,lon:152.85,z:7},{n:'Maryborough',lat:-25.54,lon:152.70,z:7},
+    {n:'Emerald',lat:-23.53,lon:148.16,z:7},{n:'Roma',lat:-26.57,lon:148.79,z:7},{n:'Cloncurry',lat:-20.71,lon:140.51,z:7},
+    {n:'Normanton',lat:-17.67,lon:141.08,z:7},{n:'Innisfail',lat:-17.53,lon:146.03,z:7},{n:'Atherton',lat:-17.27,lon:145.48,z:7},
+    {n:'Bowen',lat:-20.02,lon:148.24,z:7},{n:'Gympie',lat:-26.19,lon:152.67,z:7},{n:'Kingaroy',lat:-26.54,lon:151.84,z:7},
+    {n:'Cunnamulla',lat:-28.07,lon:145.68,z:7},    {n:'Tamworth',lat:-31.09,lon:150.93,z:7},{n:'Armidale',lat:-30.51,lon:151.67,z:7},{n:'Lismore',lat:-28.81,lon:153.28,z:7},
+    {n:'Grafton',lat:-29.69,lon:152.93,z:7},{n:'Orange',lat:-33.28,lon:149.10,z:7},{n:'Bathurst',lat:-33.42,lon:149.58,z:7},
+    {n:'Goulburn',lat:-34.75,lon:149.72,z:7},{n:'Griffith',lat:-34.29,lon:146.05,z:7},{n:'Cobar',lat:-31.50,lon:145.84,z:7},
+    {n:'Moree',lat:-29.46,lon:149.84,z:7},{n:'Albury',lat:-36.08,lon:146.92,z:7},{n:'Port Macquarie',lat:-31.43,lon:152.91,z:7},
+    {n:'Geelong',lat:-38.15,lon:144.36,z:7},{n:'Shepparton',lat:-36.38,lon:145.40,z:7},{n:'Wodonga',lat:-36.12,lon:146.89,z:7},
+    {n:'Horsham',lat:-36.71,lon:142.20,z:7},{n:'Swan Hill',lat:-35.34,lon:143.55,z:7},{n:'Sale',lat:-38.11,lon:147.07,z:7},
+    {n:'Wangaratta',lat:-36.36,lon:146.31,z:7},
+    {n:'Devonport',lat:-41.18,lon:146.35,z:7},{n:'Burnie',lat:-41.05,lon:145.91,z:7}
   ];
   // fine scale (days 1-4)
   var FINE=[null,
@@ -164,8 +183,7 @@
   // coastline.geo.json is simplified for a whole-of-country view (~40km between vertices on the
   // mainland ring) -- fine zoomed out, visibly blocky/angular once the grid maps became zoomable.
   // Chaikin-smooth it once at load, same technique already used for the hazard bands, so panning
-  // in doesn't reveal straight-line facets. Coordinates here are [lon,lat] degrees rather than the
-  // grid pixel space the hazard-band pipeline uses, but chaikinRing is just linear interpolation
+  // in doesn't reveal straight-line facets. Coordinates here are [lon,lat] degrees rather than the  // grid pixel space the hazard-band pipeline uses, but chaikinRing is just linear interpolation
   // between consecutive ring points, so it works unchanged on either.
   function smoothPolyCoords(coords, iterations){ return coords.map(function(ring){ return chaikinRing(ring, iterations); }); }
   function smoothGeoJSON(gj, iterations){
@@ -187,7 +205,17 @@
     if(DISTRICTS) L.geoJSON(DISTRICTS,{interactive:false,style:DISTRICT_STYLE}).addTo(m);
   }
   function drawTowns(m){
-    TOWNS.forEach(function(t){L.marker([t.lat,t.lon],{interactive:false,icon:L.divIcon({className:'',html:'<div class="town"><span class="dot"></span>'+t.n+'</div>',iconSize:[0,0],iconAnchor:[2,7]})}).addTo(m);});
+    // most towns show at every zoom; towns tagged z:7+ only appear once the viewer has zoomed in close,
+    // so the ~100-town nationwide set doesn't clutter the default whole-of-Australia view
+    var tiered=TOWNS.map(function(t){
+      return {z:t.z||3,mk:L.marker([t.lat,t.lon],{interactive:false,icon:L.divIcon({className:'',html:'<div class="town"><span class="dot"></span>'+t.n+'</div>',iconSize:[0,0],iconAnchor:[2,7]})}).addTo(m)};
+    });
+    function sync(){
+      var z=m.getZoom();
+      tiered.forEach(function(t){var el=t.mk.getElement();if(el) el.style.display=z>=t.z?'':'none';});
+    }
+    m.on('zoomend',sync);
+    sync();
   }
 
   var GRID=[],results=[],DAYS=[],selDay=0,LAND=null,DISTRICTS=null,minLat,maxLat,minLon,maxLon,nx,ny;
@@ -220,8 +248,7 @@
     var wAtZ0=Math.abs(p2.x-p1.x), hAtZ0=Math.abs(p2.y-p1.y);
     var z=Math.max(Math.log(availW/wAtZ0)/Math.LN2, Math.log(availH/hAtZ0)/Math.LN2);
     z=Math.min(z,m.getMaxZoom()); z=Math.max(z,m.getMinZoom());
-    m.setView([(minLat+maxLat)/2,(minLon+maxLon)/2], z, {animate:false});
-  }
+    m.setView([(minLat+maxLat)/2,(minLon+maxLon)/2], z, {animate:false});  }
   // grid cell (gx,gy) -> [lon,lat]; row 0 = top = maxLat
   function g2ll(gx,gy){return [minLon+(gx/nx)*(maxLon-minLon), maxLat-(gy/ny)*(maxLat-minLat)];}
 
@@ -303,8 +330,7 @@
     var out=[];
     contours.forEach(function(geo){
       var sp=null; for(var m=0;m<spec.length;m++){if(Math.abs(spec[m].t-geo.value)<1e-6){sp=spec[m];break;}}
-      if(!sp||!geo.coordinates.length) return;
-      var coords=geo.coordinates.map(function(poly){return poly.map(function(ring){return ring.map(function(pt){return g2ll(pt[0],pt[1]);});});});
+      if(!sp||!geo.coordinates.length) return;      var coords=geo.coordinates.map(function(poly){return poly.map(function(ring){return ring.map(function(pt){return g2ll(pt[0],pt[1]);});});});
       var feat={type:'Feature',properties:{},geometry:{type:'MultiPolygon',coordinates:coords}};
       var clipped=tryIntersect(feat);
       if(!clipped) return;
@@ -389,8 +415,7 @@
     buildGridLegends();
   }
   function enterFocused(hz){
-    selHazard=(hz!=='cat' && extendedRange(selDay))?'cat':hz; viewMode='focused';
-    document.getElementById('wrap').classList.remove('gridmode');
+    selHazard=(hz!=='cat' && extendedRange(selDay))?'cat':hz; viewMode='focused';    document.getElementById('wrap').classList.remove('gridmode');
     [].forEach.call(document.querySelectorAll('#hazards .dbtn.hz'),function(b){b.classList.toggle('active',b.dataset.hz===selHazard);});
     syncHazardAvailability();
     map.invalidateSize();
@@ -462,8 +487,7 @@
       }
     }else{
       var hs=HAZ_SPECS[hz];
-      for(var i=hs.thresholds.length-1;i>=0;i--){h+='<div class="row"><span class="sw" style="background:'+rgb(hs.colors[i])+'"></span>'+hs.labels[i]+'</div>';}
-    }
+      for(var i=hs.thresholds.length-1;i>=0;i--){h+='<div class="row"><span class="sw" style="background:'+rgb(hs.colors[i])+'"></span>'+hs.labels[i]+'</div>';}    }
     return h;
   }
   function buildLegend(){
