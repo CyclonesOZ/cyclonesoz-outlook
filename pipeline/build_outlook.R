@@ -17,6 +17,16 @@ LEVELS <- c(1000,975,950,925,900,850,800,700,600,500,400,300,250,200,150,100)
 FDAYS  <- 8                                     # forecast days
 TOPN   <- 6                                     # average the N highest-severity hours
 
+# Day 1's anchor date. The job runs at 18Z (02:00 AWST/04:00 AEST) specifically so it's
+# ready right after Australian local midnight -- but 18Z is still the SAME UTC calendar
+# day, so anchoring "Day 1" to raw UTC "today" (via forecast_days) labelled every run with
+# the date that had just ended in Australia, one day stale by the time anyone looked at it.
+# Anchoring instead to the AWST calendar date at request time (UTC+8, the country's LAST
+# timezone to roll over each day) fixes this for both the 18Z schedule and any ad-hoc
+# manual run: Day 1 always comes out as whichever Australian day has most recently started.
+START_DATE <- format(Sys.time() + 8*3600, "%Y-%m-%d", tz="UTC")
+END_DATE   <- as.character(as.Date(START_DATE) + FDAYS - 1)
+
 nz <- function(x){ if (is.null(x) || is.na(x)) 0 else x }
 
 dewpoint <- function(T, RH){
@@ -165,9 +175,11 @@ om_url <- function(lat, lon){
   # label covered different absolute windows depending where a grid point sat. Forcing
   # UTC makes every point's day_groups() split on the same 00Z-24Z boundary, matching how
   # SPC-style outlooks use one fixed reference frame instead of each location's own midnight.
+  # start_date/end_date (not forecast_days) pin that boundary to START_DATE/END_DATE (see
+  # above) instead of letting Open-Meteo default to raw UTC "today".
   sprintf(paste0("https://api.open-meteo.com/v1/forecast?latitude=%.3f&longitude=%.3f",
-    "&hourly=%s,%s&forecast_days=%d&timezone=UTC&wind_speed_unit=kn&cell_selection=nearest"),
-    lat, lon, sfc, lv, FDAYS)
+    "&hourly=%s,%s&start_date=%s&end_date=%s&timezone=UTC&wind_speed_unit=kn&cell_selection=nearest"),
+    lat, lon, sfc, lv, START_DATE, END_DATE)
 }
 
 fetch_point <- function(lat, lon){
