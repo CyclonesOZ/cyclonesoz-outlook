@@ -203,7 +203,12 @@
       polys.forEach(function(poly){poly[0].forEach(function(c){if(c[0]<minLon)minLon=c[0];if(c[0]>maxLon)maxLon=c[0];if(c[1]<minLat)minLat=c[1];if(c[1]>maxLat)maxLat=c[1];});});
     });
     minLat-=0.5;maxLat+=0.5;minLon-=0.5;maxLon+=0.5;
-    nx=Math.round((maxLon-minLon)/0.2); ny=Math.round((maxLat-minLat)/0.2);
+    // 0.1 (not the old 0.2): the IDW field is evaluated at arbitrary density regardless of
+    // the ~0.2 degree spacing of the underlying grid points, so supersampling here doesn't
+    // change what the map says -- it just gives d3.contours() 4x the vertices to work with,
+    // which is what the blocky/rigid look actually traced back to (marching-squares facets
+    // sized to the old coarse mesh, most visible once the maps became zoomable).
+    nx=Math.round((maxLon-minLon)/0.1); ny=Math.round((maxLat-minLat)/0.1);
   }
   // fitBounds() always "contains" (never crops), so a panel much wider than Australia's
   // shape (true for the 4-across grid panels) leaves large empty margins on the wide axis.
@@ -242,9 +247,11 @@
     catch(e){ try{ return turf.intersect(bandFeat,LAND.features[0]); }catch(e2){ return bandFeat; } }
   }
 
-  // smooths the jagged edges left behind where the coarse contour grid met the coastline
+  // smooths the jagged edges left behind where the coarse contour grid met the coastline.
+  // tolerance halved alongside the finer contour mesh above, so it keeps stripping only
+  // sub-cell noise instead of eating the extra detail the finer mesh just added.
   function trySimplify(feat){
-    try{ return turf.simplify(feat,{tolerance:0.02,highQuality:true}); }
+    try{ return turf.simplify(feat,{tolerance:0.01,highQuality:true}); }
     catch(e){ return feat; }
   }
 
@@ -302,7 +309,7 @@
       var clipped=tryIntersect(feat);
       if(!clipped) return;
       clipped=trySimplify(clipped);
-      clipped=trySmooth(clipped,2);
+      clipped=trySmooth(clipped,3);
       out.push({geo:clipped,style:{color:darker(sp.color,0.45),weight:1.1,opacity:0.9,fillColor:rgb(sp.color),fillOpacity:0.62}});
     });
     featureCache[key]=out;
