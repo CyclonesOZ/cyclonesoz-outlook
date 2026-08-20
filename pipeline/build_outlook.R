@@ -184,7 +184,17 @@ om_url <- function(lat, lon){
 
 fetch_point <- function(lat, lon){
   for (a in 1:4){
-    r <- tryCatch(fromJSON(om_url(lat,lon)), error=function(e) NULL)
+    # jsonlite::fromJSON(txt) guesses whether txt is a URL/path or literal JSON by checking
+    # nchar(txt) against a ~2083-char threshold (the old IE max-URL-length); our request URLs
+    # run ~2100 chars (16 pressure levels x 5 fields + surface vars + the start_date/end_date
+    # params), so fromJSON stopped recognizing them as URLs and tried to parse the URL STRING
+    # ITSELF as JSON -- an instant, deterministic failure with no network call ever made. Fetching
+    # the body ourselves and handing fromJSON the raw JSON text (which always starts with '{')
+    # sidesteps that guess entirely.
+    r <- tryCatch({
+      raw <- paste(readLines(om_url(lat,lon), warn=FALSE), collapse="")
+      fromJSON(raw)
+    }, error=function(e) NULL)
     if (!is.null(r) && !is.null(r$hourly)) return(r)
     Sys.sleep(1.2*a)
   }
