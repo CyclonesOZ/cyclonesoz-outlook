@@ -294,21 +294,39 @@ day_topN <- function(h, idxs, elev){
              flood=flood_risk(rain_day, rain_rate)))
 }
 
-cat(sprintf("Processing %d grid points (%d days, avg of top %d hours)...\n", nrow(GRID), FDAYS, TOPN))
-points <- vector("list", nrow(GRID)); day_labels <- NULL; ok <- 0
+# each point is a fully independent fetch+compute (no shared state), so this is embarrassingly
+# parallel -- GitHub's ubuntu-latest runners give 4 vCPUs, and the old sequential loop spent most
+# of its ~3.5h wall-clock either waiting on Open-Meteo's response or inside thundeR's per-hour
+# sounding_compute() (up to 192 hours/point), both of which parallelize cleanly across points.
+# mc.preschedule=FALSE hands points to workers one at a time as they free up rather than splitting
+# the grid into 4 fixed static chunks up front, so one slow/retrying point doesn't leave a worker
+# idle while the others finish their chunk.
+suppressMessages(library(parallel))
+NCORES <- max(1, min(4, parallel::detectCores()))
+cat(sprintf("Processing %d grid points (%d days, avg of top %d hours) across %d workers...\n", nrow(GRID), FDAYS, TOPN, NCORES))
 
-for (k in seq_len(nrow(GRID))){
-  lat <- GRID[k,1]; lon <- GRID[k,2]
-  r <- fetch_point(lat, lon)
-  if (is.null(r)){ points[[k]] <- NULL; next }
-  h <- r$hourly; elev <- r$elevation
-  gp <- day_groups(h$time)
-  if (is.null(day_labels)) day_labels <- format(as.Date(gp$days), "%a %e %b")
-  dres <- lapply(gp$idx, function(ix) day_topN(h, ix, elev))
-  points[[k]] <- list(lat=lat, lon=lon, d=dres)
+process_point <- function(k){
+  tryCatch({
+    lat <- GRID[k,1]; lon <- GRID[k,2]
+    r <- fetch_point(lat, lon)
+    if (is.null(r)) return(NULL)
+    h <- r$hourly; elev <- r$elevation
+    gp <- day_groups(h$time)
+    dres <- lapply(gp$idx, function(ix) day_topN(h, ix, elev))
+    Sys.sleep(0.15)   # stay a courteous, gently-paced client per worker even with 4x concurrency
+    list(lat=lat, lon=lon, d=dres, days=gp$days)
+  }, error=function(e) NULL)
+}
+
+raw_results <- mclapply(seq_len(nrow(GRID)), process_point, mc.cores=NCORES, mc.preschedule=FALSE)
+
+points <- vector("list", nrow(GRID)); day_labels <- NULL; ok <- 0
+for (k in seq_along(raw_results)){
+  res <- raw_results[[k]]
+  if (is.null(res) || inherits(res, "try-error")) next
+  if (is.null(day_labels)) day_labels <- format(as.Date(res$days), "%a %e %b")
+  points[[k]] <- list(lat=res$lat, lon=res$lon, d=res$d)
   ok <- ok + 1
-  if (k %% 50 == 0) cat(sprintf("  %d/%d\n", k, nrow(GRID)))
-  Sys.sleep(0.2)
 }
 
 points <- Filter(Negate(is.null), points)
