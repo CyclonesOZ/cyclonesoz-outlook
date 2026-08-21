@@ -206,10 +206,23 @@
   // flat vector basemap (no raster tiles) styled after SPC's convective-outlook maps: near-white
   // land, plain gray state/coast lines, no terrain/place clutter competing with the hazard bands.
   var LAND_STYLE={color:'#7f95a6',weight:1,fillColor:'#fbfbf8',fillOpacity:1};
+  // used only on the main focused map when hillshade is under it -- lets the relief texture
+  // show through instead of being hidden under an opaque fill.
+  var LAND_STYLE_HILLSHADE={color:'#7f95a6',weight:1,fillColor:'#fbfbf8',fillOpacity:0.22};
   var DISTRICT_STYLE={color:'#9aa7b2',weight:0.7,fillOpacity:0};
-  function drawBasemap(m){
-    L.geoJSON(LAND,{interactive:false,style:LAND_STYLE}).addTo(m);
+  function drawBasemap(m, style){
+    L.geoJSON(LAND,{interactive:false,style:style||LAND_STYLE}).addTo(m);
     if(DISTRICTS) L.geoJSON(DISTRICTS,{interactive:false,style:DISTRICT_STYLE}).addTo(m);
+  }
+  // subtle terrain relief for the main focused map only -- the 4 grid overview maps skip this
+  // to stay fast (4 more simultaneous tile layers would meaningfully slow the grid's first
+  // paint) and uncluttered. ESRI's World_Hillshade is a free, no-API-key XYZ tile service; low
+  // opacity keeps it a background texture accent, not competing with the hazard bands for
+  // attention the way a full-color terrain/satellite layer would.
+  function drawHillshade(m){
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}', {
+      opacity:0.65, maxZoom:13, attribution:''
+    }).addTo(m);
   }
   function drawTowns(m){
     // most towns show at every zoom; towns tagged z:7+ only appear once the viewer has zoomed in close,
@@ -554,7 +567,8 @@
     fetch('./districts.geo.json').then(function(r){return r.ok?r.json():null;}).catch(function(){return null;})
   ]).then(function(res){
     LAND=smoothGeoJSON(res[0],2); var o=res[1]; DISTRICTS=res[2]; // real BOM forecast district boundaries -- already properly detailed, don't Chaikin-smooth them like the crude coastline
-    drawBasemap(map);
+    drawHillshade(map);
+    drawBasemap(map, LAND_STYLE_HILLSHADE);
     drawTowns(map);
     DAYS=o.days||['Day 1','Day 2','Day 3','Day 4','Day 5','Day 6','Day 7','Day 8'];
     o.points.forEach(function(p){GRID.push([p.lat,p.lon]);results.push(p.d);});
