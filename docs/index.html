@@ -17,11 +17,14 @@
 
   #topbar{position:fixed;top:0;left:0;bottom:0;width:var(--sbw);z-index:1000;box-sizing:border-box;
     display:flex;flex-direction:column;padding:12px 12px 10px;background:var(--panel);border-right:1px solid var(--border);overflow-y:auto;}
+  #topbar .eyebrow{display:block;font-weight:700;font-size:8.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin-bottom:3px;}
   #topbar .title{font-weight:700;font-size:13.5px;line-height:1.3;color:var(--text);padding-bottom:9px;margin-bottom:9px;border-bottom:1px solid var(--border);}
   #topbar .title small{display:block;font-weight:400;font-size:10.5px;color:var(--muted);margin-top:3px;}
   #hazards{display:flex;flex-direction:column;gap:1px;}
-  #caption{margin-top:auto;padding-top:10px;font-size:10px;color:var(--muted);line-height:1.4;border-top:1px solid var(--border);}
-  #updated{color:var(--muted);font-size:9.5px;margin-top:4px;}
+  #caption{margin-top:auto;padding-top:10px;font-size:9.5px;letter-spacing:.02em;color:var(--muted);line-height:1.4;border-top:1px solid var(--border);}
+  #updated{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:9.5px;margin-top:5px;text-transform:uppercase;letter-spacing:.04em;}
+  #updated .live-dot{width:6px;height:6px;flex:none;border-radius:50%;background:#2aa876;box-shadow:0 0 0 2px rgba(42,168,118,.22);animation:pulse 2.2s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
 
   #days{position:fixed;top:0;left:var(--sbw);right:0;height:var(--dth);z-index:1000;box-sizing:border-box;
     display:flex;background:var(--panel);border-bottom:1px solid var(--border);overflow-x:auto;}
@@ -90,7 +93,7 @@
     <div class="gridPanel" data-hz="hail"><div class="gridTitle">Hail Outlook</div><div class="gridmap" id="gridmap-hail"></div><div class="gridLegend" id="gridLegend-hail"></div><div class="gridPlaceholder" id="gridPlaceholder-hail">Extended range (days 5&ndash;8) shows general risk only &mdash; see Category</div></div>
     <div class="gridPanel" data-hz="flood"><div class="gridTitle">Flash Flood Outlook</div><div class="gridmap" id="gridmap-flood"></div><div class="gridLegend" id="gridLegend-flood"></div><div class="gridPlaceholder" id="gridPlaceholder-flood">Extended range (days 5&ndash;8) shows general risk only &mdash; see Category</div></div>
   </div>
-  <div id="topbar"><div class="title">CyclonesOZ<small>Automated severe storm outlook &middot; 8-day, worst 6hr/day</small></div><div id="hazards"></div><div id="caption">Automated guidance from forecast model data. Not an official warning &mdash; always check the Bureau of Meteorology.<div id="updated"></div></div></div>
+  <div id="topbar"><div class="title"><span class="eyebrow">Automated Severe Weather</span>CyclonesOZ<small>8-day severe storm outlook &middot; worst 6hr/day</small></div><div id="hazards"></div><div id="caption">Automated guidance from forecast model data. Not an official warning &mdash; always check the Bureau of Meteorology.<div id="updated"><span class="live-dot"></span><span id="updatedtxt"></span></div></div></div>
   <div id="days"></div>
   <div id="info"><span class="hint">Hover the map for storm risk at that spot.</span></div>
   <div id="legend"></div>
@@ -261,13 +264,28 @@
   function field(dayIdx,getter){
     var sx=[],sy=[],sc=[];
     for(var i=0;i<GRID.length;i++){var r=results[i]?results[i][dayIdx]:null;if(!r)continue;sx.push(GRID[i][1]);sy.push(GRID[i][0]);sc.push(getter(r));}
-    var vals=new Float64Array(nx*ny),P=3;
+    // P and the smoothing epsilon below are tuned against the REAL grid spacing (a uniform
+    // 0.82 degree lattice, ~90km -- confirmed from data/grid.json, not the ~0.2 degree this
+    // code originally assumed). At the old P:3/epsilon:0.02 a neighbouring grid point's weight
+    // fell to ~13% of the nearest point's by one full cell away, so each point effectively drew
+    // its own isolated little cell instead of blending into its neighbours, splitting what
+    // should be one storm area into scattered dots with holes punched through the middle --
+    // that mismatch between the tuning and the actual spacing is what produced the fragmented
+    // "island" look. epsilon:0.10 (~0.32 degree, well under half the real spacing) keeps a point
+    // from going fully to zero weight right next to its neighbours without diluting genuinely
+    // isolated single-point signal into nothing, and P:2.2 (down from 3) widens each point's
+    // falloff just enough for adjoining above-threshold cells to merge into one shape instead of
+    // snapping to nearest-neighbour boundaries. Tested against live data (see the before/after
+    // screenshots from this session): the NT/QLD thunderstorm blob's internal holes closed up
+    // and its edge became one flowing shape, while the isolated Tennant Creek cell -- real,
+    // sparse signal, not noise -- stayed visible instead of being smoothed away.
+    var vals=new Float64Array(nx*ny),P=2.2;
     var dLon=(maxLon-minLon)/nx,dLat=(maxLat-minLat)/ny;
     for(var gy=0;gy<ny;gy++){
       var lat=maxLat-gy*dLat;
       for(var gx=0;gx<nx;gx++){
         var lon=minLon+gx*dLon,num=0,den=0;
-        for(var k=0;k<sx.length;k++){var dx=lon-sx[k],dy=lat-sy[k],d2=dx*dx+dy*dy;var w=Math.pow(d2+0.02,-P/2);num+=w*sc[k];den+=w;}
+        for(var k=0;k<sx.length;k++){var dx=lon-sx[k],dy=lat-sy[k],d2=dx*dx+dy*dy;var w=Math.pow(d2+0.10,-P/2);num+=w*sc[k];den+=w;}
         vals[gy*nx+gx]=num/den;
       }
     }
@@ -341,7 +359,7 @@
       var clipped=tryIntersect(feat);
       if(!clipped) return;
       clipped=trySimplify(clipped);
-      clipped=trySmooth(clipped,3);
+      clipped=trySmooth(clipped,4);
       out.push({geo:clipped,style:{color:darker(sp.color,0.45),weight:1.1,opacity:0.9,fillColor:rgb(sp.color),fillOpacity:0.62}});
     });
     featureCache[key]=out;
@@ -545,7 +563,7 @@
     buildDayButtons();buildHazardButtons();syncHazardAvailability();
     document.getElementById('wrap').classList.add('gridmode'); // panels must be visible/sized before Leaflet measures them for fitBounds
     initGridMaps();enterGrid();
-    document.getElementById('updated').textContent='Updated '+(o.run_date?new Date(o.run_date).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'—');
+    document.getElementById('updatedtxt').textContent='Updated '+(o.run_date?new Date(o.run_date).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'—');
     document.getElementById('load').style.display='none';
   }).catch(function(err){setErr('No outlook yet, or failed to load. Run the GitHub Action once, then reload. ('+err.message+')');});
 })();
