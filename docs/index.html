@@ -141,15 +141,16 @@
     {n:'Wangaratta',lat:-36.36,lon:146.31,z:7},
     {n:'Devonport',lat:-41.18,lon:146.35,z:7},{n:'Burnie',lat:-41.05,lon:145.91,z:7}
   ];
-  // fine scale (days 1-4)
+  // fine scale (days 1-4) -- ENH removed: MDT dropped to its old (former-ENH) bar so it's the
+  // practical ceiling for most significant days, HIGH keeps its old bar unchanged so it stays
+  // reserved for rare, potentially life-threatening outbreak days. See pipeline/build_outlook.R.
   var FINE=[null,
     {abbr:'',name:'Increased chance of storm activity',color:[150,205,150]},
     {abbr:'MRGL',name:'Marginal',color:[86,158,86]},
     {abbr:'SLGT',name:'Slight',color:[248,220,90]},
-    {abbr:'ENH',name:'Enhanced',color:[247,158,84]},
     {abbr:'MDT',name:'Moderate',color:[224,96,96]},
     {abbr:'HIGH',name:'High',color:[236,140,236]}];
-  var FINE_TH=[{t:0.5,c:1},{t:1.5,c:2},{t:2.5,c:3},{t:3.5,c:4},{t:4.5,c:5},{t:5.5,c:6}];
+  var FINE_TH=[{t:0.5,c:1},{t:1.5,c:2},{t:2.5,c:3},{t:3.5,c:4},{t:4.5,c:5}];
   // coarse scale (days 5-8)
   var COARSE=[{t:0.5,color:[120,192,120],name:'Chance of storm'},{t:3.5,color:[228,120,86],name:'Chance of severe storm'}];
 
@@ -521,7 +522,7 @@
         [COARSE[1],COARSE[0]].forEach(function(c){h+='<div class="row"><span class="sw" style="background:'+rgb(c.color)+'"></span>'+c.name+'</div>';});
         h+='<div class="cap" style="margin-top:8px;margin-bottom:0">Extended range (days 5-8)</div>';
       }else{
-        for(var k=6;k>=1;k--){var c=FINE[k];h+='<div class="row"><span class="sw" style="background:'+rgb(c.color)+'"></span>'+(c.abbr?c.abbr+' — ':'')+c.name+'</div>';}
+        for(var k=5;k>=1;k--){var c=FINE[k];h+='<div class="row"><span class="sw" style="background:'+rgb(c.color)+'"></span>'+(c.abbr?c.abbr+' — ':'')+c.name+'</div>';}
       }
     }else{
       var hs=HAZ_SPECS[hz];
