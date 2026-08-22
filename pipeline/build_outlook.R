@@ -43,12 +43,11 @@ sev_score <- function(p){
   2*scp + 2*stp + 2*ship + cape/500 + shr/20
 }
 
-# daily accumulated rainfall (mm, GFS's own total precip forecast) -> the same 0-6 scale,
+# daily accumulated rainfall (mm, GFS's own total precip forecast) -> the same 0-5 scale,
 # folded into the composite category below: any hazard capable of occurring on the day --
 # hail, wind, tornado, or flash-flood rain -- lifts the overall risk shown on the map.
 rain_cat <- function(mm){
-  if (mm >= 150) return(6)
-  if (mm >= 100) return(5)
+  if (mm >= 150) return(5)
   if (mm >= 75)  return(4)
   if (mm >= 50)  return(3)
   if (mm >= 35)  return(2)
@@ -101,7 +100,12 @@ thunder_prob <- function(tprob, cape, shw_day){
   as.integer(round(nz(tprob)))
 }
 
-# SPC-style category from averaged parameters: 0 none,1 TSTM,2 MRGL,3 SLGT,4 ENH,5 MDT,6 HIGH
+# SPC-style category from averaged parameters: 0 none,1 TSTM,2 MRGL,3 SLGT,4 MDT,5 HIGH
+# ENH was removed and MDT dropped to its old bar (formerly ENH's threshold) so MDT reads as the
+# practical ceiling most genuinely significant days reach; HIGH keeps its old (unchanged, and now
+# the only tier above MDT) bar so it stays reserved for the rare, potentially life-threatening
+# outbreak days -- the old MDT tier's own distinct threshold is gone; that value range now just
+# stays at MDT rather than independently promoting to a tier of its own.
 # cin = MU_CIN (J/kg, <=0, from the same sounding as cape/shr) and shw = GFS's own forecast
 # convective showers (mm, max over the whole day) act as an initiation check: CAPE alone is
 # a very low bar in the moist tropics, so if the model's own convection scheme sees nothing
@@ -145,9 +149,8 @@ categorise_vals <- function(cape, shr, scp, stp, ship, cin, shw, rain_mm){
   if (cape >= 150) c <- 1
   if ((cape >= 400 & shr_kt >= 18) | (scp >= 0.8 & cape >= 800) | ship >= 0.4) c <- max(c, 2)
   if ((scp >= 1.6 & cape >= 800) | stp >= 0.8 | ship >= 0.8 | (cape >= 800 & shr_kt >= 27)) c <- max(c, 3)
-  if ((scp >= 3.2 & cape >= 800) | stp >= 1.6 | ship >= 1.6) c <- max(c, 4)
-  if ((scp >= 4.8 & cape >= 800) | stp >= 2.4 | ship >= 2.4) c <- max(c, 5)
-  if ((scp >= 8   & cape >= 800) | stp >= 4)                 c <- max(c, 6)
+  if ((scp >= 3.2 & cape >= 800) | stp >= 1.6 | ship >= 1.6) c <- max(c, 4)   # MDT
+  if ((scp >= 8   & cape >= 800) | stp >= 4)                 c <- max(c, 5)   # HIGH
 
   capped  <- nz(cin) <= -75      # stout cap even on the best hour of the day
   no_trig <- nz(shw) < 0.1       # GFS's own cumulus scheme sees nothing forming all day
