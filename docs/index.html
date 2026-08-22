@@ -120,28 +120,31 @@
     {n:'Port Augusta',lat:-32.49,lon:137.77},{n:'Ceduna',lat:-32.13,lon:133.70},{n:'Longreach',lat:-23.44,lon:144.25},
     {n:'Charleville',lat:-26.40,lon:146.24},{n:'Weipa',lat:-12.68,lon:141.87},{n:'Kununurra',lat:-15.77,lon:128.74},
     {n:'Port Lincoln',lat:-34.73,lon:135.86},{n:'Warrnambool',lat:-38.38,lon:142.48},{n:'Bourke',lat:-30.09,lon:145.94},
-    // close-zoom-only towns (z:7) -- rounds the national set out to ~100 without cluttering the default nationwide view
-    {n:'Bunbury',lat:-33.33,lon:115.64,z:7},{n:'Busselton',lat:-33.65,lon:115.35,z:7},{n:'Margaret River',lat:-33.95,lon:115.07,z:7},
+    // moderate-zoom towns (z:4) -- substantial regional centres, worth showing one zoom step in
+    // from the default nationwide view rather than making the viewer zoom all the way to z:7
+    {n:'Bunbury',lat:-33.33,lon:115.64,z:4},{n:'Busselton',lat:-33.65,lon:115.35,z:4},{n:'Margaret River',lat:-33.95,lon:115.07,z:4},
+    {n:'Whyalla',lat:-33.04,lon:137.59,z:4},{n:'Mount Gambier',lat:-37.83,lon:140.78,z:4},{n:'Renmark',lat:-34.17,lon:140.75,z:4},
+    {n:'Murray Bridge',lat:-35.12,lon:139.27,z:4},{n:'Victor Harbor',lat:-35.55,lon:138.62,z:4},
+    {n:'Gladstone',lat:-23.85,lon:151.26,z:4},{n:'Hervey Bay',lat:-25.29,lon:152.85,z:4},{n:'Maryborough',lat:-25.54,lon:152.70,z:4},
+    {n:'Emerald',lat:-23.53,lon:148.16,z:4},{n:'Roma',lat:-26.57,lon:148.79,z:4},{n:'Gympie',lat:-26.19,lon:152.67,z:4},{n:'Kingaroy',lat:-26.54,lon:151.84,z:4},
+    {n:'Tamworth',lat:-31.09,lon:150.93,z:4},{n:'Armidale',lat:-30.51,lon:151.67,z:4},{n:'Lismore',lat:-28.81,lon:153.28,z:4},
+    {n:'Grafton',lat:-29.69,lon:152.93,z:4},{n:'Orange',lat:-33.28,lon:149.10,z:4},{n:'Bathurst',lat:-33.42,lon:149.58,z:4},
+    {n:'Goulburn',lat:-34.75,lon:149.72,z:4},{n:'Griffith',lat:-34.29,lon:146.05,z:4},
+    {n:'Moree',lat:-29.46,lon:149.84,z:4},{n:'Albury',lat:-36.08,lon:146.92,z:4},{n:'Port Macquarie',lat:-31.43,lon:152.91,z:4},
+    {n:'Geelong',lat:-38.15,lon:144.36,z:4},{n:'Shepparton',lat:-36.38,lon:145.40,z:4},{n:'Wodonga',lat:-36.12,lon:146.89,z:4},
+    {n:'Horsham',lat:-36.71,lon:142.20,z:4},{n:'Swan Hill',lat:-35.34,lon:143.55,z:4},{n:'Sale',lat:-38.11,lon:147.07,z:4},
+    {n:'Wangaratta',lat:-36.36,lon:146.31,z:4},
+    {n:'Devonport',lat:-41.18,lon:146.35,z:4},{n:'Burnie',lat:-41.05,lon:145.91,z:4},
+    // close-zoom-only towns (z:7) -- smaller/more remote, rounds the national set out to ~100
+    // without cluttering the default nationwide view
     {n:'Narrogin',lat:-32.93,lon:117.18,z:7},{n:'Carnarvon',lat:-24.89,lon:113.66,z:7},{n:'Exmouth',lat:-21.93,lon:114.13,z:7},
     {n:'Newman',lat:-23.35,lon:119.73,z:7},{n:'Meekatharra',lat:-26.59,lon:118.49,z:7},{n:'Halls Creek',lat:-18.23,lon:127.66,z:7},
     {n:'Derby',lat:-17.30,lon:123.62,z:7},{n:'Wyndham',lat:-15.48,lon:128.10,z:7},
-    {n:'Whyalla',lat:-33.04,lon:137.59,z:7},{n:'Mount Gambier',lat:-37.83,lon:140.78,z:7},{n:'Renmark',lat:-34.17,lon:140.75,z:7},
-    {n:'Coober Pedy',lat:-29.01,lon:134.75,z:7},{n:'Murray Bridge',lat:-35.12,lon:139.27,z:7},{n:'Victor Harbor',lat:-35.55,lon:138.62,z:7},
-    {n:'Clare',lat:-33.83,lon:138.61,z:7},
+    {n:'Coober Pedy',lat:-29.01,lon:134.75,z:7},{n:'Clare',lat:-33.83,lon:138.61,z:7},
     {n:'Nhulunbuy',lat:-12.18,lon:136.78,z:7},{n:'Yulara',lat:-25.24,lon:130.99,z:7},{n:'Jabiru',lat:-12.66,lon:132.84,z:7},
-    {n:'Gladstone',lat:-23.85,lon:151.26,z:7},{n:'Hervey Bay',lat:-25.29,lon:152.85,z:7},{n:'Maryborough',lat:-25.54,lon:152.70,z:7},
-    {n:'Emerald',lat:-23.53,lon:148.16,z:7},{n:'Roma',lat:-26.57,lon:148.79,z:7},{n:'Cloncurry',lat:-20.71,lon:140.51,z:7},
-    {n:'Normanton',lat:-17.67,lon:141.08,z:7},{n:'Innisfail',lat:-17.53,lon:146.03,z:7},{n:'Atherton',lat:-17.27,lon:145.48,z:7},
-    {n:'Bowen',lat:-20.02,lon:148.24,z:7},{n:'Gympie',lat:-26.19,lon:152.67,z:7},{n:'Kingaroy',lat:-26.54,lon:151.84,z:7},
-    {n:'Cunnamulla',lat:-28.07,lon:145.68,z:7},
-    {n:'Tamworth',lat:-31.09,lon:150.93,z:7},{n:'Armidale',lat:-30.51,lon:151.67,z:7},{n:'Lismore',lat:-28.81,lon:153.28,z:7},
-    {n:'Grafton',lat:-29.69,lon:152.93,z:7},{n:'Orange',lat:-33.28,lon:149.10,z:7},{n:'Bathurst',lat:-33.42,lon:149.58,z:7},
-    {n:'Goulburn',lat:-34.75,lon:149.72,z:7},{n:'Griffith',lat:-34.29,lon:146.05,z:7},{n:'Cobar',lat:-31.50,lon:145.84,z:7},
-    {n:'Moree',lat:-29.46,lon:149.84,z:7},{n:'Albury',lat:-36.08,lon:146.92,z:7},{n:'Port Macquarie',lat:-31.43,lon:152.91,z:7},
-    {n:'Geelong',lat:-38.15,lon:144.36,z:7},{n:'Shepparton',lat:-36.38,lon:145.40,z:7},{n:'Wodonga',lat:-36.12,lon:146.89,z:7},
-    {n:'Horsham',lat:-36.71,lon:142.20,z:7},{n:'Swan Hill',lat:-35.34,lon:143.55,z:7},{n:'Sale',lat:-38.11,lon:147.07,z:7},
-    {n:'Wangaratta',lat:-36.36,lon:146.31,z:7},
-    {n:'Devonport',lat:-41.18,lon:146.35,z:7},{n:'Burnie',lat:-41.05,lon:145.91,z:7}
+    {n:'Cloncurry',lat:-20.71,lon:140.51,z:7},{n:'Normanton',lat:-17.67,lon:141.08,z:7},{n:'Innisfail',lat:-17.53,lon:146.03,z:7},{n:'Atherton',lat:-17.27,lon:145.48,z:7},
+    {n:'Bowen',lat:-20.02,lon:148.24,z:7},{n:'Cunnamulla',lat:-28.07,lon:145.68,z:7},
+    {n:'Cobar',lat:-31.50,lon:145.84,z:7}
   ];
   // fine scale (days 1-4) -- ENH removed: MDT dropped to its old (former-ENH) bar so it's the
   // practical ceiling for most significant days, HIGH keeps its old bar unchanged so it stays
