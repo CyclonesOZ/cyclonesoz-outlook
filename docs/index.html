@@ -89,9 +89,9 @@
   <div id="map"></div>
   <div id="gridWrap">
     <div class="gridPanel" data-hz="cat"><div class="gridTitle">Category Outlook</div><div class="gridmap" id="gridmap-cat"></div><div class="gridLegend" id="gridLegend-cat"></div></div>
-    <div class="gridPanel" data-hz="tprob"><div class="gridTitle">Thunderstorm Outlook</div><div class="gridmap" id="gridmap-tprob"></div><div class="gridLegend" id="gridLegend-tprob"></div><div class="gridPlaceholder" id="gridPlaceholder-tprob">Extended range (days 5&ndash;8) shows general risk only &mdash; see Category</div></div>
+    <div class="gridPanel" data-hz="tprob"><div class="gridTitle">Thunderstorm Outlook</div><div class="gridmap" id="gridmap-tprob"></div><div class="gridLegend" id="gridLegend-tprob"></div></div>
     <div class="gridPanel" data-hz="hail"><div class="gridTitle">Hail Outlook</div><div class="gridmap" id="gridmap-hail"></div><div class="gridLegend" id="gridLegend-hail"></div><div class="gridPlaceholder" id="gridPlaceholder-hail">Extended range (days 5&ndash;8) shows general risk only &mdash; see Category</div></div>
-    <div class="gridPanel" data-hz="flood"><div class="gridTitle">Flash Flood Outlook</div><div class="gridmap" id="gridmap-flood"></div><div class="gridLegend" id="gridLegend-flood"></div><div class="gridPlaceholder" id="gridPlaceholder-flood">Extended range (days 5&ndash;8) shows general risk only &mdash; see Category</div></div>
+    <div class="gridPanel" data-hz="flood"><div class="gridTitle">Excessive Rainfall Outlook</div><div class="gridmap" id="gridmap-flood"></div><div class="gridLegend" id="gridLegend-flood"></div><div class="gridPlaceholder" id="gridPlaceholder-flood">Extended range (days 5&ndash;8) shows general risk only &mdash; see Category</div></div>
   </div>
   <div id="topbar"><div class="title"><span class="eyebrow">Automated Severe Weather</span>CyclonesOZ<small>8-day severe storm outlook &middot; worst 6hr/day</small></div><div id="hazards"></div><div id="caption">Automated guidance from forecast model data. Not an official warning &mdash; always check the Bureau of Meteorology.<div id="updated"><span class="live-dot"></span><span id="updatedtxt"></span></div></div></div>
   <div id="days"></div>
@@ -155,16 +155,17 @@
   var COARSE=[{t:0.5,color:[120,192,120],name:'Chance of storm'},{t:3.5,color:[228,120,86],name:'Chance of severe storm'}];
 
   // hazard-specific views: each day's outlook.json entry also carries tprob (thunderstorm chance %,
-  // Open-Meteo's own ensemble precipitation_probability), hail (0-3 size tier) and flood (0/1 flash-flood
-  // risk) -- see pipeline/build_outlook.R. These render the same way as the category view (IDW field +
-  // d3 contour bands + coastline clip + smoothing) but with their own getter, thresholds and colors.
+  // Open-Meteo's own ensemble precipitation_probability), hail (0-3 size tier) and flood (0-3
+  // Excessive Rainfall Outlook tier: slight/moderate/high) -- see pipeline/build_outlook.R. These
+  // render the same way as the category view (IDW field + d3 contour bands + coastline clip +
+  // smoothing) but with their own getter, thresholds and colors.
   var HAZARDS_LIST=[
-    {key:'cat',   label:'Category',    sub:'SPC-style'},
-    {key:'tprob', label:'Thunder %',   sub:'20/50/80%'},
-    {key:'hail',  label:'Hail',        sub:'small/large/giant'},
-    {key:'flood', label:'Flash Flood', sub:'low/high risk'}
+    {key:'cat',   label:'Category',      sub:'SPC-style'},
+    {key:'tprob', label:'Thunder %',     sub:'20/50/80%'},
+    {key:'hail',  label:'Hail',          sub:'small/large/giant'},
+    {key:'flood', label:'Excessive Rain',sub:'slight/mod/high'}
   ];
-  var HAZ_TITLES={cat:'Storm risk',tprob:'Thunderstorm chance',hail:'Hail size potential',flood:'Flash flood risk'};
+  var HAZ_TITLES={cat:'Storm risk',tprob:'Thunderstorm chance',hail:'Hail size potential',flood:'Excessive rainfall risk'};
   var HAZ_GET={
     cat:   function(r){ return r.cat; },
     tprob: function(r){ return r.tprob||0; },
@@ -178,7 +179,7 @@
   var HAZ_SPECS={
     tprob:{thresholds:[20,50,80],colors:[[196,178,120],[120,206,206],[233,120,140]],labels:['20% or higher','50% or higher','80% or higher']},
     hail: {thresholds:[1,2,3],colors:[[224,180,40],[214,44,44],[142,44,196]],labels:['Small (<2cm)','Large (2-5cm)','Giant (>5cm)']},
-    flood:{thresholds:[1],colors:[[40,110,200]],labels:['High risk of flash flooding']}
+    flood:{thresholds:[1,2,3],colors:[[130,180,230],[40,110,200],[150,50,190]],labels:['Slight risk of excessive rainfall','Moderate risk of excessive rainfall','High risk of excessive rainfall']}
   };
   var selHazard='cat';
   var GRID_ORDER=['cat','tprob','hail','flood'];
@@ -393,7 +394,7 @@
     currentLayer=renderOnMap(map,selDay,selHazard);
     buildLegend();
   }
-  function showHazard(hz){ if(hz!=='cat' && extendedRange(selDay)) return; selHazard=hz; render(); }
+  function showHazard(hz){ if(hz!=='cat' && extendedRange(selDay,hz)) return; selHazard=hz; render(); }
 
   // keep all 4 grid maps looking at the same place: panning/zooming any one mirrors the other
   // three to the same center+zoom, each still showing its own hazard's data there. Guarded by
@@ -426,23 +427,26 @@
       requestAnimationFrame(function(){ gm.invalidateSize(); coverFit(gm,4); });
     });
   }
-  // Days 5-8 are extended-range: the model-native numeric parameters (thunderstorm %, hail tier,
-  // flood risk) get noisy and overconfident that far out, so -- matching how SPC's own Day 4-8
-  // outlook only ever shows one general risk category, never hazard-specific breakdowns -- those
-  // three views fall back to a placeholder and the UI forces the Category view instead.
-  function extendedRange(dayIdx){ return dayIdx>=4; }
+  // Days 5-8 are extended-range: the model-native sounding-derived parameters (hail tier,
+  // excessive-rainfall tier) get noisy and overconfident that far out, so -- matching how SPC's
+  // own Day 4-8 outlook only ever shows one general risk category -- those two views fall back to
+  // a placeholder and the UI forces the Category view instead. Thunderstorm % is the exception:
+  // it's read straight from Open-Meteo's own ensemble precipitation_probability, which is already
+  // an 8-day forecast field in its own right (not something this pipeline derives further out the
+  // way hail/flood are from single-model soundings), so there's no extra noise to hide there.
+  function extendedRange(dayIdx, hz){ return hz!=='tprob' && dayIdx>=4; }
   function syncHazardAvailability(){
     [].forEach.call(document.querySelectorAll('#hazards .dbtn.hz'),function(b){
-      b.classList.toggle('disabled', b.dataset.hz!=='cat' && extendedRange(selDay));
+      b.classList.toggle('disabled', b.dataset.hz!=='cat' && extendedRange(selDay,b.dataset.hz));
     });
   }
   function renderGrid(){
-    var ext=extendedRange(selDay);
     GRID_ORDER.forEach(function(hz){
       var gm=gridMaps[hz]; if(!gm) return;
       if(gridLayers[hz]) gm.removeLayer(gridLayers[hz]);
       var placeholder=document.getElementById('gridPlaceholder-'+hz);
-      if(hz!=='cat' && ext){
+      var ext=hz!=='cat' && extendedRange(selDay,hz);
+      if(ext){
         gridLayers[hz]=null;
         if(placeholder) placeholder.classList.add('show');
       }else{
@@ -453,7 +457,7 @@
     buildGridLegends();
   }
   function enterFocused(hz){
-    selHazard=(hz!=='cat' && extendedRange(selDay))?'cat':hz; viewMode='focused';
+    selHazard=(hz!=='cat' && extendedRange(selDay,hz))?'cat':hz; viewMode='focused';
     document.getElementById('wrap').classList.remove('gridmode');
     [].forEach.call(document.querySelectorAll('#hazards .dbtn.hz'),function(b){b.classList.toggle('active',b.dataset.hz===selHazard);});
     syncHazardAvailability();
@@ -470,7 +474,7 @@
     selDay=dayIdx;
     syncHazardAvailability();
     if(viewMode==='grid'){ renderGrid(); return; }
-    if(selHazard!=='cat' && extendedRange(selDay)){
+    if(selHazard!=='cat' && extendedRange(selDay,selHazard)){
       selHazard='cat';
       [].forEach.call(document.querySelectorAll('#hazards .dbtn.hz'),function(b){b.classList.toggle('active',b.dataset.hz==='cat');});
     }
@@ -497,9 +501,9 @@
       return;
     }
     if(selHazard==='flood'){
-      var fv=r.flood||0;
-      var fcol=fv?rgb(HAZ_SPECS.flood.colors[0]):'#5c6c7d';
-      box.innerHTML='<div class="cat" style="color:'+fcol+'">'+(fv?'High risk of flash flooding':'Low risk of flash flooding')+'</div><div class="sm">Forecast rainfall '+Math.round(r.rain||0)+'mm</div>';
+      var fv=r.flood||0,fc=HAZ_SPECS.flood,fnames=['No excessive rainfall risk'].concat(fc.labels);
+      var fcol=fv===0?'#5c6c7d':rgb(fc.colors[fv-1]);
+      box.innerHTML='<div class="cat" style="color:'+fcol+'">'+fnames[fv]+'</div><div class="sm">Forecast rainfall '+Math.round(r.rain||0)+'mm &middot; POP '+Math.round(r.pop||0)+'%</div>';
       return;
     }
     if(selDay>=4){
