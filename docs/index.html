@@ -21,6 +21,8 @@
   #topbar .title{font-weight:700;font-size:13.5px;line-height:1.3;color:var(--text);padding-bottom:9px;margin-bottom:9px;border-bottom:1px solid var(--border);}
   #topbar .title small{display:block;font-weight:400;font-size:10.5px;color:var(--muted);margin-top:3px;}
   #hazards{display:flex;flex-direction:column;gap:1px;}
+  #extNote{display:none;margin-top:9px;padding:7px 8px;background:#fdf6e3;border:1px solid #e8c877;border-radius:3px;font-size:9.5px;line-height:1.4;color:#8a6414;}
+  #extNote.show{display:block;}
   #caption{margin-top:auto;padding-top:10px;font-size:9.5px;letter-spacing:.02em;color:var(--muted);line-height:1.4;border-top:1px solid var(--border);}
   #updated{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:9.5px;margin-top:5px;text-transform:uppercase;letter-spacing:.04em;}
   #updated .live-dot{width:6px;height:6px;flex:none;border-radius:50%;background:#2aa876;box-shadow:0 0 0 2px rgba(42,168,118,.22);animation:pulse 2.2s ease-in-out infinite;}
@@ -88,12 +90,12 @@
 <div id="wrap">
   <div id="map"></div>
   <div id="gridWrap">
-    <div class="gridPanel" data-hz="cat"><div class="gridTitle">Category Outlook</div><div class="gridmap" id="gridmap-cat"></div><div class="gridLegend" id="gridLegend-cat"></div></div>
+    <div class="gridPanel" data-hz="cat"><div class="gridTitle">Thunderstorm Risk Outlook</div><div class="gridmap" id="gridmap-cat"></div><div class="gridLegend" id="gridLegend-cat"></div></div>
     <div class="gridPanel" data-hz="tprob"><div class="gridTitle">Thunderstorm Outlook</div><div class="gridmap" id="gridmap-tprob"></div><div class="gridLegend" id="gridLegend-tprob"></div></div>
     <div class="gridPanel" data-hz="hail"><div class="gridTitle">Hail Outlook</div><div class="gridmap" id="gridmap-hail"></div><div class="gridLegend" id="gridLegend-hail"></div><div class="gridPlaceholder" id="gridPlaceholder-hail">Extended range (days 5&ndash;8) shows general risk only &mdash; see Category</div></div>
     <div class="gridPanel" data-hz="flood"><div class="gridTitle">Excessive Rainfall Outlook</div><div class="gridmap" id="gridmap-flood"></div><div class="gridLegend" id="gridLegend-flood"></div><div class="gridPlaceholder" id="gridPlaceholder-flood">Extended range (days 5&ndash;8) shows general risk only &mdash; see Category</div></div>
   </div>
-  <div id="topbar"><div class="title"><span class="eyebrow">Automated Severe Weather</span>CyclonesOZ<small>8-day severe storm outlook &middot; worst 6hr/day</small></div><div id="hazards"></div><div id="caption">Automated guidance from forecast model data. Not an official warning &mdash; always check the Bureau of Meteorology.<div id="updated"><span class="live-dot"></span><span id="updatedtxt"></span></div></div></div>
+  <div id="topbar"><div class="title"><span class="eyebrow">Automated Severe Weather</span>CyclonesOZ<small>8-day severe storm outlook &middot; worst 6hr/day</small></div><div id="hazards"></div><div id="extNote">Extended range (Day 5+): model confidence drops significantly this far out &mdash; treat as broad, indicative guidance only.</div><div id="caption">Automated guidance from forecast model data. Not an official warning &mdash; always check the Bureau of Meteorology.<div id="updated"><span class="live-dot"></span><span id="updatedtxt"></span></div></div></div>
   <div id="days"></div>
   <div id="info"><span class="hint">Hover the map for storm risk at that spot.</span></div>
   <div id="legend"></div>
@@ -417,6 +419,7 @@
       coverFit(gm,4);
       gm.zoomControl.setPosition('topright');
       drawBasemap(gm);
+      drawTowns(gm);
       var titleEl=document.querySelector('.gridPanel[data-hz="'+hz+'"] .gridTitle');
       if(titleEl) titleEl.addEventListener('click',function(){ enterFocused(hz); });
       gm.on('move zoom',function(){ syncGridView(gm); });
@@ -439,6 +442,10 @@
     [].forEach.call(document.querySelectorAll('#hazards .dbtn.hz'),function(b){
       b.classList.toggle('disabled', b.dataset.hz!=='cat' && extendedRange(selDay,b.dataset.hz));
     });
+  }
+  function syncExtNote(){
+    var el=document.getElementById('extNote');
+    if(el) el.classList.toggle('show', selDay>=4);
   }
   function renderGrid(){
     GRID_ORDER.forEach(function(hz){
@@ -473,6 +480,7 @@
   function showDay(dayIdx){
     selDay=dayIdx;
     syncHazardAvailability();
+    syncExtNote();
     if(viewMode==='grid'){ renderGrid(); return; }
     if(selHazard!=='cat' && extendedRange(selDay,selHazard)){
       selHazard='cat';
@@ -579,7 +587,7 @@
     o.points.forEach(function(p){GRID.push([p.lat,p.lon]);results.push(p.d);});
     bounds();
     coverFit(map,16);
-    buildDayButtons();buildHazardButtons();syncHazardAvailability();
+    buildDayButtons();buildHazardButtons();syncHazardAvailability();syncExtNote();
     document.getElementById('wrap').classList.add('gridmode'); // panels must be visible/sized before Leaflet measures them for fitBounds
     initGridMaps();enterGrid();
     document.getElementById('updatedtxt').textContent='Updated '+(o.run_date?new Date(o.run_date).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'—');
