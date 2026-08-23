@@ -192,16 +192,13 @@
   // coarse scale (days 5-8)
   var COARSE=[{t:0.5,color:[120,192,120],name:'Chance of storm'},{t:3.5,color:[228,120,86],name:'Chance of severe storm'}];
 
-  // 6 slots by design even though only 4 are live: fire + damaging-wind outlooks are planned next
-  // (pipeline doesn't compute them yet) so their dropdown entries exist now, disabled, rather than
-  // requiring another layout change when they land.
   var HAZARDS_LIST=[
     {key:'cat',   label:'Category Outlook',    enabled:true,  desc:'SPC-style overall severe risk (TSTM to HIGH), from instability, shear and rainfall.'},
     {key:'tprob', label:'Thunderstorm Chance',  enabled:true,  desc:"Likelihood of any thunderstorm activity, from the model's own rain probability."},
     {key:'flood', label:'Excessive Rainfall',   enabled:true,  desc:'Flash-flood risk tiers (Slight/Moderate/High) from forecast rainfall totals and rates.'},
     {key:'hail',  label:'Hail',                 enabled:true,  desc:'Potential hail size (Small/Large/Giant) from supercell composite parameters.'},
-    {key:'fire',  label:'Fire Danger',          enabled:false, desc:'Coming soon.'},
-    {key:'wind',  label:'Damaging Winds',       enabled:false, desc:'Coming soon.'}
+    {key:'fire',  label:'Fire Danger',          enabled:true,  desc:'McArthur FFDI-based proxy (Moderate to Catastrophic) from heat, dryness, wind and soil moisture.'},
+    {key:'wind',  label:'Damaging Winds',       enabled:true,  desc:'Convective wind-damage tiers, shown only on days with severe thunderstorms (SLGT+) forecast.'}
   ];
   function hazDef(key){ for(var i=0;i<HAZARDS_LIST.length;i++){ if(HAZARDS_LIST[i].key===key) return HAZARDS_LIST[i]; } return null; }
   function isEnabled(key){ var h=hazDef(key); return !!(h && h.enabled); }
@@ -209,16 +206,23 @@
     cat:   function(r){ return r.cat; },
     tprob: function(r){ return r.tprob||0; },
     hail:  function(r){ return r.hail||0; },
-    flood: function(r){ return r.flood||0; }
+    flood: function(r){ return r.flood||0; },
+    fire:  function(r){ return r.fire||0; },
+    wind:  function(r){ return r.wind||0; }
   };
   // colors follow the real SPC convective-outlook families: thunderstorm probability uses its own
   // tan/cyan/pink ramp, while hazard-specific (hail/wind/tornado-style) panels share the brown-gold-
-  // red-magenta-purple severe-probability ramp. We only have 3 tiers per hazard (vs SPC's 5-6), so each
-  // picks a representative subset of that ramp rather than the full percentage scale.
+  // red-magenta-purple severe-probability ramp. We only have 3-4 tiers per hazard (vs SPC's 5-6), so
+  // each picks a representative subset of that ramp rather than the full percentage scale. Fire gets
+  // its own yellow-orange-red-maroon progression (matching how fire danger is conventionally shown,
+  // distinct from the storm-hazard families); wind gets a slate-to-violet ramp so it doesn't collide
+  // visually with flood's blues or hail's gold/red/purple.
   var HAZ_SPECS={
     tprob:{thresholds:[20,50,80],colors:[[196,178,120],[120,206,206],[233,120,140]],labels:['20% or higher','50% or higher','80% or higher']},
     hail: {thresholds:[1,2,3],colors:[[224,180,40],[214,44,44],[142,44,196]],labels:['Small (<2cm)','Large (2-5cm)','Giant (>5cm)']},
-    flood:{thresholds:[1,2,3],colors:[[130,180,230],[40,110,200],[150,50,190]],labels:['Slight risk of excessive rainfall','Moderate risk of excessive rainfall','High risk of excessive rainfall']}
+    flood:{thresholds:[1,2,3],colors:[[130,180,230],[40,110,200],[150,50,190]],labels:['Slight risk of excessive rainfall','Moderate risk of excessive rainfall','High risk of excessive rainfall']},
+    fire: {thresholds:[1,2,3,4],colors:[[230,196,60],[233,148,40],[218,74,40],[120,24,24]],labels:['Moderate','High','Extreme','Catastrophic']},
+    wind: {thresholds:[1,2,3],colors:[[150,160,196],[96,92,158],[58,38,86]],labels:['Damaging (90km/h+)','Destructive (125km/h+)','Very destructive (160km/h+)']}
   };
 
   // ---- plane state: up to 4 Leaflet map instances are created once at load; dual mode simply
@@ -632,6 +636,16 @@
       var fv=r.flood||0,fc=HAZ_SPECS.flood,fnames=['No excessive rainfall risk'].concat(fc.labels);
       var fcol=fv===0?'#5c6c7d':rgb(fc.colors[fv-1]);
       return '<div class="cat" style="color:'+fcol+'">'+fnames[fv]+'</div><div class="sm">Forecast rainfall '+Math.round(r.rain||0)+'mm &middot; POP '+Math.round(r.pop||0)+'%</div>';
+    }
+    if(hz==='fire'){
+      var frv=r.fire||0,frc=HAZ_SPECS.fire,frnames=['Low-moderate (below reporting threshold)'].concat(frc.labels);
+      var frcol=frv===0?'#5c6c7d':rgb(frc.colors[frv-1]);
+      return '<div class="cat" style="color:'+frcol+'">'+frnames[frv]+'</div><div class="sm">Peak FFDI (proxy) '+Math.round(r.ffdi||0)+'</div>';
+    }
+    if(hz==='wind'){
+      var wv=r.wind||0,wc=HAZ_SPECS.wind,wnames=['No damaging wind risk'].concat(wc.labels);
+      var wcol=wv===0?'#5c6c7d':rgb(wc.colors[wv-1]);
+      return '<div class="cat" style="color:'+wcol+'">'+wnames[wv]+'</div><div class="sm">CAPE '+Math.round(r.cape)+' J/kg &middot; Shear '+Math.round(r.shear)+' kt</div>';
     }
     // cat
     if(selDay>=4){
