@@ -9,28 +9,40 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Turf.js/7.1.0/turf.min.js"></script>
 <style>
-  :root{ --bg:#eef0f2; --panel:#ffffff; --border:#c7ccd1; --text:#1a1a1a; --muted:#6a6f75; --accent:#1a56c4; --sbw:196px; --dth:44px; }
+  :root{ --bg:#eef0f2; --panel:#ffffff; --border:#c7ccd1; --text:#1a1a1a; --muted:#6a6f75; --accent:#1a56c4; --sbw:232px; --dth:44px; }
   html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
   #wrap{position:relative;height:100vh;width:100%;overflow:hidden;background:var(--panel);}
-  #map{position:absolute;top:var(--dth);left:var(--sbw);right:0;bottom:0;background:var(--bg);}
   .leaflet-container{background:var(--bg);font-family:inherit;}
 
   #topbar{position:fixed;top:0;left:0;bottom:0;width:var(--sbw);z-index:1000;box-sizing:border-box;
     display:flex;flex-direction:column;padding:12px 12px 10px;background:var(--panel);border-right:1px solid var(--border);overflow-y:auto;}
   #topbar .eyebrow{display:block;font-weight:700;font-size:8.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin-bottom:3px;}
-  #topbar .title{font-weight:700;font-size:13.5px;line-height:1.3;color:var(--text);padding-bottom:9px;margin-bottom:9px;border-bottom:1px solid var(--border);}
+  #topbar .title{font-weight:700;font-size:13.5px;line-height:1.3;color:var(--text);padding-bottom:9px;margin-bottom:10px;border-bottom:1px solid var(--border);}
   #topbar .title small{display:block;font-weight:400;font-size:10.5px;color:var(--muted);margin-top:3px;}
-  #hazards{display:flex;flex-direction:column;gap:1px;}
-  #extNote{display:none;margin-top:9px;padding:7px 8px;background:#fdf6e3;border:1px solid #e8c877;border-radius:3px;font-size:9.5px;line-height:1.4;color:#8a6414;}
+
+  #modeToggle{display:flex;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:3px;overflow:hidden;margin-bottom:11px;flex:none;}
+  #modeToggle button{flex:1;background:var(--panel);border:none;padding:7px 0;font:700 11px inherit;color:var(--text);cursor:pointer;font-family:inherit;}
+  #modeToggle button.active{background:var(--accent);color:#fff;}
+  #modeToggle button:hover:not(.active){background:#f2f4f6;}
+
+  #about{font-size:9.5px;line-height:1.5;color:var(--muted);padding-bottom:11px;margin-bottom:11px;border-bottom:1px solid var(--border);}
+  #about b{color:var(--text);font-weight:700;}
+
+  #planeInfo{display:flex;flex-direction:column;gap:9px;}
+  #planeInfo .cap,#caption .cap{color:var(--muted);font-weight:700;text-transform:uppercase;font-size:9px;letter-spacing:.06em;margin-bottom:1px;}
+  .planeDesc{font-size:10.5px;line-height:1.4;}
+  .planeDesc b{color:#fff;background:var(--accent);border-radius:2px;padding:1px 5px;margin-right:5px;font-size:9.5px;}
+  .planeDesc small{display:block;color:var(--muted);font-weight:400;font-size:9.5px;margin-top:2px;}
+
+  #extNote{display:none;margin-top:11px;padding:7px 8px;background:#fdf6e3;border:1px solid #e8c877;border-radius:3px;font-size:9.5px;line-height:1.4;color:#8a6414;}
   #extNote.show{display:block;}
-  #caption{margin-top:auto;padding-top:10px;font-size:9.5px;letter-spacing:.02em;color:var(--muted);line-height:1.4;border-top:1px solid var(--border);}
+  #caption{margin-top:auto;padding-top:11px;font-size:9.5px;letter-spacing:.02em;color:var(--muted);line-height:1.4;border-top:1px solid var(--border);}
   #updated{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:9.5px;margin-top:5px;text-transform:uppercase;letter-spacing:.04em;}
   #updated .live-dot{width:6px;height:6px;flex:none;border-radius:50%;background:#2aa876;box-shadow:0 0 0 2px rgba(42,168,118,.22);animation:pulse 2.2s ease-in-out infinite;}
   @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
 
   #days{position:fixed;top:0;left:var(--sbw);right:0;height:var(--dth);z-index:1000;box-sizing:border-box;
     display:flex;background:var(--panel);border-bottom:1px solid var(--border);overflow-x:auto;}
-
   .dbtn{background:transparent;border:none;border-right:1px solid var(--border);color:var(--text);font-size:11px;font-weight:600;
     padding:5px 12px;cursor:pointer;white-space:nowrap;text-align:center;font-family:inherit;}
   #days .dbtn{flex:1 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;}
@@ -38,67 +50,67 @@
   #days .dbtn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
   #days .dbtn small{display:block;font-weight:400;font-size:9px;opacity:.85;margin-top:1px;}
 
-  #hazards .dbtn{border-right:none;border-bottom:1px solid var(--border);text-align:left;padding:7px 4px;color:var(--text);}
-  #hazards .dbtn:last-child{border-bottom:none;}
-  #hazards .dbtn:hover{color:var(--accent);}
-  #hazards .dbtn.active{color:var(--accent);font-weight:700;}
-  #hazards .dbtn small{display:block;font-weight:400;font-size:9.5px;color:var(--muted);opacity:1;margin-top:1px;white-space:normal;}
-  #hazards .dbtn.back{color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:2px;}
-  #hazards .dbtn.hz.disabled{opacity:.35;cursor:not-allowed;pointer-events:none;}
-
-  #info{position:absolute;top:calc(var(--dth) + 10px);left:calc(var(--sbw) + 10px);z-index:1000;background:var(--panel);border:1px solid var(--border);border-radius:3px;padding:9px 11px;max-width:230px;font-size:12px;line-height:1.45;pointer-events:none;box-shadow:0 2px 6px rgba(0,0,0,.1);}
+  #info{position:fixed;z-index:2500;background:var(--panel);border:1px solid var(--border);border-radius:3px;padding:9px 11px;max-width:230px;font-size:12px;line-height:1.45;pointer-events:none;box-shadow:0 3px 10px rgba(0,0,0,.16);display:none;}
+  #info.show{display:block;}
   #info .cat{font-weight:700;font-size:13px;}
   #info .hint{color:var(--muted);} #info .sm{color:var(--muted);font-size:11px;margin-top:2px;}
-  #legend{position:absolute;bottom:10px;right:10px;z-index:1000;background:var(--panel);border:1px solid var(--border);border-radius:3px;padding:9px 11px;font-size:11px;box-shadow:0 2px 6px rgba(0,0,0,.1);}
-  #legend .cap{color:var(--muted);margin-bottom:6px;font-weight:700;text-transform:uppercase;font-size:9.5px;letter-spacing:.05em;}
-  #legend .row{display:flex;align-items:center;gap:8px;margin:4px 0;} #legend .sw{width:16px;height:11px;border-radius:1px;border:1px solid rgba(0,0,0,.35);}
 
-  #load{position:absolute;inset:0;z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:var(--panel);text-align:center;padding:24px;}
+  #load{position:absolute;inset:0;z-index:3000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:var(--panel);text-align:center;padding:24px;}
   #load .sp{width:30px;height:30px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;}
   #load .msg{font-size:13px;color:var(--muted);max-width:320px;} .err{color:#b02a2a;}
   @keyframes spin{to{transform:rotate(360deg)}}
   .town{font-size:11px;font-weight:600;color:#15263a;text-shadow:0 0 3px #fff,0 0 3px #fff,0 1px 2px #fff;white-space:nowrap;}
   .town .dot{display:inline-block;width:3px;height:3px;border-radius:50%;background:#15263a;margin-right:3px;vertical-align:middle;box-shadow:0 0 2px #fff;}
+  .stateLbl{font-size:16px;font-weight:800;letter-spacing:.07em;color:rgba(98,112,128,.4);text-shadow:0 0 5px #fff,0 0 5px #fff,0 0 5px #fff;white-space:nowrap;pointer-events:none;}
 
-  #wrap.gridmode #map{display:none;}
-  #wrap.gridmode #hazards{display:none;}
-  #wrap.gridmode #info{display:none;}
-  #wrap.gridmode #legend{display:none;}
-  #wrap:not(.gridmode) #gridWrap{display:none;}
-  #gridWrap{position:absolute;top:var(--dth);left:var(--sbw);right:0;bottom:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:1px;background:var(--border);box-sizing:border-box;}
-  .gridPanel{position:relative;overflow:hidden;background:var(--bg);}
-  .gridPanel:hover{outline:2px solid var(--accent);outline-offset:-2px;z-index:1;}
-  .gridmap{position:absolute;inset:0;}
-  .gridTitle{position:absolute;top:6px;left:6px;z-index:500;font-weight:700;font-size:11px;color:var(--text);background:var(--panel);border:1px solid var(--border);padding:3px 8px;border-radius:2px;pointer-events:auto;cursor:pointer;}
-  .gridTitle:hover{background:var(--accent);border-color:var(--accent);color:#fff;}
-  .gridLegend{position:absolute;bottom:6px;left:6px;z-index:500;background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:5px 7px;font-size:9px;pointer-events:none;max-width:52%;}
-  .gridLegend .row{display:flex;align-items:center;gap:4px;margin:1px 0;line-height:1.2;}
-  .gridLegend .sw{width:11px;height:8px;border-radius:1px;border:1px solid rgba(0,0,0,.3);flex:none;}
-  .gridPlaceholder{position:absolute;inset:0;z-index:400;display:none;align-items:center;justify-content:center;text-align:center;padding:20px 32px;font-size:12px;color:var(--muted);background:rgba(255,255,255,.85);}
-  .gridPlaceholder.show{display:flex;}
+  #planes{position:absolute;top:var(--dth);left:var(--sbw);right:0;bottom:0;display:grid;gap:1px;background:var(--border);
+    box-sizing:border-box;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;}
+  #planes.mode-dual{grid-template-rows:1fr;}
+  #planes.mode-dual .plane[data-idx="2"],#planes.mode-dual .plane[data-idx="3"]{display:none;}
+  .plane{position:relative;overflow:hidden;background:var(--bg);}
+  .plane:hover{outline:2px solid var(--accent);outline-offset:-2px;z-index:1;}
+  .planeMap{position:absolute;inset:0;}
+  .planeIdx{position:absolute;top:6px;left:6px;z-index:500;font-weight:800;font-size:10px;color:var(--muted);
+    background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:3px 7px;pointer-events:none;}
+  .planeSelect{position:absolute;top:66px;right:8px;z-index:500;font:700 11px/1.2 inherit;color:var(--text);
+    background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:5px 8px;cursor:pointer;
+    width:180px;max-width:calc(100% - 16px);text-overflow:ellipsis;}
+  .planeSelect:hover{border-color:var(--accent);}
+  .planeLegend{position:absolute;bottom:6px;left:6px;z-index:500;background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:5px 7px;font-size:9px;pointer-events:none;max-width:52%;}
+  .planeLegend .row{display:flex;align-items:center;gap:4px;margin:1px 0;line-height:1.2;}
+  .planeLegend .sw{width:11px;height:8px;border-radius:1px;border:1px solid rgba(0,0,0,.3);flex:none;}
+  .planePlaceholder{position:absolute;inset:0;z-index:400;display:none;align-items:center;justify-content:center;text-align:center;padding:20px 32px;font-size:12px;color:var(--muted);background:rgba(255,255,255,.85);}
+  .planePlaceholder.show{display:flex;}
+
   @media (max-width:640px){
-    :root{ --sbw:120px; --dth:52px; }
+    :root{ --sbw:150px; --dth:52px; }
     #topbar .title{font-size:11.5px;} #topbar .title small{display:none;}
-    #hazards .dbtn small{display:none;}
-    #info{max-width:150px;font-size:11px;} #caption{font-size:9px;}
+    #about,#planeInfo .planeDesc small{font-size:8.5px;}
+    #modeToggle button{font-size:9.5px;padding:6px 0;}
+    .planeIdx{font-size:8.5px;padding:2px 5px;} .planeSelect{font-size:9px;padding:4px 6px;top:56px;width:104px;}
+    .planeLegend{font-size:7.5px;}
     #days .dbtn{padding:4px 6px;font-size:9.5px;}
-    .gridTitle{font-size:9px;padding:2px 5px;} .gridLegend{font-size:7.5px;}
   }
 </style>
 </head>
 <body>
 <div id="wrap">
-  <div id="map"></div>
-  <div id="gridWrap">
-    <div class="gridPanel" data-hz="cat"><div class="gridTitle">Thunderstorm Risk Outlook</div><div class="gridmap" id="gridmap-cat"></div><div class="gridLegend" id="gridLegend-cat"></div></div>
-    <div class="gridPanel" data-hz="tprob"><div class="gridTitle">Thunderstorm Outlook</div><div class="gridmap" id="gridmap-tprob"></div><div class="gridLegend" id="gridLegend-tprob"></div></div>
-    <div class="gridPanel" data-hz="hail"><div class="gridTitle">Hail Outlook</div><div class="gridmap" id="gridmap-hail"></div><div class="gridLegend" id="gridLegend-hail"></div><div class="gridPlaceholder" id="gridPlaceholder-hail">Extended range (days 5&ndash;8) shows general risk only &mdash; see Category</div></div>
-    <div class="gridPanel" data-hz="flood"><div class="gridTitle">Excessive Rainfall Outlook</div><div class="gridmap" id="gridmap-flood"></div><div class="gridLegend" id="gridLegend-flood"></div><div class="gridPlaceholder" id="gridPlaceholder-flood">Extended range (days 5&ndash;8) shows general risk only &mdash; see Category</div></div>
+  <div id="planes" class="mode-quad">
+    <div class="plane" data-idx="0"><div class="planeMap" id="planeMap-0"></div><div class="planeIdx" id="planeIdx-0">A</div><select class="planeSelect" id="planeSelect-0"></select><div class="planeLegend" id="planeLegend-0"></div><div class="planePlaceholder" id="planePlaceholder-0">Extended range (days 5&ndash;8) shows Category only</div></div>
+    <div class="plane" data-idx="1"><div class="planeMap" id="planeMap-1"></div><div class="planeIdx" id="planeIdx-1">B</div><select class="planeSelect" id="planeSelect-1"></select><div class="planeLegend" id="planeLegend-1"></div><div class="planePlaceholder" id="planePlaceholder-1">Extended range (days 5&ndash;8) shows Category only</div></div>
+    <div class="plane" data-idx="2"><div class="planeMap" id="planeMap-2"></div><div class="planeIdx" id="planeIdx-2">C</div><select class="planeSelect" id="planeSelect-2"></select><div class="planeLegend" id="planeLegend-2"></div><div class="planePlaceholder" id="planePlaceholder-2">Extended range (days 5&ndash;8) shows Category only</div></div>
+    <div class="plane" data-idx="3"><div class="planeMap" id="planeMap-3"></div><div class="planeIdx" id="planeIdx-3">D</div><select class="planeSelect" id="planeSelect-3"></select><div class="planeLegend" id="planeLegend-3"></div><div class="planePlaceholder" id="planePlaceholder-3">Extended range (days 5&ndash;8) shows Category only</div></div>
   </div>
-  <div id="topbar"><div class="title"><span class="eyebrow">Automated Severe Weather</span>CyclonesOZ<small>8-day severe storm outlook &middot; worst 6hr/day</small></div><div id="hazards"></div><div id="extNote">Extended range (Day 5+): model confidence drops significantly this far out &mdash; treat as broad, indicative guidance only.</div><div id="caption">Automated guidance from forecast model data. Not an official warning &mdash; always check the Bureau of Meteorology.<div id="updated"><span class="live-dot"></span><span id="updatedtxt"></span></div></div></div>
+  <div id="topbar">
+    <div class="title"><span class="eyebrow">Automated Severe Weather</span>CyclonesOZ<small>8-day severe storm outlook</small></div>
+    <div id="modeToggle"><button class="modeBtn" data-mode="dual">Dual plane</button><button class="modeBtn active" data-mode="quad">Quad plane</button></div>
+    <div id="about"><b>How this runs:</b> built from Open-Meteo's GFS forecast soundings, processed daily into severe-weather parameters (CAPE, shear, SCP, STP, SHIP) and averaged over each day's worst 6 hours. Fully automated, no forecaster in the loop.</div>
+    <div id="planeInfo"></div>
+    <div id="extNote">Extended range (Day 5+): model confidence drops significantly this far out &mdash; treat as broad, indicative guidance only.</div>
+    <div id="caption"><div class="cap">Disclaimer</div>Automated guidance from forecast model data. Not an official warning &mdash; always check the Bureau of Meteorology.<div id="updated"><span class="live-dot"></span><span id="updatedtxt"></span></div></div>
+  </div>
   <div id="days"></div>
-  <div id="info"><span class="hint">Hover the map for storm risk at that spot.</span></div>
-  <div id="legend"></div>
+  <div id="info"></div>
   <div id="load"><div class="sp"></div><div class="msg" id="loadmsg">Loading outlook&hellip;</div></div>
 </div>
 <script>
@@ -146,6 +158,15 @@
     {n:'Bowen',lat:-20.02,lon:148.24,z:7},{n:'Cunnamulla',lat:-28.07,lon:145.68,z:7},
     {n:'Cobar',lat:-31.50,lon:145.84,z:7}
   ];
+  // approximate state label points -- area-weighted centroids computed from docs/states.geo.json's
+  // own (rough, ~10-22 vertex) polygons, not hand-picked, so they land in a reasonable visual middle
+  // of each state rather than guessed. ACT is omitted: at this map scale its label would sit right
+  // on top of the Canberra town label already shown, adding clutter rather than context.
+  var STATES=[
+    {n:'WA',lat:-25.62,lon:122.06},{n:'NT',lat:-19.40,lon:133.40},{n:'SA',lat:-30.09,lon:135.78},
+    {n:'QLD',lat:-22.65,lon:144.57},{n:'NSW',lat:-32.15,lon:146.88},{n:'VIC',lat:-36.82,lon:144.38},
+    {n:'TAS',lat:-41.90,lon:146.58}
+  ];
   // fine scale (days 1-4) -- ENH removed: MDT dropped to its old (former-ENH) bar so it's the
   // practical ceiling for most significant days, HIGH keeps its old bar unchanged so it stays
   // reserved for rare, potentially life-threatening outbreak days. See pipeline/build_outlook.R.
@@ -159,18 +180,19 @@
   // coarse scale (days 5-8)
   var COARSE=[{t:0.5,color:[120,192,120],name:'Chance of storm'},{t:3.5,color:[228,120,86],name:'Chance of severe storm'}];
 
-  // hazard-specific views: each day's outlook.json entry also carries tprob (thunderstorm chance %,
-  // Open-Meteo's own ensemble precipitation_probability), hail (0-3 size tier) and flood (0-3
-  // Excessive Rainfall Outlook tier: slight/moderate/high) -- see pipeline/build_outlook.R. These
-  // render the same way as the category view (IDW field + d3 contour bands + coastline clip +
-  // smoothing) but with their own getter, thresholds and colors.
+  // 6 slots by design even though only 4 are live: fire + damaging-wind outlooks are planned next
+  // (pipeline doesn't compute them yet) so their dropdown entries exist now, disabled, rather than
+  // requiring another layout change when they land.
   var HAZARDS_LIST=[
-    {key:'cat',   label:'Category',      sub:'SPC-style'},
-    {key:'tprob', label:'Thunder %',     sub:'20/50/80%'},
-    {key:'hail',  label:'Hail',          sub:'small/large/giant'},
-    {key:'flood', label:'Excessive Rain',sub:'slight/mod/high'}
+    {key:'cat',   label:'Category Outlook',    enabled:true,  desc:'SPC-style overall severe risk (TSTM to HIGH), from instability, shear and rainfall.'},
+    {key:'tprob', label:'Thunderstorm Chance',  enabled:true,  desc:"Likelihood of any thunderstorm activity, from the model's own rain probability."},
+    {key:'flood', label:'Excessive Rainfall',   enabled:true,  desc:'Flash-flood risk tiers (Slight/Moderate/High) from forecast rainfall totals and rates.'},
+    {key:'hail',  label:'Hail',                 enabled:true,  desc:'Potential hail size (Small/Large/Giant) from supercell composite parameters.'},
+    {key:'fire',  label:'Fire Danger',          enabled:false, desc:'Coming soon.'},
+    {key:'wind',  label:'Damaging Winds',       enabled:false, desc:'Coming soon.'}
   ];
-  var HAZ_TITLES={cat:'Storm risk',tprob:'Thunderstorm chance',hail:'Hail size potential',flood:'Excessive rainfall risk'};
+  function hazDef(key){ for(var i=0;i<HAZARDS_LIST.length;i++){ if(HAZARDS_LIST[i].key===key) return HAZARDS_LIST[i]; } return null; }
+  function isEnabled(key){ var h=hazDef(key); return !!(h && h.enabled); }
   var HAZ_GET={
     cat:   function(r){ return r.cat; },
     tprob: function(r){ return r.tprob||0; },
@@ -186,15 +208,17 @@
     hail: {thresholds:[1,2,3],colors:[[224,180,40],[214,44,44],[142,44,196]],labels:['Small (<2cm)','Large (2-5cm)','Giant (>5cm)']},
     flood:{thresholds:[1,2,3],colors:[[130,180,230],[40,110,200],[150,50,190]],labels:['Slight risk of excessive rainfall','Moderate risk of excessive rainfall','High risk of excessive rainfall']}
   };
-  var selHazard='cat';
-  var GRID_ORDER=['cat','tprob','hail','flood'];
-  var viewMode='grid';
-  var gridMaps={},gridLayers={};
 
-  var map=L.map('map',{zoomControl:true,attributionControl:false,minZoom:3,maxZoom:10,worldCopyJump:false,maxBounds:[[-46,108],[-8,157]],maxBoundsViscosity:0.7,preferCanvas:false}).setView([-27.5,134],4);
+  // ---- plane state: up to 4 Leaflet map instances are created once at load; dual mode simply
+  // hides planes 2/3 via CSS rather than destroying/recreating maps when the mode is toggled ----
+  var planeMode='quad';
+  var planeAssign=['cat','tprob','hail','flood'];
+  var planeMaps=[null,null,null,null], planeLayers=[null,null,null,null];
+  var planeLandLayers=[null,null,null,null], planeHillshadeLayers=[null,null,null,null];
+  function visibleCount(){ return planeMode==='dual'?2:4; }
 
   // coastline.geo.json is simplified for a whole-of-country view (~40km between vertices on the
-  // mainland ring) -- fine zoomed out, visibly blocky/angular once the grid maps became zoomable.
+  // mainland ring) -- fine zoomed out, visibly blocky/angular once the panels became zoomable.
   // Chaikin-smooth it once at load, same technique already used for the hazard bands, so panning
   // in doesn't reveal straight-line facets. Coordinates here are [lon,lat] degrees rather than the
   // grid pixel space the hazard-band pipeline uses, but chaikinRing is just linear interpolation
@@ -213,26 +237,27 @@
   // flat vector basemap (no raster tiles) styled after SPC's convective-outlook maps: near-white
   // land, plain gray state/coast lines, no terrain/place clutter competing with the hazard bands.
   var LAND_STYLE={color:'#7f95a6',weight:1,fillColor:'#fbfbf8',fillOpacity:1};
-  // used only on the main focused map when hillshade is under it -- lets the relief texture
-  // show through instead of being hidden under an opaque fill.
+  // swapped in on planes 0/1 while dual-plane hillshade is active, so the relief texture shows
+  // through instead of being hidden under an opaque fill.
   var LAND_STYLE_HILLSHADE={color:'#7f95a6',weight:1,fillColor:'#fbfbf8',fillOpacity:0.22};
   var DISTRICT_STYLE={color:'#9aa7b2',weight:0.7,fillOpacity:0};
   function drawBasemap(m, style){
-    L.geoJSON(LAND,{interactive:false,style:style||LAND_STYLE}).addTo(m);
+    var land=L.geoJSON(LAND,{interactive:false,style:style||LAND_STYLE}).addTo(m);
     if(DISTRICTS) L.geoJSON(DISTRICTS,{interactive:false,style:DISTRICT_STYLE}).addTo(m);
+    return land;
   }
-  // subtle terrain relief for the main focused map only -- the 4 grid overview maps skip this
-  // to stay fast (4 more simultaneous tile layers would meaningfully slow the grid's first
-  // paint) and uncluttered. ESRI's World_Hillshade is a free, no-API-key XYZ tile service; low
-  // opacity keeps it a background texture accent, not competing with the hazard bands for
-  // attention the way a full-color terrain/satellite layer would.
+  // subtle terrain relief -- only ever shown on planes 0/1 (the two that exist in dual-plane mode,
+  // where each panel is big enough for the texture to read as an accent rather than clutter) and
+  // toggled on/off as the user switches modes, rather than being tied to a fixed "main map" the
+  // way it was before planes became mode-dependent. ESRI's World_Hillshade is a free, no-API-key
+  // XYZ tile service; low opacity keeps it a background texture, not competing with hazard bands.
   function drawHillshade(m){
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}', {
+    return L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}', {
       opacity:0.65, maxZoom:13, attribution:''
     }).addTo(m);
   }
   function drawTowns(m){
-    // most towns show at every zoom; towns tagged z:7+ only appear once the viewer has zoomed in close,
+    // most towns show at every zoom; towns tagged z:4/z:7 only appear once the viewer has zoomed in,
     // so the ~100-town nationwide set doesn't clutter the default whole-of-Australia view
     var tiered=TOWNS.map(function(t){
       return {z:t.z||3,mk:L.marker([t.lat,t.lon],{interactive:false,icon:L.divIcon({className:'',html:'<div class="town"><span class="dot"></span>'+t.n+'</div>',iconSize:[0,0],iconAnchor:[2,7]})}).addTo(m)};
@@ -240,6 +265,19 @@
     function sync(){
       var z=m.getZoom();
       tiered.forEach(function(t){var el=t.mk.getElement();if(el) el.style.display=z>=t.z?'':'none';});
+    }
+    m.on('zoomend',sync);
+    sync();
+  }
+  function drawStates(m){
+    // opposite tiering to towns: state context matters at a broad, zoomed-out view and just adds
+    // clutter once zoomed in past a regional scale, so these fade out past z:6 rather than in.
+    var marks=STATES.map(function(s){
+      return L.marker([s.lat,s.lon],{interactive:false,icon:L.divIcon({className:'',html:'<div class="stateLbl">'+s.n+'</div>',iconSize:[0,0],iconAnchor:[0,0]})}).addTo(m);
+    });
+    function sync(){
+      var z=m.getZoom();
+      marks.forEach(function(mk){var el=mk.getElement();if(el) el.style.display=z<=6?'':'none';});
     }
     m.on('zoomend',sync);
     sync();
@@ -262,13 +300,13 @@
     // the ~0.2 degree spacing of the underlying grid points, so supersampling here doesn't
     // change what the map says -- it just gives d3.contours() 4x the vertices to work with,
     // which is what the blocky/rigid look actually traced back to (marching-squares facets
-    // sized to the old coarse mesh, most visible once the maps became zoomable).
+    // sized to the old coarse mesh, most visible once the panels became zoomable).
     nx=Math.round((maxLon-minLon)/0.1); ny=Math.round((maxLat-minLat)/0.1);
   }
-  // fitBounds() always "contains" (never crops), so a panel much wider than Australia's
-  // shape (true for the 4-across grid panels) leaves large empty margins on the wide axis.
-  // This instead picks the zoom that fills the panel on its DOMINANT axis, cropping a little
-  // off the other axis if needed -- the same "cover" tradeoff SPC's own outlook maps make.
+  // fitBounds() always "contains" (never crops), so a panel much wider than Australia's shape
+  // leaves large empty margins on the wide axis. This instead picks the zoom that fills the panel
+  // on its DOMINANT axis, cropping a little off the other axis if needed -- the same "cover"
+  // tradeoff SPC's own outlook maps make.
   function coverFit(m,padPx){
     var size=m.getSize(), availW=Math.max(1,size.x-2*padPx), availH=Math.max(1,size.y-2*padPx);
     var p1=m.project([maxLat,minLon],0), p2=m.project([minLat,maxLon],0);
@@ -295,10 +333,10 @@
     // from going fully to zero weight right next to its neighbours without diluting genuinely
     // isolated single-point signal into nothing, and P:2.2 (down from 3) widens each point's
     // falloff just enough for adjoining above-threshold cells to merge into one shape instead of
-    // snapping to nearest-neighbour boundaries. Tested against live data (see the before/after
-    // screenshots from this session): the NT/QLD thunderstorm blob's internal holes closed up
-    // and its edge became one flowing shape, while the isolated Tennant Creek cell -- real,
-    // sparse signal, not noise -- stayed visible instead of being smoothed away.
+    // snapping to nearest-neighbour boundaries. Tested against live data: the NT/QLD thunderstorm
+    // blob's internal holes closed up and its edge became one flowing shape, while the isolated
+    // Tennant Creek cell -- real, sparse signal, not noise -- stayed visible instead of being
+    // smoothed away.
     var vals=new Float64Array(nx*ny),P=2.2;
     var dLon=(maxLon-minLon)/nx,dLat=(maxLat-minLat)/ny;
     for(var gy=0;gy<ny;gy++){
@@ -318,8 +356,6 @@
   }
 
   // smooths the jagged edges left behind where the coarse contour grid met the coastline.
-  // tolerance halved alongside the finer contour mesh above, so it keeps stripping only
-  // sub-cell noise instead of eating the extra detail the finer mesh just added.
   function trySimplify(feat){
     try{ return turf.simplify(feat,{tolerance:0.01,highQuality:true}); }
     catch(e){ return feat; }
@@ -355,7 +391,7 @@
 
   // compute clipped+smoothed contour bands for a day + hazard (expensive: IDW, d3 contours, turf
   // clip/simplify, Chaikin smoothing) -- cached, and independent of any particular Leaflet map so the
-  // same bands can be drawn on the main focused map and on the small overview-grid maps.
+  // same bands can be drawn on whichever plane(s) currently show that hazard.
   function buildDayFeatures(dayIdx,hz){
     var key=hz+'|'+dayIdx;
     if(featureCache[key]) return featureCache[key];
@@ -393,149 +429,53 @@
     return group;
   }
 
-  var currentLayer=null;
-  function render(){
-    if(currentLayer) map.removeLayer(currentLayer);
-    currentLayer=renderOnMap(map,selDay,selHazard);
-    buildLegend();
-  }
-  function showHazard(hz){ if(hz!=='cat' && extendedRange(selDay,hz)) return; selHazard=hz; render(); }
-
-  // keep all 4 grid maps looking at the same place: panning/zooming any one mirrors the other
-  // three to the same center+zoom, each still showing its own hazard's data there. Guarded by
-  // gridSyncing so the setView() calls below don't re-trigger this same handler on each other.
-  var gridSyncing=false;
-  function syncGridView(source){
-    if(gridSyncing) return;
-    gridSyncing=true;
-    var center=source.getCenter(), zoom=source.getZoom();
-    GRID_ORDER.forEach(function(hz){
-      var m=gridMaps[hz];
-      if(m && m!==source) m.setView(center,zoom,{animate:false});
-    });
-    gridSyncing=false;
-  }
-  function initGridMaps(){
-    GRID_ORDER.forEach(function(hz){
-      var gm=L.map('gridmap-'+hz,{zoomControl:true,attributionControl:false,minZoom:3,maxZoom:10,
-        maxBounds:[[-46,108],[-8,157]],maxBoundsViscosity:0.7});
-      coverFit(gm,4);
-      gm.zoomControl.setPosition('topright');
-      drawBasemap(gm);
-      drawTowns(gm);
-      var titleEl=document.querySelector('.gridPanel[data-hz="'+hz+'"] .gridTitle');
-      if(titleEl) titleEl.addEventListener('click',function(){ enterFocused(hz); });
-      gm.on('move zoom',function(){ syncGridView(gm); });
-      gridMaps[hz]=gm;
-      // the gridmode class (and CSS Grid track sizing it triggers) may not have finished
-      // laying out yet on this same tick, so coverFit above can measure a too-small
-      // container and under-zoom -- correct it once the browser has actually painted.
-      requestAnimationFrame(function(){ gm.invalidateSize(); coverFit(gm,4); });
-    });
-  }
   // Days 5-8 are extended-range: the model-native sounding-derived parameters (hail tier,
-  // excessive-rainfall tier) get noisy and overconfident that far out, so -- matching how SPC's
-  // own Day 4-8 outlook only ever shows one general risk category -- those two views fall back to
-  // a placeholder and the UI forces the Category view instead. Thunderstorm % is the exception:
-  // it's read straight from Open-Meteo's own ensemble precipitation_probability, which is already
-  // an 8-day forecast field in its own right (not something this pipeline derives further out the
-  // way hail/flood are from single-model soundings), so there's no extra noise to hide there.
-  function extendedRange(dayIdx, hz){ return hz!=='tprob' && dayIdx>=4; }
-  function syncHazardAvailability(){
-    [].forEach.call(document.querySelectorAll('#hazards .dbtn.hz'),function(b){
-      b.classList.toggle('disabled', b.dataset.hz!=='cat' && extendedRange(selDay,b.dataset.hz));
-    });
+  // excessive-rainfall tier, and eventually fire/wind) get noisy and overconfident that far out,
+  // so -- matching how SPC's own Day 4-8 outlook only ever shows one general risk category --
+  // those views fall back to a placeholder. Thunderstorm % is the exception: it's read straight
+  // from Open-Meteo's own ensemble precipitation_probability, which is already an 8-day forecast
+  // field in its own right, so there's no extra noise to hide there.
+  function extendedRange(dayIdx, hz){ return hz!=='cat' && hz!=='tprob' && dayIdx>=4; }
+
+  // keep every plane's view in sync (even ones currently hidden by dual-plane mode, so they're
+  // already correct the moment the user switches back to quad). Guarded by planeSyncing so the
+  // setView() calls below don't re-trigger this same handler on each other.
+  var planeSyncing=false;
+  function syncPlaneView(source){
+    if(planeSyncing) return;
+    planeSyncing=true;
+    var center=source.getCenter(), zoom=source.getZoom();
+    for(var i=0;i<4;i++){ var m=planeMaps[i]; if(m && m!==source) m.setView(center,zoom,{animate:false}); }
+    planeSyncing=false;
   }
-  function syncExtNote(){
-    var el=document.getElementById('extNote');
-    if(el) el.classList.toggle('show', selDay>=4);
-  }
-  function renderGrid(){
-    GRID_ORDER.forEach(function(hz){
-      var gm=gridMaps[hz]; if(!gm) return;
-      if(gridLayers[hz]) gm.removeLayer(gridLayers[hz]);
-      var placeholder=document.getElementById('gridPlaceholder-'+hz);
-      var ext=hz!=='cat' && extendedRange(selDay,hz);
-      if(ext){
-        gridLayers[hz]=null;
-        if(placeholder) placeholder.classList.add('show');
-      }else{
-        if(placeholder) placeholder.classList.remove('show');
-        gridLayers[hz]=renderOnMap(gm,selDay,hz);
+
+  // dual-plane's two panels are big enough for the hillshade texture to read as an accent; the
+  // four quad-plane panels are smaller, where the same texture reads as clutter -- so hillshade
+  // (and the land layer's matching semi-transparent fill) is added/removed from planes 0/1 as the
+  // user toggles mode, rather than being fixed at map-creation time.
+  function syncHillshade(){
+    for(var i=0;i<2;i++){
+      var m=planeMaps[i]; if(!m) continue;
+      var want=(planeMode==='dual');
+      if(want && !planeHillshadeLayers[i]){
+        planeHillshadeLayers[i]=drawHillshade(m);
+        if(planeLandLayers[i]) planeLandLayers[i].setStyle(LAND_STYLE_HILLSHADE);
+      }else if(!want && planeHillshadeLayers[i]){
+        m.removeLayer(planeHillshadeLayers[i]);
+        planeHillshadeLayers[i]=null;
+        if(planeLandLayers[i]) planeLandLayers[i].setStyle(LAND_STYLE);
       }
-    });
-    buildGridLegends();
-  }
-  function enterFocused(hz){
-    selHazard=(hz!=='cat' && extendedRange(selDay,hz))?'cat':hz; viewMode='focused';
-    document.getElementById('wrap').classList.remove('gridmode');
-    [].forEach.call(document.querySelectorAll('#hazards .dbtn.hz'),function(b){b.classList.toggle('active',b.dataset.hz===selHazard);});
-    syncHazardAvailability();
-    map.invalidateSize();
-    render();
-  }
-  function enterGrid(){
-    viewMode='grid';
-    document.getElementById('wrap').classList.add('gridmode');
-    GRID_ORDER.forEach(function(hz){ if(gridMaps[hz]) gridMaps[hz].invalidateSize(); });
-    renderGrid();
-  }
-  function showDay(dayIdx){
-    selDay=dayIdx;
-    syncHazardAvailability();
-    syncExtNote();
-    if(viewMode==='grid'){ renderGrid(); return; }
-    if(selHazard!=='cat' && extendedRange(selDay,selHazard)){
-      selHazard='cat';
-      [].forEach.call(document.querySelectorAll('#hazards .dbtn.hz'),function(b){b.classList.toggle('active',b.dataset.hz==='cat');});
     }
-    render();
   }
 
-  map.on('mousemove',function(e){
-    if(!results.length)return;var la=e.latlng.lat,lo=e.latlng.lng,best=-1,bd=1e9;
-    for(var i=0;i<GRID.length;i++){var dd=(GRID[i][0]-la)*(GRID[i][0]-la)+(GRID[i][1]-lo)*(GRID[i][1]-lo);if(dd<bd){bd=dd;best=i;}}
-    var box=document.getElementById('info');
-    if(best<0||bd>3||!results[best]){box.innerHTML='<span class="hint">No data here.</span>';return;}
-    var r=results[best][selDay];
-    if(!r){box.innerHTML='<span class="hint">No data here.</span>';return;}
-    if(selHazard==='tprob'){
-      var tv=r.tprob||0,tc=HAZ_SPECS.tprob;
-      var tcol=tv>=80?rgb(tc.colors[2]):tv>=50?rgb(tc.colors[1]):tv>=20?rgb(tc.colors[0]):'#5c6c7d';
-      box.innerHTML='<div class="cat" style="color:'+tcol+'">'+tv+'% thunderstorm chance</div><div class="sm">Highest hourly chance during the day (model ensemble)</div>';
-      return;
-    }
-    if(selHazard==='hail'){
-      var ht=r.hail||0,hc=HAZ_SPECS.hail,hnames=['No hail expected'].concat(hc.labels);
-      var hcol=ht===0?'#5c6c7d':rgb(hc.colors[ht-1]);
-      box.innerHTML='<div class="cat" style="color:'+hcol+'">'+hnames[ht]+'</div><div class="sm">SHIP '+r.ship+' &middot; CAPE '+Math.round(r.cape)+' J/kg</div>';
-      return;
-    }
-    if(selHazard==='flood'){
-      var fv=r.flood||0,fc=HAZ_SPECS.flood,fnames=['No excessive rainfall risk'].concat(fc.labels);
-      var fcol=fv===0?'#5c6c7d':rgb(fc.colors[fv-1]);
-      box.innerHTML='<div class="cat" style="color:'+fcol+'">'+fnames[fv]+'</div><div class="sm">Forecast rainfall '+Math.round(r.rain||0)+'mm &middot; POP '+Math.round(r.pop||0)+'%</div>';
-      return;
-    }
-    if(selDay>=4){
-      var lbl=r.cat>=4?'Chance of severe weather':(r.cat>=1?'Chance of storm':'No storms');
-      var col=r.cat>=4?rgb(COARSE[1].color):(r.cat>=1?rgb(COARSE[0].color):'#5c6c7d');
-      box.innerHTML='<div class="cat" style="color:'+col+'">'+lbl+'</div><div class="sm">Extended range &middot; broad guidance</div>';
-      return;
-    }
-    var c=FINE[r.cat]||FINE[1],col2=r.cat===0?'#5c6c7d':rgb(c.color);
-    box.innerHTML='<div class="cat" style="color:'+col2+'">'+(r.cat===0?'No storms':(c.abbr?c.abbr+' · ':'')+c.name)+(r.hatch&&r.cat>=2?' (sig)':'')+'</div>'+
-      'CAPE '+Math.round(r.cape)+' J/kg · Shear '+Math.round(r.shear)+' kt<div class="sm">SCP '+r.scp+' · STP '+r.stp+' · SHIP '+r.ship+' · Rain '+Math.round(r.rain||0)+'mm</div>';
-  });
-
-  // legend rows for one hazard (no title) -- shared by the focused-view legend and the grid mini-legends
+  // legend rows for one hazard (no title) -- shared by every plane's mini-legend
   function legendRows(hz){
     var h='';
     if(hz==='cat'){
       var ext=selDay>=4;
       if(ext){
         [COARSE[1],COARSE[0]].forEach(function(c){h+='<div class="row"><span class="sw" style="background:'+rgb(c.color)+'"></span>'+c.name+'</div>';});
-        h+='<div class="cap" style="margin-top:8px;margin-bottom:0">Extended range (days 5-8)</div>';
+        h+='<div class="cap" style="margin-top:6px;margin-bottom:0">Extended range</div>';
       }else{
         for(var k=5;k>=1;k--){var c=FINE[k];h+='<div class="row"><span class="sw" style="background:'+rgb(c.color)+'"></span>'+(c.abbr?c.abbr+' — ':'')+c.name+'</div>';}
       }
@@ -545,15 +485,173 @@
     }
     return h;
   }
-  function buildLegend(){
-    document.getElementById('legend').innerHTML='<div class="cap">'+HAZ_TITLES[selHazard]+'</div>'+legendRows(selHazard);
+
+  // enforce "not selectable elsewhere": when the user picks a hazard already shown on another
+  // visible plane, swap the two planes' assignments rather than silently rejecting the pick --
+  // whatever the other plane was showing moves to fill the slot being vacated.
+  function setPlaneHazard(i, newKey){
+    var old=planeAssign[i];
+    if(old===newKey) return;
+    for(var j=0;j<visibleCount();j++){
+      if(j!==i && planeAssign[j]===newKey){ planeAssign[j]=old; break; }
+    }
+    planeAssign[i]=newKey;
+    refreshAll(false);
   }
-  function buildGridLegends(){
-    GRID_ORDER.forEach(function(hz){
-      var el=document.getElementById('gridLegend-'+hz);
-      if(el) el.innerHTML=legendRows(hz);
+  // called on mode switch: repairs any assignment that's no longer valid (duplicated among the
+  // newly-visible planes, or pointing at a disabled hazard) by handing it the next free enabled one.
+  function dedupeAssign(){
+    var used={};
+    for(var i=0;i<visibleCount();i++){
+      var hz=planeAssign[i];
+      if(!hz || used[hz] || !isEnabled(hz)){
+        for(var k=0;k<HAZARDS_LIST.length;k++){
+          if(HAZARDS_LIST[k].enabled && !used[HAZARDS_LIST[k].key]){ hz=HAZARDS_LIST[k].key; break; }
+        }
+        planeAssign[i]=hz;
+      }
+      used[hz]=true;
+    }
+  }
+  function buildPlaneSelect(i){
+    var sel=document.getElementById('planeSelect-'+i); if(!sel) return;
+    var usedElsewhere={};
+    for(var k=0;k<visibleCount();k++){ if(k!==i) usedElsewhere[planeAssign[k]]=true; }
+    sel.innerHTML='';
+    HAZARDS_LIST.forEach(function(h){
+      var opt=document.createElement('option');
+      opt.value=h.key;
+      opt.textContent=h.label+(h.enabled?'':' (soon)');
+      opt.disabled=!h.enabled||!!usedElsewhere[h.key];
+      if(h.key===planeAssign[i]) opt.selected=true;
+      sel.appendChild(opt);
     });
   }
+  function buildPlaneInfo(){
+    var el=document.getElementById('planeInfo'); if(!el) return;
+    var h='<div class="cap">What each plane shows</div>';
+    for(var i=0;i<visibleCount();i++){
+      var hz=hazDef(planeAssign[i]);
+      h+='<div class="planeDesc"><b>'+String.fromCharCode(65+i)+'</b>'+hz.label+'<small>'+hz.desc+'</small></div>';
+    }
+    el.innerHTML=h;
+  }
+  function syncExtNote(){
+    var el=document.getElementById('extNote');
+    if(el) el.classList.toggle('show', selDay>=4);
+  }
+
+  function renderPlane(i){
+    var m=planeMaps[i]; if(!m) return;
+    var hz=planeAssign[i];
+    if(planeLayers[i]) m.removeLayer(planeLayers[i]);
+    var placeholder=document.getElementById('planePlaceholder-'+i);
+    buildPlaneSelect(i);
+    var ext=extendedRange(selDay,hz);
+    if(ext){
+      planeLayers[i]=null;
+      if(placeholder) placeholder.classList.add('show');
+    }else{
+      if(placeholder) placeholder.classList.remove('show');
+      planeLayers[i]=renderOnMap(m,selDay,hz);
+    }
+    var legendEl=document.getElementById('planeLegend-'+i);
+    if(legendEl) legendEl.innerHTML=legendRows(hz);
+  }
+  function refreshAll(modeChanged){
+    dedupeAssign();
+    if(modeChanged){
+      for(var i=0;i<4;i++){ if(i<visibleCount() && planeMaps[i]){ planeMaps[i].invalidateSize(); coverFit(planeMaps[i],4); } }
+      syncPlaneView(planeMaps[0]);
+    }
+    syncHillshade();
+    for(var i=0;i<visibleCount();i++) renderPlane(i);
+    buildPlaneInfo();
+    syncExtNote();
+  }
+  function setMode(mode){
+    if(planeMode===mode) return;
+    planeMode=mode;
+    document.getElementById('planes').className='mode-'+mode;
+    [].forEach.call(document.querySelectorAll('.modeBtn'),function(b){b.classList.toggle('active', b.dataset.mode===mode);});
+    refreshAll(true);
+  }
+  function showDay(dayIdx){
+    selDay=dayIdx;
+    for(var i=0;i<visibleCount();i++) renderPlane(i);
+    syncExtNote();
+  }
+
+  function initPlanes(){
+    for(var i=0;i<4;i++){
+      var pm=L.map('planeMap-'+i,{zoomControl:true,attributionControl:false,minZoom:3,maxZoom:10,
+        worldCopyJump:false,maxBounds:[[-46,108],[-8,157]],maxBoundsViscosity:0.7,preferCanvas:false});
+      pm.zoomControl.setPosition('topright');
+      planeLandLayers[i]=drawBasemap(pm, LAND_STYLE);
+      drawTowns(pm);
+      drawStates(pm);
+      planeMaps[i]=pm;
+      (function(mm){ mm.on('move zoom',function(){ syncPlaneView(mm); }); })(pm);
+      attachHover(i);
+    }
+    coverFit(planeMaps[0],4);
+    syncPlaneView(planeMaps[0]);
+    // layout may not have finished settling on this same tick, so coverFit above can measure a
+    // too-small container and under-zoom -- correct it once the browser has actually painted.
+    requestAnimationFrame(function(){
+      for(var i=0;i<4;i++) planeMaps[i].invalidateSize();
+      coverFit(planeMaps[0],4);
+      syncPlaneView(planeMaps[0]);
+    });
+  }
+
+  function infoHtml(hz, r){
+    if(hz==='tprob'){
+      var tv=r.tprob||0,tc=HAZ_SPECS.tprob;
+      var tcol=tv>=80?rgb(tc.colors[2]):tv>=50?rgb(tc.colors[1]):tv>=20?rgb(tc.colors[0]):'#5c6c7d';
+      return '<div class="cat" style="color:'+tcol+'">'+tv+'% thunderstorm chance</div><div class="sm">Highest hourly chance during the day (model ensemble)</div>';
+    }
+    if(hz==='hail'){
+      var ht=r.hail||0,hc=HAZ_SPECS.hail,hnames=['No hail expected'].concat(hc.labels);
+      var hcol=ht===0?'#5c6c7d':rgb(hc.colors[ht-1]);
+      return '<div class="cat" style="color:'+hcol+'">'+hnames[ht]+'</div><div class="sm">SHIP '+r.ship+' &middot; CAPE '+Math.round(r.cape)+' J/kg</div>';
+    }
+    if(hz==='flood'){
+      var fv=r.flood||0,fc=HAZ_SPECS.flood,fnames=['No excessive rainfall risk'].concat(fc.labels);
+      var fcol=fv===0?'#5c6c7d':rgb(fc.colors[fv-1]);
+      return '<div class="cat" style="color:'+fcol+'">'+fnames[fv]+'</div><div class="sm">Forecast rainfall '+Math.round(r.rain||0)+'mm &middot; POP '+Math.round(r.pop||0)+'%</div>';
+    }
+    // cat
+    if(selDay>=4){
+      var lbl=r.cat>=4?'Chance of severe weather':(r.cat>=1?'Chance of storm':'No storms');
+      var col=r.cat>=4?rgb(COARSE[1].color):(r.cat>=1?rgb(COARSE[0].color):'#5c6c7d');
+      return '<div class="cat" style="color:'+col+'">'+lbl+'</div><div class="sm">Extended range &middot; broad guidance</div>';
+    }
+    var c=FINE[r.cat]||FINE[1],col2=r.cat===0?'#5c6c7d':rgb(c.color);
+    return '<div class="cat" style="color:'+col2+'">'+(r.cat===0?'No storms':(c.abbr?c.abbr+' · ':'')+c.name)+(r.hatch&&r.cat>=2?' (sig)':'')+'</div>'+
+      'CAPE '+Math.round(r.cape)+' J/kg · Shear '+Math.round(r.shear)+' kt<div class="sm">SCP '+r.scp+' · STP '+r.stp+' · SHIP '+r.ship+' · Rain '+Math.round(r.rain||0)+'mm</div>';
+  }
+  // single shared tooltip, positioned near the cursor (clamped to viewport) rather than pinned to
+  // one fixed corner, since there's no longer a single "main" map -- it can be triggered from
+  // whichever plane the user is currently over.
+  function attachHover(i){
+    var box=document.getElementById('info');
+    planeMaps[i].on('mousemove', function(e){
+      if(!results.length) return;
+      var hz=planeAssign[i];
+      var la=e.latlng.lat,lo=e.latlng.lng,best=-1,bd=1e9;
+      for(var k=0;k<GRID.length;k++){var dd=(GRID[k][0]-la)*(GRID[k][0]-la)+(GRID[k][1]-lo)*(GRID[k][1]-lo);if(dd<bd){bd=dd;best=k;}}
+      var ce=e.originalEvent, x=ce.clientX+16, y=ce.clientY+16;
+      if(x+240>window.innerWidth) x=ce.clientX-256;
+      if(y+130>window.innerHeight) y=ce.clientY-140;
+      box.style.left=Math.max(4,x)+'px'; box.style.top=Math.max(4,y)+'px';
+      box.classList.add('show');
+      if(best<0||bd>3||!results[best]||!results[best][selDay]){ box.innerHTML='<span class="hint">No data here.</span>'; return; }
+      box.innerHTML=infoHtml(hz, results[best][selDay]);
+    });
+    planeMaps[i].on('mouseout', function(){ box.classList.remove('show'); });
+  }
+
   function buildDayButtons(){
     var wrap=document.getElementById('days');wrap.innerHTML='';
     DAYS.forEach(function(lbl,i){
@@ -563,17 +661,16 @@
       wrap.appendChild(b);
     });
   }
-  function buildHazardButtons(){
-    var wrap=document.getElementById('hazards');wrap.innerHTML='';
-    var back=document.createElement('button');back.className='dbtn back';back.textContent='‹ All hazards';
-    back.onclick=function(){ enterGrid(); };
-    wrap.appendChild(back);
-    HAZARDS_LIST.forEach(function(hzd){
-      var b=document.createElement('button');b.className='dbtn hz'+(hzd.key===selHazard?' active':'');b.dataset.hz=hzd.key;
-      b.innerHTML=hzd.label+'<small>'+hzd.sub+'</small>';
-      b.onclick=function(){[].forEach.call(wrap.querySelectorAll('.hz'),function(c){c.classList.remove('active');});b.classList.add('active');showHazard(hzd.key);};
-      wrap.appendChild(b);
+  function bindControls(){
+    [].forEach.call(document.querySelectorAll('.modeBtn'),function(b){
+      b.addEventListener('click',function(){ setMode(b.dataset.mode); });
     });
+    for(var i=0;i<4;i++){
+      (function(idx){
+        var sel=document.getElementById('planeSelect-'+idx);
+        sel.addEventListener('change',function(){ setPlaneHazard(idx, sel.value); });
+      })(i);
+    }
   }
   function setErr(m){document.getElementById('loadmsg').innerHTML='<span class="err">'+m+'</span>';}
 
@@ -583,16 +680,13 @@
     fetch('./districts.geo.json').then(function(r){return r.ok?r.json():null;}).catch(function(){return null;})
   ]).then(function(res){
     LAND=smoothGeoJSON(res[0],2); var o=res[1]; DISTRICTS=res[2]; // real BOM forecast district boundaries -- already properly detailed, don't Chaikin-smooth them like the crude coastline
-    drawHillshade(map);
-    drawBasemap(map, LAND_STYLE_HILLSHADE);
-    drawTowns(map);
     DAYS=o.days||['Day 1','Day 2','Day 3','Day 4','Day 5','Day 6','Day 7','Day 8'];
     o.points.forEach(function(p){GRID.push([p.lat,p.lon]);results.push(p.d);});
     bounds();
-    coverFit(map,16);
-    buildDayButtons();buildHazardButtons();syncHazardAvailability();syncExtNote();
-    document.getElementById('wrap').classList.add('gridmode'); // panels must be visible/sized before Leaflet measures them for fitBounds
-    initGridMaps();enterGrid();
+    buildDayButtons();
+    bindControls();
+    initPlanes();
+    refreshAll(true);
     document.getElementById('updatedtxt').textContent='Updated '+(o.run_date?new Date(o.run_date).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'—');
     document.getElementById('load').style.display='none';
   }).catch(function(err){setErr('No outlook yet, or failed to load. Run the GitHub Action once, then reload. ('+err.message+')');});
