@@ -25,6 +25,14 @@
   #modeToggle button.active{background:var(--accent);color:#fff;}
   #modeToggle button:hover:not(.active){background:#f2f4f6;}
 
+  #runPicker{display:none;align-items:center;gap:7px;margin-bottom:9px;flex:none;}
+  #runPicker.show{display:flex;}
+  #runPicker label{color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;font-size:9px;flex:none;}
+  #runPicker select{flex:1;font:700 11px inherit;color:var(--text);background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:5px 6px;cursor:pointer;min-width:0;}
+  #runBanner{display:none;margin-bottom:11px;padding:7px 8px;background:#e8f0fd;border:1px solid #a9c6ee;border-radius:3px;font-size:9.5px;line-height:1.4;color:#1a4f8a;}
+  #runBanner.show{display:block;}
+  #runBanner b{color:#0d3a72;}
+
   #about{font-size:9.5px;line-height:1.5;color:var(--muted);padding-bottom:11px;margin-bottom:11px;border-bottom:1px solid var(--border);}
   #about b{color:var(--text);font-weight:700;}
 
@@ -88,6 +96,7 @@
     #topbar .title{font-size:11.5px;} #topbar .title small{display:none;}
     #about,#planeInfo .planeDesc small{font-size:8.5px;}
     #modeToggle button{font-size:9.5px;padding:6px 0;}
+    #runPicker select{font-size:9.5px;padding:4px 5px;} #runBanner{font-size:8.5px;}
     .planeIdx{font-size:8.5px;padding:2px 5px;} .planeSelect{font-size:9px;padding:4px 6px;width:94px;}
     .planeLegend{font-size:7.5px;}
     #days .dbtn{padding:4px 6px;font-size:9.5px;}
@@ -105,6 +114,8 @@
   <div id="topbar">
     <div class="title"><span class="eyebrow">Automated Severe Weather</span>CyclonesOZ<small>8-day severe storm outlook</small></div>
     <div id="modeToggle"><button class="modeBtn" data-mode="dual">Dual plane</button><button class="modeBtn active" data-mode="quad">Quad plane</button></div>
+    <div id="runPicker"><label for="runSelect">Run</label><select id="runSelect"></select></div>
+    <div id="runBanner"></div>
     <div id="about"><b>How this runs:</b> built from Open-Meteo's GFS forecast soundings, processed daily into severe-weather parameters (CAPE, shear, SCP, STP, SHIP) and averaged over each day's worst 6 hours. Fully automated, no forecaster in the loop.</div>
     <div id="planeInfo"></div>
     <div id="extNote">Extended range (Day 5+): model confidence drops significantly this far out &mdash; treat as broad, indicative guidance only.</div>
@@ -675,20 +686,82 @@
   }
   function setErr(m){document.getElementById('loadmsg').innerHTML='<span class="err">'+m+'</span>';}
 
+  // loads one run's outlook.json (either the live file or an archived past date) into the shared
+  // GRID/results/DAYS state that every plane reads from. featureCache MUST be cleared here: its
+  // keys are only hz+day, not which run they came from, so a stale entry would otherwise leak a
+  // previous run's contour geometry into the newly loaded one.
+  function loadRunData(url){
+    return fetch(url).then(function(r){ if(!r.ok) throw new Error('no outlook data at '+url); return r.json(); }).then(function(o){
+      GRID=[]; results=[];
+      DAYS=o.days||['Day 1','Day 2','Day 3','Day 4','Day 5','Day 6','Day 7','Day 8'];
+      o.points.forEach(function(p){GRID.push([p.lat,p.lon]);results.push(p.d);});
+      featureCache={};
+      document.getElementById('updatedtxt').textContent='Updated '+(o.run_date?new Date(o.run_date).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'—');
+      return o;
+    });
+  }
+  function syncRunBanner(isLive, label){
+    var el=document.getElementById('runBanner');
+    if(isLive){ el.classList.remove('show'); return; }
+    el.innerHTML='Viewing an archived run from <b>'+label+'</b> &mdash; not the live forecast.';
+    el.classList.add('show');
+  }
+  // archive/index.json (written by the pipeline alongside each run) lists which past dates are
+  // actually available -- fetched best-effort and after the main load, so a missing/not-yet-
+  // created archive (e.g. before this feature's first run) just leaves the picker hidden rather
+  // than blocking the page or spamming 404s guessing dates.
+  function loadArchiveIndex(){
+    fetch('./archive/index.json').then(function(r){ return r.ok?r.json():[]; }).catch(function(){ return []; }).then(function(dates){
+      var sorted=(dates||[]).slice().sort().reverse();          // newest first
+      var hist=sorted.slice(1);                                  // drop the newest: that date IS today's live run
+      var wrap=document.getElementById('runPicker');
+      if(!hist.length){ wrap.classList.remove('show'); return; }
+      wrap.classList.add('show');
+      var sel=document.getElementById('runSelect');
+      sel.innerHTML='';
+      var liveOpt=document.createElement('option'); liveOpt.value='live'; liveOpt.textContent='Today (live)';
+      sel.appendChild(liveOpt);
+      hist.forEach(function(d){
+        var opt=document.createElement('option'); opt.value=d;
+        opt.textContent=new Date(d+'T00:00:00Z').toLocaleDateString('en-AU',{day:'numeric',month:'short'});
+        sel.appendChild(opt);
+      });
+      sel.value='live';
+      sel.onchange=function(){
+        var v=sel.value, isLive=(v==='live');
+        var url=isLive?('./outlook.json?_='+Date.now()):('./archive/'+v+'.json');
+        document.getElementById('load').style.display='flex';
+        loadRunData(url).then(function(){
+          buildDayButtons();
+          refreshAll(false);
+          syncRunBanner(isLive, sel.selectedOptions[0].textContent);
+          document.getElementById('load').style.display='none';
+        }).catch(function(){
+          // that run's file is missing (e.g. pruned since the index was fetched) -- fall back
+          // to live quietly rather than leaving the page on a broken/partial state
+          sel.value='live';
+          loadRunData('./outlook.json?_='+Date.now()).then(function(){
+            buildDayButtons(); refreshAll(false); syncRunBanner(true,'');
+            document.getElementById('load').style.display='none';
+          });
+        });
+      };
+    });
+  }
+
   Promise.all([
     fetch('./coastline.geo.json').then(function(r){return r.json();}),
-    fetch('./outlook.json?_='+Date.now()).then(function(r){if(!r.ok)throw new Error('no outlook.json');return r.json();}),
     fetch('./districts.geo.json').then(function(r){return r.ok?r.json():null;}).catch(function(){return null;})
   ]).then(function(res){
-    LAND=smoothGeoJSON(res[0],2); var o=res[1]; DISTRICTS=res[2]; // real BOM forecast district boundaries -- already properly detailed, don't Chaikin-smooth them like the crude coastline
-    DAYS=o.days||['Day 1','Day 2','Day 3','Day 4','Day 5','Day 6','Day 7','Day 8'];
-    o.points.forEach(function(p){GRID.push([p.lat,p.lon]);results.push(p.d);});
+    LAND=smoothGeoJSON(res[0],2); DISTRICTS=res[1]; // real BOM forecast district boundaries -- already properly detailed, don't Chaikin-smooth them like the crude coastline
     bounds();
+    return loadRunData('./outlook.json?_='+Date.now());
+  }).then(function(){
     buildDayButtons();
     bindControls();
     initPlanes();
     refreshAll(true);
-    document.getElementById('updatedtxt').textContent='Updated '+(o.run_date?new Date(o.run_date).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'—');
+    loadArchiveIndex();
     document.getElementById('load').style.display='none';
   }).catch(function(err){setErr('No outlook yet, or failed to load. Run the GitHub Action once, then reload. ('+err.message+')');});
 })();
