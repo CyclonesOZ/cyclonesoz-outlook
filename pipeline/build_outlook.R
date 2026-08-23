@@ -78,6 +78,63 @@ hail_tier <- function(ship, cape, frz_lvl_m){
   base
 }
 
+# fire danger tier: 0 none/low-moderate, 1 Moderate, 2 High, 3 Extreme, 4 Catastrophic.
+# BOM/AFDRS's own gridded fire danger ratings aren't available through any public,
+# machine-readable feed at the point-level, 8-day-ahead resolution this pipeline needs (checked:
+# the RFS's public feed is fire-district-level Total-Fire-Ban text for today/tomorrow only, not a
+# raw forecast grid; other BOM AFDRS distribution is map-tile/GIS product aimed at human viewing,
+# not a documented API for an unauthenticated automated pull). So this instead computes a proxy
+# from the McArthur Mark 5 Forest Fire Danger Index -- a real, long-published formula:
+#   FFDI = 2 * exp(-0.45 + 0.987*ln(DF) - 0.0345*RH + 0.0338*T + 0.0234*V)
+#   (T degC, RH %, V km/h, DF = Drought Factor 0-10)
+# The real DF comes from BOM's Griffith Drought Factor, itself built off a multi-week
+# Keetch-Byram-style rainfall history this pipeline doesn't fetch. Substituted here with a DF
+# proxy from GFS's own forecast shallow soil moisture (soil_moisture_0_to_1cm): the model's
+# land-surface scheme already integrates antecedent rainfall into that value, so no separate
+# historical-lookback fetch is needed the way it would be for a literal drought index. A day
+# with meaningful forecast rain of its own additionally caps the tier at Moderate outright,
+# since falling rain suppresses fire spread even where the soil started dry.
+# Tiers are loosely anchored to the well-known published McArthur breakpoints (FFDI 12/25/50/100)
+# collapsed onto the 4 requested labels -- NOT the official modern AFDRS numeric thresholds,
+# which vary by fuel type/jurisdiction and aren't published as one simple formula. Treat this as
+# a general fire-weather-risk indicator, not an authoritative rating.
+#
+# split in two: ffdi_hour() is the per-hour physics (day_topN calls it once per hour and keeps
+# the day's WORST hour, since fire danger is about the peak burn-period window, not a daily
+# average that would wash out an afternoon spike with cool overnight hours); fire_tier() maps
+# that peak value to a tier and applies the same-day-rain cap.
+ffdi_hour <- function(temp_c, rh, wind_kmh, soil_m){
+  wetness <- (nz(soil_m) - 0.05) / (0.35 - 0.05)   # 0.05..0.35 m3/m3 ~ dry..wet working range
+  wetness <- min(1, max(0, wetness))
+  DF <- max(1, 10 * (1 - wetness))
+  2 * exp(-0.45 + 0.987*log(DF) - 0.0345*nz(rh) + 0.0338*nz(temp_c) + 0.0234*nz(wind_kmh))
+}
+fire_tier <- function(ffdi, rain_mm){
+  tier <- if (ffdi >= 100) 4L else if (ffdi >= 50) 3L else if (ffdi >= 25) 2L else if (ffdi >= 12) 1L else 0L
+  if (nz(rain_mm) >= 10) tier <- min(tier, 1L)
+  tier
+}
+
+# damaging-wind tier: 0 none, 1 Damaging (>=90km/h gust potential), 2 Destructive (>=125km/h),
+# 3 Very Destructive (>=160km/h) -- 90 and 125km/h are BOM's own real criteria for issuing and
+# escalating a Severe Thunderstorm Warning for damaging/destructive winds; 160km/h is this
+# pipeline's own extension for the rarer very-destructive tier, not a distinct BOM threshold.
+# Magnitude comes from SPC's WNDG parameter -- a real, published convective wind-damage-potential
+# index, WNDG = (MU_CAPE/2000) * (effective shear in m/s / 20) -- run through an unvalidated,
+# hand-picked mapping onto these three tiers, since WNDG doesn't have a citable direct-to-gust-
+# speed conversion; treat the exact breakpoints as approximate the same way hail_tier()'s are.
+# EXPLICITLY zeroed below SLGT (cat>=3): this is a "does the day's overall severe environment
+# even support it" gate layered on top of the magnitude calc, unlike hail_tier(), which is shown
+# regardless of the day's overall category.
+wind_tier <- function(cape, shr, cat){
+  if (nz(cat) < 3) return(0L)
+  wndg <- (nz(cape)/2000) * (nz(shr)/20)
+  if (wndg >= 2.4) return(3L)
+  if (wndg >= 1.4) return(2L)
+  if (wndg >= 0.6) return(1L)
+  0L
+}
+
 # Excessive Rainfall Outlook: 3-tier flash-flood risk (0 none, 1 slight, 2 moderate, 3 high),
 # modelled on the US Weather Prediction Center's own Excessive Rainfall Outlook. WPC's real ERO is
 # built from genuine ensemble probability -- the % of ensemble members whose forecast exceeds a
@@ -193,7 +250,7 @@ om_url <- function(lat, lon){
     paste0("wind_speed_",LEVELS,"hPa"),
     paste0("wind_direction_",LEVELS,"hPa"),
     paste0("geopotential_height_",LEVELS,"hPa")), collapse=",")
-  sfc <- "temperature_2m,dew_point_2m,surface_pressure,wind_speed_10m,wind_direction_10m,precipitation,precipitation_probability,freezing_level_height"
+  sfc <- "temperature_2m,dew_point_2m,relative_humidity_2m,surface_pressure,wind_speed_10m,wind_direction_10m,precipitation,precipitation_probability,freezing_level_height,soil_moisture_0_to_1cm"
   # timezone=UTC (not auto): with per-point local time, "Day 1" boundaries fell at a
   # different UTC instant in WA (UTC+8) vs the east coast (UTC+10/11), so the same day
   # label covered different absolute windows depending where a grid point sat. Forcing
@@ -281,6 +338,15 @@ day_topN <- function(h, idxs, elev){
   # day's peak-confidence hour (max, not mean) -- flood_cat() gates on the model's HIGHEST
   # same-day confidence that rain occurs at all, paired with the day's peak magnitude (also a max).
   rain_pop  <- max(sapply(idxs, function(i) nz(h[["precipitation_probability"]][i])))
+  # fire danger is purely surface-field driven (temp/RH/wind/soil moisture), no sounding needed,
+  # so it's computed here once and shared by both branches below rather than only the successful-
+  # soundings path. Kept as the day's WORST hour (see ffdi_hour()'s doc comment for why a max, not
+  # a mean, across the day matters here).
+  rh_hr    <- sapply(idxs, function(i) nz(h[["relative_humidity_2m"]][i]))
+  temp_hr  <- sapply(idxs, function(i) nz(h[["temperature_2m"]][i]))
+  wind_hr  <- sapply(idxs, function(i) nz(h[["wind_speed_10m"]][i])) * 1.852  # kn (fetch unit) -> km/h
+  soil_hr  <- sapply(idxs, function(i) nz(h[["soil_moisture_0_to_1cm"]][i]))
+  ffdi_day <- max(mapply(ffdi_hour, temp_hr, rh_hr, wind_hr, soil_hr))
 
   if (length(rows) == 0){
     rc <- rain_cat(rain_day)
@@ -290,7 +356,8 @@ day_topN <- function(h, idxs, elev){
     tprob_fallback <- mean(sapply(idxs, function(i) nz(h[["precipitation_probability"]][i])))
     return(list(cat=rc, cape=0, shear=0, scp=0, stp=0, ship=0, cin=0, rain=round(rain_day), hatch=as.integer(rc>=4),
                 tprob=thunder_prob(tprob_fallback, 0, rain_day), hail=0,
-                flood=flood_cat(rain_day, rain_rate, rain_pop), pop=round(rain_pop)))
+                flood=flood_cat(rain_day, rain_rate, rain_pop), pop=round(rain_pop),
+                fire=fire_tier(ffdi_day, rain_day), ffdi=round(ffdi_day), wind=0L))
   }
   sev <- sapply(rows, function(r) r$sev)
   top <- rows[order(sev, decreasing=TRUE)[seq_len(min(TOPN, length(rows)))]]
@@ -318,7 +385,9 @@ day_topN <- function(h, idxs, elev){
   # non-convective rain at 7am) and reports it as a dramatic "thunderstorm chance" for the day.
   c(cv, list(tprob=thunder_prob(m("tprob"), m("cape"), rain_day),
              hail=hail_tier(peak_ship_hr$ship, peak_ship_hr$cape, frz_day),
-             flood=flood_cat(rain_day, rain_rate, rain_pop), pop=round(rain_pop)))
+             flood=flood_cat(rain_day, rain_rate, rain_pop), pop=round(rain_pop),
+             fire=fire_tier(ffdi_day, rain_day), ffdi=round(ffdi_day),
+             wind=wind_tier(m("cape"), m("shr"), cv$cat)))
 }
 
 # each point is a fully independent fetch+compute (no shared state), so this is embarrassingly
