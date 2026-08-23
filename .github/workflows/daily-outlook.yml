@@ -37,11 +37,12 @@ jobs:
         # Open-Meteo's response times, so main may have moved on by the time we're ready to
         # push (this has caused real same-day push failures). Rebase onto the latest main and
         # retry instead of assuming a clean fast-forward -- this job only ever touches
-        # docs/outlook.json, so a rebase has nothing else to conflict with.
+        # docs/outlook.json and docs/archive/ (the rolling run history + its index, written by
+        # build_outlook.R), so a rebase has nothing else to conflict with.
         run: |
           git config user.name  "outlook-bot"
           git config user.email "actions@github.com"
-          git add docs/outlook.json
+          git add docs/outlook.json docs/archive
           git commit -m "Update outlook $(date -u +%Y-%m-%d)" || echo "no change"
           for i in 1 2 3 4 5; do
             git push && break
