@@ -105,11 +105,12 @@ flood_cat <- function(rain_mm, rate_mm, pop){
 # not thunderstorm-specific, and there's no real thunderstorm-probability field available for this
 # region/model (checked: ECMWF's lightning_density field exists in Open-Meteo's UI but returns no
 # data for any location when queried live, so it isn't usable). This keeps the raw rain-probability
-# proxy from showing a nontrivial "thunderstorm chance" on days with no real convective potential --
-# zeroed on the same no-trigger day the category already zeroes on, heavily discounted when the
-# day's CAPE is negligible even if some rain probability remains.
-thunder_prob <- function(tprob, cape, shw_day){
-  if (nz(shw_day) < 0.1) return(0L)
+# proxy from showing a nontrivial "thunderstorm chance" on days GFS's own deterministic forecast
+# doesn't actually expect meaningful rain for -- zeroed below the same 2mm/24h no-rain gate the
+# category uses (see categorise_vals()), heavily discounted when the day's CAPE is negligible even
+# if some rain probability remains.
+thunder_prob <- function(tprob, cape, rain_mm){
+  if (nz(rain_mm) < 2)   return(0L)
   if (nz(cape) < 100)    return(as.integer(round(nz(tprob) * 0.3)))
   as.integer(round(nz(tprob)))
 }
@@ -120,12 +121,17 @@ thunder_prob <- function(tprob, cape, shw_day){
 # the only tier above MDT) bar so it stays reserved for the rare, potentially life-threatening
 # outbreak days -- the old MDT tier's own distinct threshold is gone; that value range now just
 # stays at MDT rather than independently promoting to a tier of its own.
-# cin = MU_CIN (J/kg, <=0, from the same sounding as cape/shr) and shw = GFS's own forecast
-# convective showers (mm, max over the whole day) act as an initiation check: CAPE alone is
-# a very low bar in the moist tropics, so if the model's own convection scheme sees nothing
-# forming all day, the category is zeroed rather than firing on bare environment. rain_mm is
-# the day's accumulated total precip, independently folded in via rain_cat() so heavy-rain
-# days show up even when the severe-hazard parameters alone wouldn't flag anything.
+# cin = MU_CIN (J/kg, <=0, from the same sounding as cape/shr) is a suppression check on an
+# already-triggering day (see capped below). rain_mm -- the day's accumulated 24h total precip --
+# is the actual initiation gate: CAPE/SCP/STP/SHIP alone are a very low bar in the moist tropics,
+# so a thermodynamically favorable sounding was firing a category even on days GFS's own
+# deterministic forecast expected essentially no rain for (the northern-Australia false-positive
+# spotted live 22 Aug 2026 -- elevated instability parameters, negligible forecast rainfall).
+# Below 2mm/24h the whole instability-derived category is zeroed rather than firing on bare
+# environment; the same rain_mm is independently folded back in via rain_cat() so heavy-rain days
+# still show up even when the severe-hazard parameters alone wouldn't flag anything. (Previously
+# gated on shw, GFS's own convective-showers diagnostic, at a 0.1mm bar -- too lenient, and a
+# narrower signal than the day's actual total precip forecast; shw is no longer fetched.)
 #
 # CAPE/SCP/STP/SHIP threshold NOTE: the numeric cutoffs below (SCP 1/2/4/6/10, STP 1/2/3/5,
 # SHIP 0.5/1/2/3, and the CAPE+shear combo gates) are the US Storm Prediction Center's own
@@ -158,7 +164,7 @@ thunder_prob <- function(tprob, cape, shw_day){
 # the bar the tier-3 cape+shear branch already uses (1000 J/kg at the same ~10% reduction) --
 # the shear-only path shouldn't reach a higher tier with less instability than the explicitly
 # CAPE-gated path at the same tier.
-categorise_vals <- function(cape, shr, scp, stp, ship, cin, shw, rain_mm){
+categorise_vals <- function(cape, shr, scp, stp, ship, cin, rain_mm){
   shr_kt <- shr * 1.94384
   c <- 0
   if (cape >= 150) c <- 1
@@ -168,7 +174,7 @@ categorise_vals <- function(cape, shr, scp, stp, ship, cin, shw, rain_mm){
   if ((scp >= 9   & cape >= 900) | stp >= 4.5)               c <- max(c, 5)   # HIGH
 
   capped  <- nz(cin) <= -75      # stout cap even on the best hour of the day
-  no_trig <- nz(shw) < 0.1       # GFS's own cumulus scheme sees nothing forming all day
+  no_trig <- nz(rain_mm) < 2     # GFS's own 24h precip forecast shows essentially no rain
   if (no_trig)                    c <- 0
   if (capped & !no_trig & c >= 4) c <- c - 1
 
@@ -187,7 +193,7 @@ om_url <- function(lat, lon){
     paste0("wind_speed_",LEVELS,"hPa"),
     paste0("wind_direction_",LEVELS,"hPa"),
     paste0("geopotential_height_",LEVELS,"hPa")), collapse=",")
-  sfc <- "temperature_2m,dew_point_2m,surface_pressure,wind_speed_10m,wind_direction_10m,showers,precipitation,precipitation_probability,freezing_level_height"
+  sfc <- "temperature_2m,dew_point_2m,surface_pressure,wind_speed_10m,wind_direction_10m,precipitation,precipitation_probability,freezing_level_height"
   # timezone=UTC (not auto): with per-point local time, "Day 1" boundaries fell at a
   # different UTC instant in WA (UTC+8) vs the east coast (UTC+10/11), so the same day
   # label covered different absolute windows depending where a grid point sat. Forcing
@@ -250,10 +256,10 @@ day_groups <- function(times){
   list(idx = lapply(days, function(d) which(dts == d)), days = days)
 }
 
-# a day's value = average of the TOPN highest-severity hours. shw/rain are checked across
-# the WHOLE day (not just the top-N severity hours) since those hours are picked by an
-# instability score, not a precip score -- the day's actual rain chance/total can peak at
-# an hour that score didn't select.
+# a day's value = average of the TOPN highest-severity hours. rain is checked across the
+# WHOLE day (not just the top-N severity hours) since those hours are picked by an instability
+# score, not a precip score -- the day's actual rain chance/total can peak at an hour that
+# score didn't select.
 day_topN <- function(h, idxs, elev){
   rows <- list()
   for (i in idxs){
@@ -270,7 +276,6 @@ day_topN <- function(h, idxs, elev){
       cin  = nz(par[["MU_CIN"]]), frz = h[["freezing_level_height"]][i],
       tprob = nz(h[["precipitation_probability"]][i]))
   }
-  shw_day   <- max(sapply(idxs, function(i) nz(h[["showers"]][i])))
   rain_day  <- sum(sapply(idxs, function(i) nz(h[["precipitation"]][i])))
   rain_rate <- max(sapply(idxs, function(i) nz(h[["precipitation"]][i])))  # peak single-hour rate, for flood_cat()
   # day's peak-confidence hour (max, not mean) -- flood_cat() gates on the model's HIGHEST
@@ -284,7 +289,7 @@ day_topN <- function(h, idxs, elev){
     # single spurious overnight-drizzle hour from dominating the fallback the way max did before).
     tprob_fallback <- mean(sapply(idxs, function(i) nz(h[["precipitation_probability"]][i])))
     return(list(cat=rc, cape=0, shear=0, scp=0, stp=0, ship=0, cin=0, rain=round(rain_day), hatch=as.integer(rc>=4),
-                tprob=thunder_prob(tprob_fallback, 0, shw_day), hail=0,
+                tprob=thunder_prob(tprob_fallback, 0, rain_day), hail=0,
                 flood=flood_cat(rain_day, rain_rate, rain_pop), pop=round(rain_pop)))
   }
   sev <- sapply(rows, function(r) r$sev)
@@ -306,12 +311,12 @@ day_topN <- function(h, idxs, elev){
   # not capturing these often highly localized supercell environments, a harder problem than a
   # threshold or averaging tweak.
   peak_ship_hr <- top[[which.max(sapply(top, function(r) r$ship))]]
-  cv <- categorise_vals(m("cape"), m("shr"), m("scp"), m("stp"), m("ship"), m("cin"), shw_day, rain_day)
+  cv <- categorise_vals(m("cape"), m("shr"), m("scp"), m("stp"), m("ship"), m("cin"), rain_day)
   # thunderstorm chance: Open-Meteo's own ensemble-based precipitation_probability (%), averaged
   # over the SAME top-N instability-ranked hours as cape/shear/ship, not the whole day -- a whole-day
   # max picks up unrelated overnight drizzle (Open-Meteo's ensemble can be very confident about light,
   # non-convective rain at 7am) and reports it as a dramatic "thunderstorm chance" for the day.
-  c(cv, list(tprob=thunder_prob(m("tprob"), m("cape"), shw_day),
+  c(cv, list(tprob=thunder_prob(m("tprob"), m("cape"), rain_day),
              hail=hail_tier(peak_ship_hr$ship, peak_ship_hr$cape, frz_day),
              flood=flood_cat(rain_day, rain_rate, rain_pop), pop=round(rain_pop)))
 }
