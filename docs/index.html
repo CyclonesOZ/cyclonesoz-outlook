@@ -129,38 +129,40 @@
 (function(){
   "use strict";
   var TOWNS=[
+    // furthest zoom (z:3, always visible) -- major cities only: the 8 state/territory capitals
     {n:'Perth',lat:-31.95,lon:115.86},{n:'Adelaide',lat:-34.93,lon:138.60},{n:'Darwin',lat:-12.46,lon:130.84},
     {n:'Brisbane',lat:-27.47,lon:153.03},{n:'Sydney',lat:-33.87,lon:151.21},{n:'Melbourne',lat:-37.81,lon:144.96},
-    {n:'Hobart',lat:-42.88,lon:147.33},{n:'Canberra',lat:-35.28,lon:149.13},{n:'Broome',lat:-17.96,lon:122.24},
-    {n:'Port Hedland',lat:-20.31,lon:118.61},{n:'Karratha',lat:-20.74,lon:116.85},{n:'Geraldton',lat:-28.77,lon:114.61},
-    {n:'Kalgoorlie',lat:-30.75,lon:121.47},{n:'Esperance',lat:-33.86,lon:121.89},{n:'Albany',lat:-35.02,lon:117.88},
-    {n:'Alice Springs',lat:-23.70,lon:133.88},{n:'Katherine',lat:-14.46,lon:132.26},{n:'Tennant Creek',lat:-19.65,lon:134.19},
-    {n:'Mount Isa',lat:-20.72,lon:139.49},{n:'Cairns',lat:-16.92,lon:145.77},{n:'Townsville',lat:-19.26,lon:146.82},
-    {n:'Mackay',lat:-21.14,lon:149.19},{n:'Rockhampton',lat:-23.38,lon:150.51},{n:'Bundaberg',lat:-24.87,lon:152.35},
-    {n:'Toowoomba',lat:-27.56,lon:151.95},{n:'Gold Coast',lat:-28.02,lon:153.40},{n:'Coffs Harbour',lat:-30.30,lon:153.12},
-    {n:'Newcastle',lat:-32.93,lon:151.78},{n:'Wollongong',lat:-34.42,lon:150.89},{n:'Dubbo',lat:-32.24,lon:148.60},
-    {n:'Wagga Wagga',lat:-35.11,lon:147.37},{n:'Mildura',lat:-34.19,lon:142.16},{n:'Bendigo',lat:-36.76,lon:144.28},
-    {n:'Ballarat',lat:-37.56,lon:143.86},{n:'Launceston',lat:-41.43,lon:147.14},{n:'Broken Hill',lat:-31.95,lon:141.47},
-    {n:'Port Augusta',lat:-32.49,lon:137.77},{n:'Ceduna',lat:-32.13,lon:133.70},{n:'Longreach',lat:-23.44,lon:144.25},
-    {n:'Charleville',lat:-26.40,lon:146.24},{n:'Weipa',lat:-12.68,lon:141.87},{n:'Kununurra',lat:-15.77,lon:128.74},
-    {n:'Port Lincoln',lat:-34.73,lon:135.86},{n:'Warrnambool',lat:-38.38,lon:142.48},{n:'Bourke',lat:-30.09,lon:145.94},
-    // moderate-zoom towns (z:4) -- substantial regional centres, worth showing one zoom step in
-    // from the default nationwide view rather than making the viewer zoom all the way to z:7
-    {n:'Bunbury',lat:-33.33,lon:115.64,z:4},{n:'Busselton',lat:-33.65,lon:115.35,z:4},{n:'Margaret River',lat:-33.95,lon:115.07,z:4},
-    {n:'Whyalla',lat:-33.04,lon:137.59,z:4},{n:'Mount Gambier',lat:-37.83,lon:140.78,z:4},{n:'Renmark',lat:-34.17,lon:140.75,z:4},
-    {n:'Murray Bridge',lat:-35.12,lon:139.27,z:4},{n:'Victor Harbor',lat:-35.55,lon:138.62,z:4},
-    {n:'Gladstone',lat:-23.85,lon:151.26,z:4},{n:'Hervey Bay',lat:-25.29,lon:152.85,z:4},{n:'Maryborough',lat:-25.54,lon:152.70,z:4},
-    {n:'Emerald',lat:-23.53,lon:148.16,z:4},{n:'Roma',lat:-26.57,lon:148.79,z:4},{n:'Gympie',lat:-26.19,lon:152.67,z:4},{n:'Kingaroy',lat:-26.54,lon:151.84,z:4},
-    {n:'Tamworth',lat:-31.09,lon:150.93,z:4},{n:'Armidale',lat:-30.51,lon:151.67,z:4},{n:'Lismore',lat:-28.81,lon:153.28,z:4},
-    {n:'Grafton',lat:-29.69,lon:152.93,z:4},{n:'Orange',lat:-33.28,lon:149.10,z:4},{n:'Bathurst',lat:-33.42,lon:149.58,z:4},
-    {n:'Goulburn',lat:-34.75,lon:149.72,z:4},{n:'Griffith',lat:-34.29,lon:146.05,z:4},
-    {n:'Moree',lat:-29.46,lon:149.84,z:4},{n:'Albury',lat:-36.08,lon:146.92,z:4},{n:'Port Macquarie',lat:-31.43,lon:152.91,z:4},
-    {n:'Geelong',lat:-38.15,lon:144.36,z:4},{n:'Shepparton',lat:-36.38,lon:145.40,z:4},{n:'Wodonga',lat:-36.12,lon:146.89,z:4},
-    {n:'Horsham',lat:-36.71,lon:142.20,z:4},{n:'Swan Hill',lat:-35.34,lon:143.55,z:4},{n:'Sale',lat:-38.11,lon:147.07,z:4},
-    {n:'Wangaratta',lat:-36.36,lon:146.31,z:4},
-    {n:'Devonport',lat:-41.18,lon:146.35,z:4},{n:'Burnie',lat:-41.05,lon:145.91,z:4},
-    // close-zoom-only towns (z:7) -- smaller/more remote, rounds the national set out to ~100
-    // without cluttering the default nationwide view
+    {n:'Hobart',lat:-42.88,lon:147.33},{n:'Canberra',lat:-35.28,lon:149.13},
+    // closer zoom (z:5) -- regional centres, roughly doubling (then some) the label count once
+    // zoomed in one step from the capitals-only default view
+    {n:'Broome',lat:-17.96,lon:122.24,z:5},{n:'Port Hedland',lat:-20.31,lon:118.61,z:5},{n:'Karratha',lat:-20.74,lon:116.85,z:5},
+    {n:'Geraldton',lat:-28.77,lon:114.61,z:5},{n:'Kalgoorlie',lat:-30.75,lon:121.47,z:5},{n:'Esperance',lat:-33.86,lon:121.89,z:5},
+    {n:'Albany',lat:-35.02,lon:117.88,z:5},{n:'Bunbury',lat:-33.33,lon:115.64,z:5},{n:'Busselton',lat:-33.65,lon:115.35,z:5},
+    {n:'Margaret River',lat:-33.95,lon:115.07,z:5},
+    {n:'Alice Springs',lat:-23.70,lon:133.88,z:5},{n:'Katherine',lat:-14.46,lon:132.26,z:5},{n:'Tennant Creek',lat:-19.65,lon:134.19,z:5},
+    {n:'Mount Isa',lat:-20.72,lon:139.49,z:5},{n:'Cairns',lat:-16.92,lon:145.77,z:5},{n:'Townsville',lat:-19.26,lon:146.82,z:5},
+    {n:'Mackay',lat:-21.14,lon:149.19,z:5},{n:'Rockhampton',lat:-23.38,lon:150.51,z:5},{n:'Bundaberg',lat:-24.87,lon:152.35,z:5},
+    {n:'Toowoomba',lat:-27.56,lon:151.95,z:5},{n:'Gold Coast',lat:-28.02,lon:153.40,z:5},{n:'Coffs Harbour',lat:-30.30,lon:153.12,z:5},
+    {n:'Gladstone',lat:-23.85,lon:151.26,z:5},{n:'Hervey Bay',lat:-25.29,lon:152.85,z:5},{n:'Maryborough',lat:-25.54,lon:152.70,z:5},
+    {n:'Emerald',lat:-23.53,lon:148.16,z:5},{n:'Roma',lat:-26.57,lon:148.79,z:5},{n:'Gympie',lat:-26.19,lon:152.67,z:5},{n:'Kingaroy',lat:-26.54,lon:151.84,z:5},
+    {n:'Longreach',lat:-23.44,lon:144.25,z:5},{n:'Charleville',lat:-26.40,lon:146.24,z:5},{n:'Weipa',lat:-12.68,lon:141.87,z:5},{n:'Kununurra',lat:-15.77,lon:128.74,z:5},
+    {n:'Newcastle',lat:-32.93,lon:151.78,z:5},{n:'Wollongong',lat:-34.42,lon:150.89,z:5},{n:'Dubbo',lat:-32.24,lon:148.60,z:5},
+    {n:'Wagga Wagga',lat:-35.11,lon:147.37,z:5},{n:'Tamworth',lat:-31.09,lon:150.93,z:5},{n:'Armidale',lat:-30.51,lon:151.67,z:5},
+    {n:'Lismore',lat:-28.81,lon:153.28,z:5},{n:'Grafton',lat:-29.69,lon:152.93,z:5},{n:'Orange',lat:-33.28,lon:149.10,z:5},
+    {n:'Bathurst',lat:-33.42,lon:149.58,z:5},{n:'Goulburn',lat:-34.75,lon:149.72,z:5},{n:'Griffith',lat:-34.29,lon:146.05,z:5},
+    {n:'Moree',lat:-29.46,lon:149.84,z:5},{n:'Albury',lat:-36.08,lon:146.92,z:5},{n:'Port Macquarie',lat:-31.43,lon:152.91,z:5},
+    {n:'Broken Hill',lat:-31.95,lon:141.47,z:5},{n:'Bourke',lat:-30.09,lon:145.94,z:5},
+    {n:'Mildura',lat:-34.19,lon:142.16,z:5},{n:'Bendigo',lat:-36.76,lon:144.28,z:5},{n:'Ballarat',lat:-37.56,lon:143.86,z:5},
+    {n:'Geelong',lat:-38.15,lon:144.36,z:5},{n:'Shepparton',lat:-36.38,lon:145.40,z:5},{n:'Wodonga',lat:-36.12,lon:146.89,z:5},
+    {n:'Horsham',lat:-36.71,lon:142.20,z:5},{n:'Swan Hill',lat:-35.34,lon:143.55,z:5},{n:'Sale',lat:-38.11,lon:147.07,z:5},
+    {n:'Wangaratta',lat:-36.36,lon:146.31,z:5},{n:'Warrnambool',lat:-38.38,lon:142.48,z:5},
+    {n:'Launceston',lat:-41.43,lon:147.14,z:5},{n:'Devonport',lat:-41.18,lon:146.35,z:5},{n:'Burnie',lat:-41.05,lon:145.91,z:5},
+    {n:'Port Augusta',lat:-32.49,lon:137.77,z:5},{n:'Ceduna',lat:-32.13,lon:133.70,z:5},{n:'Whyalla',lat:-33.04,lon:137.59,z:5},
+    {n:'Port Lincoln',lat:-34.73,lon:135.86,z:5},
+    {n:'Mount Gambier',lat:-37.83,lon:140.78,z:5},{n:'Renmark',lat:-34.17,lon:140.75,z:5},{n:'Murray Bridge',lat:-35.12,lon:139.27,z:5},
+    {n:'Victor Harbor',lat:-35.55,lon:138.62,z:5},
+    // closest zoom (z:7) -- right down to smaller/more remote country towns, rounding the
+    // national set out to ~100 without cluttering anything further out
     {n:'Narrogin',lat:-32.93,lon:117.18,z:7},{n:'Carnarvon',lat:-24.89,lon:113.66,z:7},{n:'Exmouth',lat:-21.93,lon:114.13,z:7},
     {n:'Newman',lat:-23.35,lon:119.73,z:7},{n:'Meekatharra',lat:-26.59,lon:118.49,z:7},{n:'Halls Creek',lat:-18.23,lon:127.66,z:7},
     {n:'Derby',lat:-17.30,lon:123.62,z:7},{n:'Wyndham',lat:-15.48,lon:128.10,z:7},
@@ -283,7 +285,7 @@
       // fade labels in with zoom, on top of the display:none tiering above: at the most
       // zoomed-out whole-of-country view they're a faint background hint that doesn't compete
       // with the hazard bands, ramping up to fully legible by a few zoom steps in.
-      var op=Math.min(1, Math.max(0.32, (z-3)/3));
+      var op=Math.min(1, Math.max(0.32, (z-3)/4));
       tiered.forEach(function(t){var el=t.mk.getElement();if(!el) return; el.style.display=z>=t.z?'':'none'; el.style.opacity=op;});
     }
     m.on('zoomend',sync);
