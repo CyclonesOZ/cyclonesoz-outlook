@@ -606,6 +606,14 @@
     for(var i=0;i<4;i++){
       var pm=L.map('planeMap-'+i,{zoomControl:true,attributionControl:false,minZoom:3,maxZoom:10,
         worldCopyJump:false,maxBounds:[[-46,108],[-8,157]],maxBoundsViscosity:0.7,preferCanvas:false});
+      // a map with no view yet hasn't "loaded" in Leaflet's own terms, so markers added to it
+      // (drawTowns/drawStates below) can't produce a real DOM element for sync() to grab, AND
+      // the very first setView() a still-unloaded map receives (coverFit() below) takes Leaflet's
+      // silent _resetView path rather than firing 'zoomend' -- so the zoom-based fade/tiering
+      // those two functions rely on would never even get a first chance to run. Giving every
+      // plane a real (if throwaway -- coverFit immediately replaces it) view up front keeps both
+      // working as intended.
+      pm.setView([-27.5,134],4,{animate:false});
       pm.zoomControl.setPosition('topright');
       planeLandLayers[i]=drawBasemap(pm, LAND_STYLE);
       drawTowns(pm);
