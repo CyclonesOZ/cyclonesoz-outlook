@@ -363,3 +363,23 @@ out <- list(run_date = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz="UTC"),
 write_json(out, OUT, auto_unbox=TRUE, digits=2)
 cat(sprintf("Wrote %s  (%d points OK)\n", OUT, ok))
 if (ok == 0) quit(status=1)
+
+# archive this run for the viewer's historical-run picker, dated by START_DATE (the run's own
+# Day-1 anchor) so a given archive file always matches what that date's Day 1 actually looked
+# like when it was generated -- same convention the "Update outlook YYYY-MM-DD" commit message
+# already uses. Kept to a rolling ARCHIVE_DAYS window (pruned every run) so the repo doesn't
+# grow unbounded; index.json lists what's currently available so the viewer doesn't have to
+# guess dates and eat 404s.
+ARCHIVE_DIR <- "docs/archive"
+ARCHIVE_DAYS <- 14
+if (!dir.exists(ARCHIVE_DIR)) dir.create(ARCHIVE_DIR, recursive=TRUE)
+file.copy(OUT, file.path(ARCHIVE_DIR, paste0(START_DATE, ".json")), overwrite=TRUE)
+existing <- list.files(ARCHIVE_DIR, pattern="^\\d{4}-\\d{2}-\\d{2}\\.json$")
+existing_dates <- sub("\\.json$", "", existing)
+cutoff <- as.Date(START_DATE) - ARCHIVE_DAYS
+keep <- existing_dates[!is.na(as.Date(existing_dates)) & as.Date(existing_dates) >= cutoff]
+stale <- setdiff(existing, paste0(keep, ".json"))
+if (length(stale) > 0) file.remove(file.path(ARCHIVE_DIR, stale))
+write_json(sort(keep), file.path(ARCHIVE_DIR, "index.json"))  # NOT auto_unbox: must stay an
+# array even when only one date exists yet, since the viewer always expects to parse a list
+cat(sprintf("Archived run for %s (%d dates kept, %d pruned)\n", START_DATE, length(keep), length(stale)))
