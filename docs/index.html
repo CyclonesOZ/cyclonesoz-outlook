@@ -280,7 +280,11 @@
     });
     function sync(){
       var z=m.getZoom();
-      tiered.forEach(function(t){var el=t.mk.getElement();if(el) el.style.display=z>=t.z?'':'none';});
+      // fade labels in with zoom, on top of the display:none tiering above: at the most
+      // zoomed-out whole-of-country view they're a faint background hint that doesn't compete
+      // with the hazard bands, ramping up to fully legible by a few zoom steps in.
+      var op=Math.min(1, Math.max(0.32, (z-3)/3));
+      tiered.forEach(function(t){var el=t.mk.getElement();if(!el) return; el.style.display=z>=t.z?'':'none'; el.style.opacity=op;});
     }
     m.on('zoomend',sync);
     sync();
