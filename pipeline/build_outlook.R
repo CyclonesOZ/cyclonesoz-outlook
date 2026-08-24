@@ -431,7 +431,19 @@ out <- list(run_date = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz="UTC"),
             points = points)
 write_json(out, OUT, auto_unbox=TRUE, digits=2)
 cat(sprintf("Wrote %s  (%d points OK)\n", OUT, ok))
-if (ok == 0) quit(status=1)
+# a bare "not literally zero" check let a genuinely broken run (556/1032, 54%, 22 Aug 2026 --
+# Open-Meteo degrading partway through and every retry after that point failing) through as
+# "success": the workflow committed and published a map with an entire missing hemisphere of
+# real data, silently extrapolated over by the viewer's IDW field into a shape that looked like
+# a real forecast signal but wasn't. MIN_OK_FRAC refuses to publish anything that incomplete --
+# the workflow step then exits non-zero, "Commit result" never runs, and the previous (complete)
+# outlook.json stays live rather than being overwritten by a half-empty one.
+MIN_OK_FRAC <- 0.85
+if (ok < MIN_OK_FRAC * nrow(GRID)) {
+  cat(sprintf("Only %d/%d points OK (%.0f%%) -- below the %.0f%% completeness floor, not publishing this run.\n",
+              ok, nrow(GRID), 100*ok/nrow(GRID), 100*MIN_OK_FRAC))
+  quit(status=1)
+}
 
 # archive this run for the viewer's historical-run picker, dated by START_DATE (the run's own
 # Day-1 anchor) so a given archive file always matches what that date's Day 1 actually looked
