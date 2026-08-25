@@ -284,8 +284,12 @@
       var z=m.getZoom();
       // fade labels in with zoom, on top of the display:none tiering above: at the most
       // zoomed-out whole-of-country view they're a faint background hint that doesn't compete
-      // with the hazard bands, ramping up to fully legible by a few zoom steps in.
-      var op=Math.min(1, Math.max(0.32, (z-3)/4));
+      // with the hazard bands, ramping up to fully legible by a few zoom steps in. z:3-4 (the
+      // capitals-only default view) dropped to a flat, much fainter 0.15 -- the previous 0.32
+      // floor still read as fairly prominent at the furthest-out zoom the user actually lands on
+      // first. z:5 and up are untouched (same (z-3)/4 ramp as before), so the closer-in tiers
+      // look exactly as they did.
+      var op = z<=4 ? 0.15 : Math.min(1, (z-3)/4);
       tiered.forEach(function(t){var el=t.mk.getElement();if(!el) return; el.style.display=z>=t.z?'':'none'; el.style.opacity=op;});
     }
     m.on('zoomend',sync);
@@ -369,7 +373,37 @@
         vals[gy*nx+gx]=num/den;
       }
     }
-    return vals;
+    return boxBlur(vals,nx,ny,2);
+  }
+  // marching squares (d3.contours) traces the raw IDW field exactly as-is, so every cell boundary
+  // in that field becomes a facet in the output polygon -- the blocky/jagged look the reference
+  // thundeR-style plots don't have. Chaikin corner-cutting (below, applied post-contour) only
+  // rounds the CORNERS of that already-faceted polygon, it can't add the missing curvature back in
+  // between them -- so a coarse/noisy field still comes out looking scalloped rather than smooth
+  // however many Chaikin passes run on top of it. Blurring the field itself first (a standard
+  // marching-squares pre-pass) fixes it at the source: 2 passes of a 3x3 box blur removes the
+  // cell-to-cell steps the contour tracer would otherwise trace faithfully, so d3.contours starts
+  // from an already-smooth surface and the corner-cutting pass afterwards only has to polish it.
+  function boxBlur(vals,nx,ny,passes){
+    var out=vals;
+    for(var p=0;p<passes;p++){
+      var next=new Float64Array(nx*ny);
+      for(var gy=0;gy<ny;gy++){
+        for(var gx=0;gx<nx;gx++){
+          var sum=0,cnt=0;
+          for(var oy=-1;oy<=1;oy++){
+            var ny2=gy+oy; if(ny2<0||ny2>=ny) continue;
+            for(var ox=-1;ox<=1;ox++){
+              var nx2=gx+ox; if(nx2<0||nx2>=nx) continue;
+              sum+=out[ny2*nx+nx2]; cnt++;
+            }
+          }
+          next[gy*nx+gx]=sum/cnt;
+        }
+      }
+      out=next;
+    }
+    return out;
   }
 
   function tryIntersect(bandFeat){
@@ -437,7 +471,7 @@
       var clipped=tryIntersect(feat);
       if(!clipped) return;
       clipped=trySimplify(clipped);
-      clipped=trySmooth(clipped,4);
+      clipped=trySmooth(clipped,5);
       out.push({geo:clipped,style:{color:darker(sp.color,0.45),weight:1.1,opacity:0.9,fillColor:rgb(sp.color),fillOpacity:0.62}});
     });
     featureCache[key]=out;
@@ -458,6 +492,21 @@
   // from Open-Meteo's own ensemble precipitation_probability, which is already an 8-day forecast
   // field in its own right, so there's no extra noise to hide there.
   function extendedRange(dayIdx, hz){ return hz!=='cat' && hz!=='tprob' && dayIdx>=4; }
+
+  // whether the currently loaded run is the live one, or an archived past date picked from
+  // #runSelect -- read by placeholderReason() below. Historical archives only ever get compared
+  // against today's Category Outlook: hail/flood/tprob thresholds and the fire/wind hazards
+  // themselves have all changed over the life of this pipeline (fire/wind didn't exist at all
+  // before 23 Aug 2026), so an older archive's non-cat fields either don't exist or were computed
+  // under different, no-longer-current logic -- showing them next to today's legend would silently
+  // misrepresent what that historical day actually looked like. Category Outlook's cat field is
+  // the one thing that's stayed a stable, comparable definition since the archive feature shipped.
+  var isLiveRun=true;
+  function placeholderReason(dayIdx, hz){
+    if (!isLiveRun && hz!=='cat') return 'Historical runs only show Category Outlook — switch this pane to Category Outlook, or return to Today (live).';
+    if (extendedRange(dayIdx, hz)) return 'Extended range (days 5–8) shows Category only';
+    return null;
+  }
 
   // keep every plane's view in sync (even ones currently hidden by dual-plane mode, so they're
   // already correct the moment the user switches back to quad). Guarded by planeSyncing so the
@@ -569,10 +618,10 @@
     if(planeLayers[i]) m.removeLayer(planeLayers[i]);
     var placeholder=document.getElementById('planePlaceholder-'+i);
     buildPlaneSelect(i);
-    var ext=extendedRange(selDay,hz);
-    if(ext){
+    var reason=placeholderReason(selDay,hz);
+    if(reason){
       planeLayers[i]=null;
-      if(placeholder) placeholder.classList.add('show');
+      if(placeholder){ placeholder.textContent=reason; placeholder.classList.add('show'); }
     }else{
       if(placeholder) placeholder.classList.remove('show');
       planeLayers[i]=renderOnMap(m,selDay,hz);
@@ -760,6 +809,7 @@
         var url=isLive?('./outlook.json?_='+Date.now()):('./archive/'+v+'.json');
         document.getElementById('load').style.display='flex';
         loadRunData(url).then(function(){
+          isLiveRun=isLive;
           buildDayButtons();
           refreshAll(false);
           syncRunBanner(isLive, sel.selectedOptions[0].textContent);
@@ -769,6 +819,7 @@
           // to live quietly rather than leaving the page on a broken/partial state
           sel.value='live';
           loadRunData('./outlook.json?_='+Date.now()).then(function(){
+            isLiveRun=true;
             buildDayButtons(); refreshAll(false); syncRunBanner(true,'');
             document.getElementById('load').style.display='none';
           });
