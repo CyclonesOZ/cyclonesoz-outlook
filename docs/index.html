@@ -684,33 +684,10 @@
     });
   }
 
-  function infoHtml(hz, r){
-    if(hz==='tprob'){
-      var tv=r.tprob||0,tc=HAZ_SPECS.tprob;
-      var tcol=tv>=80?rgb(tc.colors[2]):tv>=50?rgb(tc.colors[1]):tv>=20?rgb(tc.colors[0]):'#5c6c7d';
-      return '<div class="cat" style="color:'+tcol+'">'+tv+'% thunderstorm chance</div><div class="sm">Highest hourly chance during the day (model ensemble)</div>';
-    }
-    if(hz==='hail'){
-      var ht=r.hail||0,hc=HAZ_SPECS.hail,hnames=['No hail expected'].concat(hc.labels);
-      var hcol=ht===0?'#5c6c7d':rgb(hc.colors[ht-1]);
-      return '<div class="cat" style="color:'+hcol+'">'+hnames[ht]+'</div><div class="sm">SHIP '+r.ship+' &middot; CAPE '+Math.round(r.cape)+' J/kg</div>';
-    }
-    if(hz==='flood'){
-      var fv=r.flood||0,fc=HAZ_SPECS.flood,fnames=['No excessive rainfall risk'].concat(fc.labels);
-      var fcol=fv===0?'#5c6c7d':rgb(fc.colors[fv-1]);
-      return '<div class="cat" style="color:'+fcol+'">'+fnames[fv]+'</div><div class="sm">Forecast rainfall '+Math.round(r.rain||0)+'mm &middot; POP '+Math.round(r.pop||0)+'%</div>';
-    }
-    if(hz==='fire'){
-      var frv=r.fire||0,frc=HAZ_SPECS.fire,frnames=['Low-moderate (below reporting threshold)'].concat(frc.labels);
-      var frcol=frv===0?'#5c6c7d':rgb(frc.colors[frv-1]);
-      return '<div class="cat" style="color:'+frcol+'">'+frnames[frv]+'</div><div class="sm">Peak FFDI (proxy) '+Math.round(r.ffdi||0)+'</div>';
-    }
-    if(hz==='wind'){
-      var wv=r.wind||0,wc=HAZ_SPECS.wind,wnames=['No damaging wind risk'].concat(wc.labels);
-      var wcol=wv===0?'#5c6c7d':rgb(wc.colors[wv-1]);
-      return '<div class="cat" style="color:'+wcol+'">'+wnames[wv]+'</div><div class="sm">CAPE '+Math.round(r.cape)+' J/kg &middot; Shear '+Math.round(r.shear)+' kt</div>';
-    }
-    // cat
+  // Category Outlook is the only pane with a hover tooltip (see attachHover below), so this only
+  // ever needs to render the cat case -- CAPE/shear/SCP/STP/SHIP/rain, the one shared explanation
+  // the other hazard panes would otherwise have been repeating hazard-specific slices of.
+  function infoHtml(r){
     if(selDay>=4){
       var lbl=r.cat>=4?'Chance of severe weather':(r.cat>=1?'Chance of storm':'No storms');
       var col=r.cat>=4?rgb(COARSE[1].color):(r.cat>=1?rgb(COARSE[0].color):'#5c6c7d');
@@ -728,6 +705,13 @@
     planeMaps[i].on('mousemove', function(e){
       if(!results.length) return;
       var hz=planeAssign[i];
+      // Category Outlook's own tooltip already carries CAPE/shear/SCP/STP/SHIP/rain -- the one
+      // real "why is this happening" explanation -- so a separate hazard-specific hover (hail
+      // size, thunderstorm %, wind tier...) on the other panes is redundant at best and, since
+      // those figures are the same underlying sounding just re-labelled, can read as if the hazard
+      // panes are each backed by their own independent analysis. Only Category Outlook gets a
+      // hover tooltip at all; the other panes rely on their legend + on-map shading alone.
+      if(hz!=='cat'){ box.classList.remove('show'); return; }
       var la=e.latlng.lat,lo=e.latlng.lng,best=-1,bd=1e9;
       for(var k=0;k<GRID.length;k++){var dd=(GRID[k][0]-la)*(GRID[k][0]-la)+(GRID[k][1]-lo)*(GRID[k][1]-lo);if(dd<bd){bd=dd;best=k;}}
       var ce=e.originalEvent, x=ce.clientX+16, y=ce.clientY+16;
@@ -736,7 +720,7 @@
       box.style.left=Math.max(4,x)+'px'; box.style.top=Math.max(4,y)+'px';
       box.classList.add('show');
       if(best<0||bd>3||!results[best]||!results[best][selDay]){ box.innerHTML='<span class="hint">No data here.</span>'; return; }
-      box.innerHTML=infoHtml(hz, results[best][selDay]);
+      box.innerHTML=infoHtml(results[best][selDay]);
     });
     planeMaps[i].on('mouseout', function(){ box.classList.remove('show'); });
   }
