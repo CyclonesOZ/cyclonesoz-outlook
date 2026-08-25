@@ -126,12 +126,22 @@ fire_tier <- function(ffdi, rain_mm){
 # EXPLICITLY zeroed below SLGT (cat>=3): this is a "does the day's overall severe environment
 # even support it" gate layered on top of the magnitude calc, unlike hail_tier(), which is shown
 # regardless of the day's overall category.
+# THRESHOLDS HALVED 25 Aug 2026: the original 0.6/1.4/2.4 guesses turned out to sit well above
+# what this pipeline's own CAPE/shear ever actually produces for a genuinely SLGT+ day -- checked
+# against the live run that day, every one of that day's 20 SLGT+ point-days computed a WNDG of
+# 0.07-0.94 (median ~0.45), so only the single most extreme point in the whole country ever cleared
+# the old 0.6 floor. NSW's north-coast SLGT points that day (CAPE ~900-1000 J/kg, shear ~28-36kt --
+# a genuine, garden-variety severe-thunderstorm wind setup) sat at 0.34-0.44, comfortably inside a
+# real damaging-gust risk but always displaying as "none" on the map. Halved rather than re-derived
+# from scratch (still no citable WNDG-to-tier conversion exists), which lands the same top point at
+# Destructive and puts most other SLGT+ days into Damaging -- validate again if a future run's
+# WNDG distribution looks meaningfully different from this one.
 wind_tier <- function(cape, shr, cat){
   if (nz(cat) < 3) return(0L)
   wndg <- (nz(cape)/2000) * (nz(shr)/20)
-  if (wndg >= 2.4) return(3L)
-  if (wndg >= 1.4) return(2L)
-  if (wndg >= 0.6) return(1L)
+  if (wndg >= 1.2) return(3L)
+  if (wndg >= 0.7) return(2L)
+  if (wndg >= 0.3) return(1L)
   0L
 }
 
