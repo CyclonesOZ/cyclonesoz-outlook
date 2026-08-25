@@ -181,16 +181,17 @@
     {n:'QLD',lat:-22.65,lon:144.57},{n:'NSW',lat:-32.15,lon:146.88},{n:'VIC',lat:-36.82,lon:144.38},
     {n:'TAS',lat:-41.90,lon:146.58}
   ];
-  // fine scale (days 1-4) -- ENH removed: MDT dropped to its old (former-ENH) bar so it's the
-  // practical ceiling for most significant days, HIGH keeps its old bar unchanged so it stays
-  // reserved for rare, potentially life-threatening outbreak days. See pipeline/build_outlook.R.
+  // fine scale (days 1-4) -- ENH removed earlier, SLGT removed 26 Aug 2026: four tiers now
+  // (TSTM/MRGL/MDT/HIGH), matching pipeline/build_outlook.R's categorise_vals(). MDT keeps its
+  // existing bar as the practical ceiling most genuinely significant days reach and inherits
+  // SLGT's old yellow; HIGH keeps its old, deliberately extreme bar (exceptional/life-threatening
+  // outbreak days only) and moves to red now that SLGT's magenta slot is free.
   var FINE=[null,
-    {abbr:'',name:'Increased chance of storm activity',color:[150,205,150]},
+    {abbr:'TSTM',name:'Increased chance of storm activity',color:[150,205,150]},
     {abbr:'MRGL',name:'Marginal',color:[86,158,86]},
-    {abbr:'SLGT',name:'Slight',color:[248,220,90]},
-    {abbr:'MDT',name:'Moderate',color:[224,96,96]},
-    {abbr:'HIGH',name:'High',color:[236,140,236]}];
-  var FINE_TH=[{t:0.5,c:1},{t:1.5,c:2},{t:2.5,c:3},{t:3.5,c:4},{t:4.5,c:5}];
+    {abbr:'MDT',name:'Moderate',color:[248,220,90]},
+    {abbr:'HIGH',name:'High',color:[214,44,44]}];
+  var FINE_TH=[{t:0.5,c:1},{t:1.5,c:2},{t:2.5,c:3},{t:3.5,c:4}];
   // coarse scale (days 5-8)
   var COARSE=[{t:0.5,color:[120,192,120],name:'Chance of storm'},{t:3.5,color:[228,120,86],name:'Chance of severe storm'}];
 
@@ -220,7 +221,10 @@
   // distinct from the storm-hazard families); wind gets a slate-to-violet ramp so it doesn't collide
   // visually with flood's blues or hail's gold/red/purple.
   var HAZ_SPECS={
-    tprob:{thresholds:[20,50,80],colors:[[196,178,120],[120,206,206],[233,120,140]],labels:['20% or higher','50% or higher','80% or higher']},
+    // 50% tier dropped 26 Aug 2026 -- two tiers read cleaner than three, and the middle band
+    // added little distinct information between "worth watching" and "expect it". Labels moved
+    // from raw percentages to plain-language terms at the same time.
+    tprob:{thresholds:[20,80],colors:[[196,178,120],[233,120,140]],labels:['Chance','Likely']},
     hail: {thresholds:[1,2,3],colors:[[224,180,40],[214,44,44],[142,44,196]],labels:['Small (<2cm)','Large (2-5cm)','Giant (>5cm)']},
     flood:{thresholds:[1,2,3],colors:[[130,180,230],[40,110,200],[150,50,190]],labels:['Slight risk of excessive rainfall','Moderate risk of excessive rainfall','High risk of excessive rainfall']},
     fire: {thresholds:[1,2,3,4],colors:[[230,196,60],[233,148,40],[218,74,40],[120,24,24]],labels:['Moderate','High','Extreme','Catastrophic']},
@@ -548,7 +552,7 @@
         [COARSE[1],COARSE[0]].forEach(function(c){h+='<div class="row"><span class="sw" style="background:'+rgb(c.color)+'"></span>'+c.name+'</div>';});
         h+='<div class="cap" style="margin-top:6px;margin-bottom:0">Extended range</div>';
       }else{
-        for(var k=5;k>=1;k--){var c=FINE[k];h+='<div class="row"><span class="sw" style="background:'+rgb(c.color)+'"></span>'+(c.abbr?c.abbr+' — ':'')+c.name+'</div>';}
+        for(var k=4;k>=1;k--){var c=FINE[k];h+='<div class="row"><span class="sw" style="background:'+rgb(c.color)+'"></span>'+(c.abbr?c.abbr+' — ':'')+c.name+'</div>';}
       }
     }else{
       var hs=HAZ_SPECS[hz];

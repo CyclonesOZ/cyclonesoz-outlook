@@ -43,13 +43,15 @@ sev_score <- function(p){
   2*scp + 2*stp + 2*ship + cape/500 + shr/20
 }
 
-# daily accumulated rainfall (mm, GFS's own total precip forecast) -> the same 0-5 scale,
+# daily accumulated rainfall (mm, GFS's own total precip forecast) -> the same 0-4 scale,
 # folded into the composite category below: any hazard capable of occurring on the day --
 # hail, wind, tornado, or flash-flood rain -- lifts the overall risk shown on the map.
+# RESCALED 26 Aug 2026 alongside categorise_vals()'s SLIGHT removal (0-5 -> 0-4): the old
+# 50mm rung mapped onto SLIGHT, which no longer exists as a tier -- dropped rather than
+# folded into either neighbour, so 35-74mm now reads as MRGL and 75mm+ as MDT directly.
 rain_cat <- function(mm){
-  if (mm >= 150) return(5)
-  if (mm >= 75)  return(4)
-  if (mm >= 50)  return(3)
+  if (mm >= 150) return(4)
+  if (mm >= 75)  return(3)
   if (mm >= 35)  return(2)
   if (mm >= 10)  return(1)
   0
@@ -123,9 +125,11 @@ fire_tier <- function(ffdi, rain_mm){
 # index, WNDG = (MU_CAPE/2000) * (effective shear in m/s / 20) -- run through an unvalidated,
 # hand-picked mapping onto these three tiers, since WNDG doesn't have a citable direct-to-gust-
 # speed conversion; treat the exact breakpoints as approximate the same way hail_tier()'s are.
-# EXPLICITLY zeroed below SLGT (cat>=3): this is a "does the day's overall severe environment
-# even support it" gate layered on top of the magnitude calc, unlike hail_tier(), which is shown
-# regardless of the day's overall category.
+# EXPLICITLY zeroed below MDT (cat>=3 under the current 0-4 TSTM/MRGL/MDT/HIGH scale -- this was
+# SLGT+ before SLGT was removed 26 Aug 2026; the literal "3" didn't need to change, only what it
+# now means did, since MDT shifted down a slot to fill SLGT's old number): this is a "does the
+# day's overall severe environment even support it" gate layered on top of the magnitude calc,
+# unlike hail_tier(), which is shown regardless of the day's overall category.
 # THRESHOLDS HALVED 25 Aug 2026: the original 0.6/1.4/2.4 guesses turned out to sit well above
 # what this pipeline's own CAPE/shear ever actually produces for a genuinely SLGT+ day -- checked
 # against the live run that day, every one of that day's 20 SLGT+ point-days computed a WNDG of
@@ -159,12 +163,20 @@ wind_tier <- function(cape, shr, cat){
 # on model confidence rather than as the literal "chance of exceeding X mm" the thresholds are
 # framed around -- treat this as a magnitude-tiered rainfall outlook gated by model confidence,
 # not a true probabilistic ERO, unless/until the pipeline adds a per-point ensemble call.
-flood_cat <- function(rain_mm, rate_mm, pop){
+# TROPIC-OF-CAPRICORN SPLIT added 26 Aug 2026: the thresholds above were set against tropical-
+# north rainfall climatology, where a 500mm/24h day, while extreme, is a real monsoon/tropical-low
+# event that happens most wet seasons. That same 500mm in temperate southern Australia is far
+# further outside the ordinary range and far more damaging relative to what the ground/drainage
+# there is built for -- the fixed national threshold was letting genuinely excessive southern rain
+# events go unflagged because they never approached the north's bar. South of -23.5 deg (the
+# Tropic of Capricorn), thresholds are scaled to 40% of the northern figures; north of it, unchanged.
+flood_cat <- function(rain_mm, rate_mm, pop, lat){
   if (nz(pop) < 25) return(0L)
   rm <- nz(rain_mm); rt <- nz(rate_mm)
-  if (rm >= 500 | rt >= 250) return(3L)   # high
-  if (rm >= 250 | rt >= 175) return(2L)   # moderate
-  if (rm >= 150 | rt >= 100) return(1L)   # slight
+  f <- if (nz(lat) > -23.5) 1 else 0.4
+  if (rm >= 500*f | rt >= 250*f) return(3L)   # high
+  if (rm >= 250*f | rt >= 175*f) return(2L)   # moderate
+  if (rm >= 150*f | rt >= 100*f) return(1L)   # slight
   0L
 }
 
@@ -190,12 +202,15 @@ thunder_prob <- function(tprob, cape, rain_mm){
   as.integer(round(nz(tprob) * 0.5))
 }
 
-# SPC-style category from averaged parameters: 0 none,1 TSTM,2 MRGL,3 SLGT,4 MDT,5 HIGH
-# ENH was removed and MDT dropped to its old bar (formerly ENH's threshold) so MDT reads as the
-# practical ceiling most genuinely significant days reach; HIGH keeps its old (unchanged, and now
-# the only tier above MDT) bar so it stays reserved for the rare, potentially life-threatening
-# outbreak days -- the old MDT tier's own distinct threshold is gone; that value range now just
-# stays at MDT rather than independently promoting to a tier of its own.
+# SPC-style category from averaged parameters: 0 none,1 TSTM,2 MRGL,3 MDT,4 HIGH
+# SLGT was removed 26 Aug 2026 (on top of ENH's earlier removal): four tiers reads cleaner than
+# five and SLGT sat in a spot forecasters and the general public alike found hard to distinguish
+# from MRGL at a glance. Its own former threshold isn't reassigned anywhere -- a day that would
+# have hit SLGT under the old scale now simply stays at MRGL, it doesn't get folded upward into
+# MDT -- so MDT keeps exactly the bar it already had (unchanged from the ENH removal above) and
+# still reads as the practical ceiling most genuinely significant days reach. HIGH also keeps its
+# old, unchanged, deliberately extreme bar -- explicitly for exceptional, potentially
+# life-threatening outbreak days only, not a normal "top of the scale" tier.
 # cin = MU_CIN (J/kg, <=0, from the same sounding as cape/shr) is a suppression check on an
 # already-triggering day (see capped below). rain_mm -- the day's accumulated 24h total precip --
 # is the actual initiation gate: CAPE/SCP/STP/SHIP alone are a very low bar in the moist tropics,
@@ -242,21 +257,20 @@ thunder_prob <- function(tprob, cape, rain_mm){
 categorise_vals <- function(cape, shr, scp, stp, ship, cin, rain_mm){
   shr_kt <- shr * 1.94384
   c <- 0
-  if (cape >= 150) c <- 1
-  if ((cape >= 450 & shr_kt >= 18) | (scp >= 0.9 & cape >= 900) | ship >= 0.45) c <- max(c, 2)
-  if ((scp >= 1.8 & cape >= 900) | stp >= 0.9 | ship >= 0.9 | (cape >= 900 & shr_kt >= 27)) c <- max(c, 3)
-  if ((scp >= 3.6 & cape >= 900) | stp >= 1.8 | ship >= 1.8) c <- max(c, 4)   # MDT
-  if ((scp >= 9   & cape >= 900) | stp >= 4.5)               c <- max(c, 5)   # HIGH
+  if (cape >= 150) c <- 1                                                                   # TSTM
+  if ((cape >= 450 & shr_kt >= 18) | (scp >= 0.9 & cape >= 900) | ship >= 0.45) c <- max(c, 2)  # MRGL
+  if ((scp >= 3.6 & cape >= 900) | stp >= 1.8 | ship >= 1.8) c <- max(c, 3)   # MDT
+  if ((scp >= 9   & cape >= 900) | stp >= 4.5)               c <- max(c, 4)   # HIGH
 
   capped  <- nz(cin) <= -75      # stout cap even on the best hour of the day
   no_trig <- nz(rain_mm) < 2     # GFS's own 24h precip forecast shows essentially no rain
   if (no_trig)                    c <- 0
-  if (capped & !no_trig & c >= 4) c <- c - 1
+  if (capped & !no_trig & c >= 3) c <- c - 1
 
   rc <- rain_cat(nz(rain_mm))
   c  <- max(c, rc)
 
-  hatch <- as.integer(stp >= 0.9 | ship >= 0.9 | scp >= 3.6 | rc >= 4)
+  hatch <- as.integer(stp >= 0.9 | ship >= 0.9 | scp >= 3.6 | rc >= 3)
   list(cat=c, cape=round(cape), shear=round(shr_kt), scp=round(scp,1),
        stp=round(stp,1), ship=round(ship,1), cin=round(cin), rain=round(nz(rain_mm)), hatch=hatch)
 }
@@ -335,7 +349,7 @@ day_groups <- function(times){
 # WHOLE day (not just the top-N severity hours) since those hours are picked by an instability
 # score, not a precip score -- the day's actual rain chance/total can peak at an hour that
 # score didn't select.
-day_topN <- function(h, idxs, elev){
+day_topN <- function(h, idxs, elev, lat){
   rows <- list()
   for (i in idxs){
     prof <- tryCatch(build_profile(h, i, elev), error=function(e) NULL)
@@ -372,9 +386,9 @@ day_topN <- function(h, idxs, elev){
     # back to the day's mean precip-probability (still whole-day, but mean rather than max keeps a
     # single spurious overnight-drizzle hour from dominating the fallback the way max did before).
     tprob_fallback <- mean(sapply(idxs, function(i) nz(h[["precipitation_probability"]][i])))
-    return(list(cat=rc, cape=0, shear=0, scp=0, stp=0, ship=0, cin=0, rain=round(rain_day), hatch=as.integer(rc>=4),
+    return(list(cat=rc, cape=0, shear=0, scp=0, stp=0, ship=0, cin=0, rain=round(rain_day), hatch=as.integer(rc>=3),
                 tprob=thunder_prob(tprob_fallback, 0, rain_day), hail=0,
-                flood=flood_cat(rain_day, rain_rate, rain_pop), pop=round(rain_pop),
+                flood=flood_cat(rain_day, rain_rate, rain_pop, lat), pop=round(rain_pop),
                 fire=fire_tier(ffdi_day, rain_day), ffdi=round(ffdi_day), wind=0L))
   }
   sev <- sapply(rows, function(r) r$sev)
@@ -403,7 +417,7 @@ day_topN <- function(h, idxs, elev){
   # non-convective rain at 7am) and reports it as a dramatic "thunderstorm chance" for the day.
   c(cv, list(tprob=thunder_prob(m("tprob"), m("cape"), rain_day),
              hail=hail_tier(peak_ship_hr$ship, peak_ship_hr$cape, frz_day),
-             flood=flood_cat(rain_day, rain_rate, rain_pop), pop=round(rain_pop),
+             flood=flood_cat(rain_day, rain_rate, rain_pop, lat), pop=round(rain_pop),
              fire=fire_tier(ffdi_day, rain_day), ffdi=round(ffdi_day),
              wind=wind_tier(m("cape"), m("shr"), cv$cat)))
 }
@@ -426,7 +440,7 @@ process_point <- function(k){
     if (is.null(r)) return(NULL)
     h <- r$hourly; elev <- r$elevation
     gp <- day_groups(h$time)
-    dres <- lapply(gp$idx, function(ix) day_topN(h, ix, elev))
+    dres <- lapply(gp$idx, function(ix) day_topN(h, ix, elev, lat))
     Sys.sleep(0.15)   # stay a courteous, gently-paced client per worker even with 4x concurrency
     list(lat=lat, lon=lon, d=dres, days=gp$days)
   }, error=function(e) NULL)
