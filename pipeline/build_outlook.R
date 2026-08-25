@@ -176,10 +176,18 @@ flood_cat <- function(rain_mm, rate_mm, pop){
 # doesn't actually expect meaningful rain for -- zeroed below the same 2mm/24h no-rain gate the
 # category uses (see categorise_vals()), heavily discounted when the day's CAPE is negligible even
 # if some rain probability remains.
+# SCALE FACTORS HALVED 25 Aug 2026: even outside the low-CAPE case, showing the raw "any rain"
+# probability unmodified overstated true thunderstorm chance across the board -- "probability of
+# any rain" is a strictly larger, easier-to-satisfy event than "probability of a thunderstorm"
+# specifically (stratiform/frontal rain with no convection at all still counts toward Open-Meteo's
+# figure), so the whole map read as systematically too high, confirmed live 25 Aug 2026. Both
+# branches scaled down by the same 0.5 factor -- 0.3->0.15 for the already-discounted low-CAPE
+# case, 1.0->0.5 for the previously-undiscounted case -- keeping the low-CAPE case discounted
+# further than the higher-CAPE one, just at half the previous magnitude throughout.
 thunder_prob <- function(tprob, cape, rain_mm){
   if (nz(rain_mm) < 2)   return(0L)
-  if (nz(cape) < 100)    return(as.integer(round(nz(tprob) * 0.3)))
-  as.integer(round(nz(tprob)))
+  if (nz(cape) < 100)    return(as.integer(round(nz(tprob) * 0.15)))
+  as.integer(round(nz(tprob) * 0.5))
 }
 
 # SPC-style category from averaged parameters: 0 none,1 TSTM,2 MRGL,3 SLGT,4 MDT,5 HIGH
