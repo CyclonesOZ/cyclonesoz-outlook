@@ -201,7 +201,7 @@
     {key:'flood', label:'Excessive Rainfall',   enabled:true,  desc:'Flash-flood risk tiers (Slight/Moderate/High) from forecast rainfall totals and rates.'},
     {key:'hail',  label:'Hail',                 enabled:true,  desc:'Potential hail size (Small/Large/Very Large) from supercell composite parameters.'},
     {key:'fire',  label:'Fire Danger',          enabled:true,  desc:'McArthur FFDI-based proxy (Moderate to Catastrophic) from heat, dryness, wind and soil moisture.'},
-    {key:'wind',  label:'Damaging Winds',       enabled:true,  desc:'Convective wind-damage tiers, shown only on days with severe thunderstorms (SLGT+) forecast.'}
+    {key:'wind',  label:'Damaging Winds',       enabled:true,  desc:'Convective wind-damage tiers, shown only on days with Moderate-or-higher severe thunderstorms forecast.'}
   ];
   function hazDef(key){ for(var i=0;i<HAZARDS_LIST.length;i++){ if(HAZARDS_LIST[i].key===key) return HAZARDS_LIST[i]; } return null; }
   function isEnabled(key){ var h=hazDef(key); return !!(h && h.enabled); }
