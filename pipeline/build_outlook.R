@@ -57,23 +57,36 @@ rain_cat <- function(mm){
   0
 }
 
-# hail size tier: 0 none/sub-severe, 1 small (<2cm), 2 large (2-5cm), 3 giant (>5cm).
+# hail size tier: 0 none/sub-severe, 1 small (0-3cm), 2 large (3-6cm), 3 very large (6cm+).
+# Size bands widened 26 Aug 2026 (was <2/2-5/>5cm) -- no change to the tier PROMOTION logic
+# below, just to where the resulting tier is labelled on the map (see docs/index.html).
 # SHIP is SPC's own significant-hail parameter (calibrated to >=2in/5cm hail potential), so
-# its own 1/2 breakpoints are kept as the primary driver. frz_lvl_m is the altitude of the 0C
-# level during the day's most unstable hours -- Raupach et al. 2023 (Mon. Wea. Rev. 151,
-# doi:10.1175/mwr-d-22-0127.1) found melting-level height is the key variable needed to correct
-# naive instability-shear hail proxies for Australia, and specifically that proxies without it
-# OVERESTIMATE hail probability in Australia's tropical north. Both directions here follow that
-# finding: a lower freezing level gives a falling hailstone less distance to melt (cold_aloft
-# bumps the tier up), while an unusually high freezing level -- common in the tropics -- gives
-# it much more distance to melt before reaching the ground (warm_aloft pulls the tier back down).
-# The specific 3400m/4900m cutoffs are our own working thresholds from general hail-forecasting
-# practice, not numbers taken from the paper (which uses a continuous correction, not a step),
-# so treat the exact breakpoints as approximate even though the melting-level concept is now
-# directly evidenced for Australia.
-hail_tier <- function(ship, cape, frz_lvl_m){
+# its own 1/2 breakpoints are kept as the primary driver -- an approximate mapping onto the new
+# bands rather than a literal recalibration, since SHIP itself doesn't have a citable 3cm/6cm
+# formulation to draw from. frz_lvl_m is the altitude of the 0C level during the day's most
+# unstable hours -- Raupach et al. 2023 (Mon. Wea. Rev. 151, doi:10.1175/mwr-d-22-0127.1) found
+# melting-level height is the key variable needed to correct naive instability-shear hail
+# proxies for Australia, and specifically that proxies without it OVERESTIMATE hail probability
+# in Australia's tropical north. Both directions here follow that finding: a lower freezing
+# level gives a falling hailstone less distance to melt (cold_aloft bumps the tier up), while an
+# unusually high freezing level -- common in the tropics -- gives it much more distance to melt
+# before reaching the ground (warm_aloft pulls the tier back down). The specific 3400m/4900m
+# cutoffs are our own working thresholds from general hail-forecasting practice, not numbers
+# taken from the paper (which uses a continuous correction, not a step), so treat the exact
+# breakpoints as approximate even though the melting-level concept is now directly evidenced
+# for Australia.
+# t500 ADDED 26 Aug 2026 as a second, independent cold-aloft signal: freezing-level height alone
+# is a proxy for melt distance, but says nothing about how cold the hail-growth layer itself is
+# -- two days can share the same freezing level while one has a much colder mid-troposphere
+# above it, which grows larger stones before they ever start falling. 500hPa temperature is the
+# standard level used for exactly this in operational hail forecasting (a "cold pool aloft"
+# check independent of surface/low-level conditions). -20C is the general large-hail-supportive
+# benchmark at that level; either cold signal (low freezing level OR cold 500hPa) is now enough
+# to trigger cold_aloft, so a day that's cold aloft in EITHER sense gets caught, not just the
+# freezing-level case alone -- this pipeline previously only ever looked at freezing level.
+hail_tier <- function(ship, cape, frz_lvl_m, t500){
   base <- if (ship >= 2) 3 else if (ship >= 1) 2 else if (ship >= 0.5 & cape >= 300) 1 else 0
-  cold_aloft <- !is.na(frz_lvl_m) & frz_lvl_m < 3400 & cape >= 300
+  cold_aloft <- cape >= 300 & ((!is.na(frz_lvl_m) & frz_lvl_m < 3400) | (!is.na(t500) & t500 <= -20))
   warm_aloft <- !is.na(frz_lvl_m) & frz_lvl_m > 4900
   if (cold_aloft & base >= 1 & base < 3) base <- base + 1
   if (warm_aloft & base >= 1) base <- base - 1
@@ -363,6 +376,7 @@ day_topN <- function(h, idxs, elev, lat){
       cape = nz(par[["MU_CAPE"]]), shr = nz(par[["BS_EFF_MU"]]),
       scp  = nz(par[["SCP_new"]]), stp = nz(par[["STP_new"]]), ship = nz(par[["SHIP"]]),
       cin  = nz(par[["MU_CIN"]]), frz = h[["freezing_level_height"]][i],
+      t500 = h[["temperature_500hPa"]][i],
       tprob = nz(h[["precipitation_probability"]][i]))
   }
   rain_day  <- sum(sapply(idxs, function(i) nz(h[["precipitation"]][i])))
@@ -394,9 +408,13 @@ day_topN <- function(h, idxs, elev, lat){
   sev <- sapply(rows, function(r) r$sev)
   top <- rows[order(sev, decreasing=TRUE)[seq_len(min(TOPN, length(rows)))]]
   m <- function(k) mean(sapply(top, function(r) r[[k]]))
-  # coldest freezing level among the day's most unstable hours -- see hail_tier() for why
+  # coldest freezing level AND coldest 500hPa temp among the day's most unstable hours -- see
+  # hail_tier() for why both cold-aloft signals are taken as the day's min rather than paired to
+  # one specific hour the way cape/ship below are.
   frz_day <- suppressWarnings(min(sapply(top, function(r) r$frz), na.rm=TRUE))
   if (!is.finite(frz_day)) frz_day <- NA
+  t500_day <- suppressWarnings(min(sapply(top, function(r) r$t500), na.rm=TRUE))
+  if (!is.finite(t500_day)) t500_day <- NA
   # hail comes from a brief, sharp peak (a supercell's giant-hail window is often 1-2 hours),
   # not a sustained multi-hour condition the way overall category risk is -- so unlike cape/shr/
   # scp/stp/ship/cin above (deliberately averaged across the top-N hours to represent the day's
@@ -416,7 +434,7 @@ day_topN <- function(h, idxs, elev, lat){
   # max picks up unrelated overnight drizzle (Open-Meteo's ensemble can be very confident about light,
   # non-convective rain at 7am) and reports it as a dramatic "thunderstorm chance" for the day.
   c(cv, list(tprob=thunder_prob(m("tprob"), m("cape"), rain_day),
-             hail=hail_tier(peak_ship_hr$ship, peak_ship_hr$cape, frz_day),
+             hail=hail_tier(peak_ship_hr$ship, peak_ship_hr$cape, frz_day, t500_day),
              flood=flood_cat(rain_day, rain_rate, rain_pop, lat), pop=round(rain_pop),
              fire=fire_tier(ffdi_day, rain_day), ffdi=round(ffdi_day),
              wind=wind_tier(m("cape"), m("shr"), cv$cat)))

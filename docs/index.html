@@ -199,7 +199,7 @@
     {key:'cat',   label:'Category Outlook',    enabled:true,  desc:'SPC-style overall severe risk (TSTM to HIGH), from instability, shear and rainfall.'},
     {key:'tprob', label:'Thunderstorm Chance',  enabled:true,  desc:"Likelihood of any thunderstorm activity, from the model's own rain probability."},
     {key:'flood', label:'Excessive Rainfall',   enabled:true,  desc:'Flash-flood risk tiers (Slight/Moderate/High) from forecast rainfall totals and rates.'},
-    {key:'hail',  label:'Hail',                 enabled:true,  desc:'Potential hail size (Small/Large/Giant) from supercell composite parameters.'},
+    {key:'hail',  label:'Hail',                 enabled:true,  desc:'Potential hail size (Small/Large/Very Large) from supercell composite parameters.'},
     {key:'fire',  label:'Fire Danger',          enabled:true,  desc:'McArthur FFDI-based proxy (Moderate to Catastrophic) from heat, dryness, wind and soil moisture.'},
     {key:'wind',  label:'Damaging Winds',       enabled:true,  desc:'Convective wind-damage tiers, shown only on days with severe thunderstorms (SLGT+) forecast.'}
   ];
@@ -225,7 +225,9 @@
     // added little distinct information between "worth watching" and "expect it". Labels moved
     // from raw percentages to plain-language terms at the same time.
     tprob:{thresholds:[20,80],colors:[[196,178,120],[233,120,140]],labels:['Chance','Likely']},
-    hail: {thresholds:[1,2,3],colors:[[224,180,40],[214,44,44],[142,44,196]],labels:['Small (<2cm)','Large (2-5cm)','Giant (>5cm)']},
+    // size guide (cm) dropped from the labels 26 Aug 2026 -- plain Small/Large/Very Large reads
+    // cleaner, and the underlying bands widened at the same time (was <2/2-5/>5cm) to 0-3/3-6/6+cm.
+    hail: {thresholds:[1,2,3],colors:[[224,180,40],[214,44,44],[142,44,196]],labels:['Small','Large','Very Large']},
     flood:{thresholds:[1,2,3],colors:[[130,180,230],[40,110,200],[150,50,190]],labels:['Slight risk of excessive rainfall','Moderate risk of excessive rainfall','High risk of excessive rainfall']},
     fire: {thresholds:[1,2,3,4],colors:[[230,196,60],[233,148,40],[218,74,40],[120,24,24]],labels:['Moderate','High','Extreme','Catastrophic']},
     wind: {thresholds:[1,2,3],colors:[[150,160,196],[96,92,158],[58,38,86]],labels:['Damaging (90km/h+)','Destructive (125km/h+)','Very destructive (160km/h+)']}
