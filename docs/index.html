@@ -116,7 +116,7 @@
     <div id="modeToggle"><button class="modeBtn" data-mode="dual">Dual plane</button><button class="modeBtn active" data-mode="quad">Quad plane</button></div>
     <div id="runPicker"><label for="runSelect">Run</label><select id="runSelect"></select></div>
     <div id="runBanner"></div>
-    <div id="about"><b>How this runs:</b> built from Open-Meteo's GFS forecast soundings, processed daily into severe-weather parameters (CAPE, shear, SCP, STP, SHIP) and averaged over each day's worst 6 hours. Fully automated, no forecaster in the loop.</div>
+    <div id="about"><b>How this runs:</b> built from Open-Meteo's GFS forecast soundings, processed daily into severe-weather parameters (CAPE, shear, SCP, SHIP) and averaged over each day's worst 6 hours. Fully automated, no forecaster in the loop.</div>
     <div id="planeInfo"></div>
     <div id="extNote">Extended range (Day 5+): model confidence drops significantly this far out &mdash; treat as broad, indicative guidance only.</div>
     <div id="caption"><div class="cap">Disclaimer</div>Automated guidance from forecast model data. Not an official warning &mdash; always check the Bureau of Meteorology.<div id="updated"><span class="live-dot"></span><span id="updatedtxt"></span></div></div>
@@ -691,13 +691,15 @@
   }
 
   // Category Outlook is the only pane with a hover tooltip (see attachHover below), so this only
-  // ever needs to render the cat case -- CAPE/shear/SCP/STP/SHIP/rain, the one shared explanation
-  // the other hazard panes would otherwise have been repeating hazard-specific slices of. STP was
-  // dropped from this display for a while (see git history) because the pipeline was computing it
-  // with the Northern Hemisphere right-moving-supercell storm-relative-helicity convention --
-  // wrong for Australia. Restored 27 Aug 2026 now that the pipeline uses thundeR's STP_new_LM
-  // (and SCP_new_LM), the left-mover variants the package itself documents as Southern
-  // Hemisphere-correct.
+  // ever needs to render the cat case -- CAPE/shear/SCP/SHIP/rain, the one shared explanation
+  // the other hazard panes would otherwise have been repeating hazard-specific slices of. STP is
+  // left out of this display: thundeR computes it (STP_new) using the Northern Hemisphere
+  // right-moving-supercell storm-relative-helicity convention, not the left-mover variant
+  // (STP_new_LM) the package itself documents as Southern Hemisphere-correct. Briefly switched
+  // and briefly restored to the UI on 27 Aug 2026, then reverted the same day: the _LM field is
+  // real, but came back as a flat 0 on every elevated-risk day in the validation run against the
+  // thresholds this pipeline currently has -- see pipeline/build_outlook.R's sev_score() comment.
+  // Re-add once the pipeline switches to STP_new_LM together with a proper recalibration.
   function infoHtml(r){
     if(selDay>=4){
       var lbl=r.cat>=4?'Chance of severe weather':(r.cat>=1?'Chance of storm':'No storms');
@@ -706,7 +708,7 @@
     }
     var c=FINE[r.cat]||FINE[1],col2=r.cat===0?'#5c6c7d':rgb(c.color);
     return '<div class="cat" style="color:'+col2+'">'+(r.cat===0?'No storms':(c.abbr?c.abbr+' · ':'')+c.name)+(r.hatch&&r.cat>=2?' (sig)':'')+'</div>'+
-      'CAPE '+Math.round(r.cape)+' J/kg · Shear '+Math.round(r.shear)+' kt<div class="sm">SCP '+r.scp+' · STP '+r.stp+' · SHIP '+r.ship+' · Rain '+Math.round(r.rain||0)+'mm</div>';
+      'CAPE '+Math.round(r.cape)+' J/kg · Shear '+Math.round(r.shear)+' kt<div class="sm">SCP '+r.scp+' · SHIP '+r.ship+' · Rain '+Math.round(r.rain||0)+'mm</div>';
   }
   // single shared tooltip, positioned near the cursor (clamped to viewport) rather than pinned to
   // one fixed corner, since there's no longer a single "main" map -- it can be triggered from
@@ -716,7 +718,7 @@
     planeMaps[i].on('mousemove', function(e){
       if(!results.length) return;
       var hz=planeAssign[i];
-      // Category Outlook's own tooltip already carries CAPE/shear/SCP/STP/SHIP/rain -- the one
+      // Category Outlook's own tooltip already carries CAPE/shear/SCP/SHIP/rain -- the one
       // real "why is this happening" explanation -- so a separate hazard-specific hover (hail
       // size, thunderstorm %, wind tier...) on the other panes is redundant at best and, since
       // those figures are the same underlying sounding just re-labelled, can read as if the hazard

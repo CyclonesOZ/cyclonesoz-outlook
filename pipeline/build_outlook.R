@@ -37,16 +37,21 @@ dewpoint <- function(T, RH){
 }
 
 # continuous severity score used to rank the hours of a day
-# SCP_new_LM/STP_new_LM (not the bare SCP_new/STP_new used until 27 Aug 2026): both are thundeR's
-# own Coffer et al. (2019)-based formulas, but the bare versions use the NORTHERN Hemisphere
-# right-moving-supercell convention for storm-relative helicity -- wrong for a country that's
-# entirely in the Southern Hemisphere, where the dominant supercell-splitting direction reverses.
-# thundeR's own docs describe the _LM ("left-moving") variants as the ones built for exactly this.
-# This was live and uncorrected for the whole life of this pipeline until now: every SCP/STP value
-# this tool has ever shown was computed with the wrong hemisphere's storm-motion vector.
+# REVERTED to SCP_new/STP_new on 27 Aug 2026: tried SCP_new_LM/STP_new_LM (thundeR's own
+# Southern-Hemisphere-documented left-mover variants -- the bare versions use the Northern
+# Hemisphere right-moving-supercell convention, which is the wrong hemisphere for this country)
+# but the switch was incomplete on its own. Checked live: STP_new_LM came back as a flat 0 on
+# every single elevated-risk (cat>=2) point-day in the validation run, and SCP_new_LM was
+# overwhelmingly negative even on those same days (range -1.1 to +0.2, never reaching the 0.9
+# threshold that promotes a day to MRGL) -- the field choice is the documented-correct one, but
+# the existing absolute thresholds below were tuned against the OLD field's typical range and are
+# now essentially unreachable against the new one's much smaller/differently-signed values, so
+# SCP/STP silently stopped contributing to the category system almost entirely rather than just
+# being hemisphere-imperfect. Reverted to the known-working (if hemisphere-imperfect) fields until
+# the _LM switch can be redone together with a proper threshold recalibration against real data.
 sev_score <- function(p){
   cape <- nz(p[["MU_CAPE"]]); shr <- nz(p[["BS_EFF_MU"]])*1.94384
-  scp  <- nz(p[["SCP_new_LM"]]); stp <- nz(p[["STP_new_LM"]]); ship <- nz(p[["SHIP"]])
+  scp  <- nz(p[["SCP_new"]]); stp <- nz(p[["STP_new"]]); ship <- nz(p[["SHIP"]])
   2*scp + 2*stp + 2*ship + cape/500 + shr/20
 }
 
@@ -381,7 +386,7 @@ day_topN <- function(h, idxs, elev, lat){
     rows[[length(rows)+1]] <- list(
       sev  = sev_score(par),
       cape = nz(par[["MU_CAPE"]]), shr = nz(par[["BS_EFF_MU"]]),
-      scp  = nz(par[["SCP_new_LM"]]), stp = nz(par[["STP_new_LM"]]), ship = nz(par[["SHIP"]]),
+      scp  = nz(par[["SCP_new"]]), stp = nz(par[["STP_new"]]), ship = nz(par[["SHIP"]]),
       cin  = nz(par[["MU_CIN"]]), frz = h[["freezing_level_height"]][i],
       t500 = h[["temperature_500hPa"]][i],
       tprob = nz(h[["precipitation_probability"]][i]))
@@ -519,14 +524,15 @@ cat(sprintf("Wrote %s  (%d points OK)\n", OUT, ok))
 # a real forecast signal but wasn't. MIN_OK_FRAC refuses to publish anything that incomplete --
 # the workflow step then exits non-zero, "Commit result" never runs, and the previous (complete)
 # outlook.json stays live rather than being overwritten by a half-empty one.
-# LOWERED to 0.70 on 27 Aug 2026 after two consecutive same-day runs (71%, then 57%) both got
-# blocked, leaving the site stuck on an increasingly stale prior run during a genuine multi-hour
-# Open-Meteo degradation -- staying published-but-stale that long has its own real cost. 0.70
-# still sits well above the 54% that caused the original incident this gate exists for, but
-# accepts more risk than 0.85 did: missing points cluster geographically (confirmed with the
-# original incident, a clean north/south split), not randomly, so a 70%-complete run can still
-# mean one whole region gets silently interpolated over by the viewer's IDW field.
-MIN_OK_FRAC <- 0.70
+# Briefly lowered to 0.70 on 27 Aug 2026 after two consecutive same-day runs (71%, then 57%)
+# both got blocked during a genuine multi-hour Open-Meteo degradation. Restored to 0.85 the same
+# day once the retry pass above (added alongside) proved it can rescue a run on its own -- the
+# very next run after the retry pass shipped went from failing outright to 100% complete, so the
+# lowered floor's extra risk (missing points cluster geographically, not randomly, so a
+# 70%-complete run can still mean one whole region gets silently interpolated over by the
+# viewer's IDW field) is no longer a trade worth taking now that there's a cheaper fix for the
+# actual problem it was compensating for.
+MIN_OK_FRAC <- 0.85
 if (ok < MIN_OK_FRAC * nrow(GRID)) {
   cat(sprintf("Only %d/%d points OK (%.0f%%) -- below the %.0f%% completeness floor, not publishing this run.\n",
               ok, nrow(GRID), 100*ok/nrow(GRID), 100*MIN_OK_FRAC))
