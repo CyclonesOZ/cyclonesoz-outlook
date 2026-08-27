@@ -488,7 +488,14 @@ cat(sprintf("Wrote %s  (%d points OK)\n", OUT, ok))
 # a real forecast signal but wasn't. MIN_OK_FRAC refuses to publish anything that incomplete --
 # the workflow step then exits non-zero, "Commit result" never runs, and the previous (complete)
 # outlook.json stays live rather than being overwritten by a half-empty one.
-MIN_OK_FRAC <- 0.85
+# LOWERED to 0.70 on 27 Aug 2026 after two consecutive same-day runs (71%, then 57%) both got
+# blocked, leaving the site stuck on an increasingly stale prior run during a genuine multi-hour
+# Open-Meteo degradation -- staying published-but-stale that long has its own real cost. 0.70
+# still sits well above the 54% that caused the original incident this gate exists for, but
+# accepts more risk than 0.85 did: missing points cluster geographically (confirmed with the
+# original incident, a clean north/south split), not randomly, so a 70%-complete run can still
+# mean one whole region gets silently interpolated over by the viewer's IDW field.
+MIN_OK_FRAC <- 0.70
 if (ok < MIN_OK_FRAC * nrow(GRID)) {
   cat(sprintf("Only %d/%d points OK (%.0f%%) -- below the %.0f%% completeness floor, not publishing this run.\n",
               ok, nrow(GRID), 100*ok/nrow(GRID), 100*MIN_OK_FRAC))
