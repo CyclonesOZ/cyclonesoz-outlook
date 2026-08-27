@@ -37,9 +37,16 @@ dewpoint <- function(T, RH){
 }
 
 # continuous severity score used to rank the hours of a day
+# SCP_new_LM/STP_new_LM (not the bare SCP_new/STP_new used until 27 Aug 2026): both are thundeR's
+# own Coffer et al. (2019)-based formulas, but the bare versions use the NORTHERN Hemisphere
+# right-moving-supercell convention for storm-relative helicity -- wrong for a country that's
+# entirely in the Southern Hemisphere, where the dominant supercell-splitting direction reverses.
+# thundeR's own docs describe the _LM ("left-moving") variants as the ones built for exactly this.
+# This was live and uncorrected for the whole life of this pipeline until now: every SCP/STP value
+# this tool has ever shown was computed with the wrong hemisphere's storm-motion vector.
 sev_score <- function(p){
   cape <- nz(p[["MU_CAPE"]]); shr <- nz(p[["BS_EFF_MU"]])*1.94384
-  scp  <- nz(p[["SCP_new"]]); stp <- nz(p[["STP_new"]]); ship <- nz(p[["SHIP"]])
+  scp  <- nz(p[["SCP_new_LM"]]); stp <- nz(p[["STP_new_LM"]]); ship <- nz(p[["SHIP"]])
   2*scp + 2*stp + 2*ship + cape/500 + shr/20
 }
 
@@ -374,7 +381,7 @@ day_topN <- function(h, idxs, elev, lat){
     rows[[length(rows)+1]] <- list(
       sev  = sev_score(par),
       cape = nz(par[["MU_CAPE"]]), shr = nz(par[["BS_EFF_MU"]]),
-      scp  = nz(par[["SCP_new"]]), stp = nz(par[["STP_new"]]), ship = nz(par[["SHIP"]]),
+      scp  = nz(par[["SCP_new_LM"]]), stp = nz(par[["STP_new_LM"]]), ship = nz(par[["SHIP"]]),
       cin  = nz(par[["MU_CIN"]]), frz = h[["freezing_level_height"]][i],
       t500 = h[["temperature_500hPa"]][i],
       tprob = nz(h[["precipitation_probability"]][i]))
