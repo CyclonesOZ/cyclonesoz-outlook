@@ -466,6 +466,30 @@ process_point <- function(k){
 
 raw_results <- mclapply(seq_len(nrow(GRID)), process_point, mc.cores=NCORES, mc.preschedule=FALSE)
 
+# retry pass, added 27 Aug 2026: a point failing here doesn't mean it's unrecoverable -- Open-Meteo
+# degrading mid-run tends to cause a burst of transient failures (rate-limiting, timeouts) that
+# often succeed on a fresh attempt once the immediate pressure has passed, rather than every failed
+# point being permanently unreachable. Before this, the only way to recover a below-threshold run
+# was to manually re-trigger the ENTIRE workflow from scratch -- another full 25min-2h run against
+# a still-degraded API, repeated three times in a row on 26-27 Aug 2026 with no guarantee of
+# improvement each time. Retrying only the failed subset here is far cheaper per attempt and can
+# turn a run that would have failed the completeness floor into one that clears it, without a
+# human needing to notice the failure and manually retry. Exactly one retry round -- not a loop --
+# so a genuinely bad Open-Meteo day still fails fast and predictably rather than this step alone
+# silently retrying forever and blowing out the job's wall-clock budget.
+failed_idx <- which(sapply(raw_results, function(r) is.null(r) || inherits(r, "try-error")))
+if (length(failed_idx) > 0) {
+  cat(sprintf("First pass: %d/%d failed. Retrying failed points...\n", length(failed_idx), nrow(GRID)))
+  retry_results <- mclapply(failed_idx, process_point, mc.cores=NCORES, mc.preschedule=FALSE)
+  recovered <- 0
+  for (j in seq_along(failed_idx)) {
+    res <- retry_results[[j]]
+    if (!is.null(res) && !inherits(res, "try-error")) recovered <- recovered + 1
+    raw_results[[failed_idx[j]]] <- res
+  }
+  cat(sprintf("Retry recovered %d/%d previously-failed points.\n", recovered, length(failed_idx)))
+}
+
 points <- vector("list", nrow(GRID)); day_labels <- NULL; ok <- 0
 for (k in seq_along(raw_results)){
   res <- raw_results[[k]]
