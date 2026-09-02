@@ -289,14 +289,28 @@ categorise_vals <- function(cape, shr, scp, stp, ship, cin, rain_mm){
 
   capped  <- nz(cin) <= -75      # stout cap even on the best hour of the day
   no_trig <- nz(rain_mm) < 2     # GFS's own 24h precip forecast shows essentially no rain
-  if (no_trig)                    c <- 0
-  if (capped & !no_trig & c >= 3) c <- c - 1
+
+  # PREGATE added 5 Sep 2026: the category this day would show on thermodynamics alone, before
+  # the rain-trigger gate below -- read by apply_ecmwf_second_opinion() to know what to restore a
+  # day to if GFS's own rain forecast (and only that) turns out to be what suppressed it. The CIN
+  # discount is applied here UNCONDITIONALLY, not gated on !no_trig the way the single-pass
+  # version below it was -- pregate must reflect the same capped-aware value cat would get on a
+  # rain-clearing day, so un-gating a day later never skips the CIN-suppression physics just
+  # because rain happened to be the thing that zeroed it. Behavior-neutral for every existing
+  # caller: on a gated day c is forced to 0 immediately below regardless of pregate, so this
+  # doesn't change cat's value for anything already live -- only pregate (new, previously unused)
+  # is affected.
+  pregate <- c
+  if (capped & pregate >= 3) pregate <- pregate - 1
+
+  c <- pregate
+  if (no_trig) c <- 0
 
   rc <- rain_cat(nz(rain_mm))
   c  <- max(c, rc)
 
   hatch <- as.integer(stp >= 0.9 | ship >= 0.9 | scp >= 3.6 | rc >= 3)
-  list(cat=c, cape=round(cape), shear=round(shr_kt), scp=round(scp,1),
+  list(cat=c, pregate=pregate, cape=round(cape), shear=round(shr_kt), scp=round(scp,1),
        stp=round(stp,1), ship=round(ship,1), cin=round(cin), rain=round(nz(rain_mm)), hatch=hatch)
 }
 
@@ -476,6 +490,108 @@ process_point <- function(k){
   }, error=function(e) NULL)
 }
 
+# ECMWF second-opinion rain check, added 5 Sep 2026: GFS (0.25 deg) can under-forecast a real but
+# localized rain trigger, silently zeroing an otherwise-favorable environment via categorise_vals()'s
+# 2mm no_trig gate -- confirmed live, a point/day with CAPE 475 J/kg, shear 49kt, SCP 2.4 showed
+# "No storms" purely because GFS's own rain forecast for it was 0mm, while a neighbouring, LESS
+# favorable point (CAPE 380, shear 47kt, SCP 1.6) showed a TSTM signal because its rain cleared
+# the gate. A full switch to ECMWF was considered and rejected: checked live against Open-Meteo's
+# API, ecmwf_ifs025 has no soil_moisture_0_to_1cm at all (fire danger's only input) and no
+# freezing_level_height (hail's primary cold-aloft signal, though the temperature_500hPa secondary
+# signal added earlier does still work on it), and its pressure-level set doesn't match this
+# pipeline's LEVELS (975hPa returned null in a live test) -- wholesale migration would silently
+# break fire danger and degrade hail. Instead: only call ECMWF, only for point-days GFS's own
+# thermodynamics already flagged as favorable (pregate>=1) but rain-gated (cat==0), purely to
+# decide whether to un-gate that one day. ECMWF is never used for fire, hail, or anything else.
+#
+# Batched by calendar day rather than one request per candidate point-day: Open-Meteo's existing
+# endpoint accepts comma-separated multi-location requests and returns one JSON object per point
+# (confirmed live) -- at most a handful of extra requests per run, not one per candidate. Run as a
+# sequential pass AFTER the main parallel mclapply + retry pass below, not inline inside the
+# parallel workers, so no cross-worker shared state is needed to bound the added runtime.
+#
+# The 2mm window here matches GFS's own rain_day window exactly: om_url() already forces
+# timezone=UTC so day_groups() splits every point on the same 00Z-24Z boundary (see the comment
+# there), and this queries ECMWF with start_date=end_date=<the same date string>&timezone=UTC --
+# same calendar day, same reference frame, no misalignment between the two models' rain figures.
+#
+# Failure mode is deliberately one-directional: any failure here (bad response, timeout, a chunk
+# mismatch) just leaves a day exactly as gated as it already is -- this can only ever ADD signal,
+# never remove it, and can never cause a point to fail or affect the completeness gate below,
+# since it only mutates already-successful results after the retry pass has run.
+MAX_ECMWF_CANDIDATES <- 500   # guardrail against a logic bug producing a runaway candidate count
+ECMWF_BATCH_SIZE <- 100        # conservative per-request chunk size
+
+ecmwf_rain_batch <- function(lats, lons, date_str){
+  n <- length(lats)
+  url <- sprintf(
+    "https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s&hourly=precipitation&models=ecmwf_ifs025&start_date=%s&end_date=%s&timezone=UTC",
+    paste(sprintf("%.3f", lats), collapse=","),
+    paste(sprintf("%.3f", lons), collapse=","),
+    date_str, date_str)
+  r <- tryCatch({
+    raw <- paste(readLines(url, warn=FALSE), collapse="")
+    fromJSON(raw, simplifyVector=FALSE)
+  }, error=function(e) NULL)
+  if (is.null(r)) return(rep(NA_real_, n))
+  # a single-location request returns a bare JSON object, not a 1-element array -- confirmed live;
+  # missing this re-wrap would silently break every date-group with exactly one candidate, which
+  # given the narrow trigger condition is a likely occurrence, not a rare edge case.
+  if (n == 1) r <- list(r)
+  if (length(r) != n) return(rep(NA_real_, n))   # defensive: response length must match request
+  vapply(r, function(loc){
+    p <- tryCatch(loc$hourly$precipitation, error=function(e) NULL)
+    if (is.null(p)) return(NA_real_)
+    sum(vapply(p, function(x) if (is.null(x)) 0 else as.numeric(x), numeric(1)))
+  }, numeric(1))
+}
+
+apply_ecmwf_second_opinion <- function(raw_results){
+  cand <- list()
+  for (k in seq_along(raw_results)){
+    res <- raw_results[[k]]
+    if (is.null(res) || inherits(res, "try-error")) next
+    for (j in seq_along(res$d)){
+      dd <- res$d[[j]]
+      if (!is.null(dd$cat) && dd$cat == 0 && !is.null(dd$pregate) && dd$pregate >= 1){
+        cand[[length(cand)+1]] <- list(k=k, j=j, lat=res$lat, lon=res$lon, date=res$days[j])
+      }
+    }
+  }
+  if (length(cand) == 0) return(raw_results)
+  if (length(cand) > MAX_ECMWF_CANDIDATES){
+    cat(sprintf("ECMWF second-opinion: %d candidates exceeds the %d cap, truncating.\n", length(cand), MAX_ECMWF_CANDIDATES))
+    cand <- cand[seq_len(MAX_ECMWF_CANDIDATES)]
+  }
+  cat(sprintf("ECMWF second-opinion: %d candidates flagged (pregate>=1, GFS rain<2mm)\n", length(cand)))
+
+  by_date <- split(cand, sapply(cand, function(c) c$date))
+  n_checked <- 0; n_ungated <- 0
+  for (date_str in names(by_date)){
+    group <- by_date[[date_str]]
+    for (start in seq(1, length(group), by=ECMWF_BATCH_SIZE)){
+      chunk <- group[start:min(start+ECMWF_BATCH_SIZE-1, length(group))]
+      lats <- sapply(chunk, function(c) c$lat); lons <- sapply(chunk, function(c) c$lon)
+      ecmwf_rain <- ecmwf_rain_batch(lats, lons, date_str)
+      for (i in seq_along(chunk)){
+        c_ <- chunk[[i]]
+        if (is.na(ecmwf_rain[i])) next
+        n_checked <- n_checked + 1
+        dd <- raw_results[[c_$k]]$d[[c_$j]]
+        dd$rain_ecmwf <- round(ecmwf_rain[i], 1)
+        if (ecmwf_rain[i] >= 2){
+          dd$cat <- dd$pregate
+          dd$ecmwf_ungated <- TRUE
+          n_ungated <- n_ungated + 1
+        }
+        raw_results[[c_$k]]$d[[c_$j]] <- dd
+      }
+    }
+  }
+  cat(sprintf("ECMWF second-opinion: %d checked successfully, %d un-gated\n", n_checked, n_ungated))
+  raw_results
+}
+
 raw_results <- mclapply(seq_len(nrow(GRID)), process_point, mc.cores=NCORES, mc.preschedule=FALSE)
 
 # retry pass, added 27 Aug 2026: a point failing here doesn't mean it's unrecoverable -- Open-Meteo
@@ -501,6 +617,8 @@ if (length(failed_idx) > 0) {
   }
   cat(sprintf("Retry recovered %d/%d previously-failed points.\n", recovered, length(failed_idx)))
 }
+
+raw_results <- apply_ecmwf_second_opinion(raw_results)
 
 points <- vector("list", nrow(GRID)); day_labels <- NULL; ok <- 0
 for (k in seq_along(raw_results)){
