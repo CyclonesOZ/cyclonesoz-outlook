@@ -707,8 +707,16 @@
       return '<div class="cat" style="color:'+col+'">'+lbl+'</div><div class="sm">Extended range &middot; broad guidance</div>';
     }
     var c=FINE[r.cat]||FINE[1],col2=r.cat===0?'#5c6c7d':rgb(c.color);
+    // rain_ecmwf/ecmwf_ungated are only present on point-days the pipeline's ECMWF second-opinion
+    // pass actually checked (GFS's own thermodynamics looked favorable but its rain forecast gated
+    // the category to 0) -- showing ECMWF's rain figure alongside GFS's here is what makes a case
+    // like "No storms" with a clearly favorable CAPE/shear/SCP reading legible instead of looking
+    // like a pipeline miss: either ECMWF agreed with GFS (still dry, correctly stayed gated) or it
+    // disagreed and the category shown already reflects that (ecmwf_ungated).
+    var rainLine='Rain '+Math.round(r.rain||0)+'mm';
+    if(r.rain_ecmwf!=null) rainLine+=' · ECMWF '+r.rain_ecmwf+'mm'+(r.ecmwf_ungated?' (confirmed)':'');
     return '<div class="cat" style="color:'+col2+'">'+(r.cat===0?'No storms':(c.abbr?c.abbr+' · ':'')+c.name)+(r.hatch&&r.cat>=2?' (sig)':'')+'</div>'+
-      'CAPE '+Math.round(r.cape)+' J/kg · Shear '+Math.round(r.shear)+' kt<div class="sm">SCP '+r.scp+' · SHIP '+r.ship+' · Rain '+Math.round(r.rain||0)+'mm</div>';
+      'CAPE '+Math.round(r.cape)+' J/kg · Shear '+Math.round(r.shear)+' kt<div class="sm">SCP '+r.scp+' · SHIP '+r.ship+' · '+rainLine+'</div>';
   }
   // single shared tooltip, positioned near the cursor (clamped to viewport) rather than pinned to
   // one fixed corner, since there's no longer a single "main" map -- it can be triggered from
