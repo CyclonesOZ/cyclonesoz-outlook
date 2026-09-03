@@ -625,7 +625,24 @@ if (length(failed_idx) > 0) {
   cat(sprintf("Retry recovered %d/%d previously-failed points.\n", recovered, length(failed_idx)))
 }
 
+# Diagnostic added 3 Sep 2026: a small, not-yet-explained gap has shown up twice between
+# (points valid after retry) and the final "points OK" count -- 91 points on one run, 18 on
+# another, both correlated with how much Open-Meteo rate-limiting (HTTP 429s) hit that run.
+# apply_ecmwf_second_opinion() only mutates d[[j]] sub-fields on already-valid points and never
+# touches the outer per-point entry, so by inspection it shouldn't be able to cause this -- this
+# log line checks that directly by comparing valid counts immediately either side of the call,
+# rather than continuing to infer it from timing.
+valid_before_ecmwf <- sum(sapply(raw_results, function(r) !is.null(r) && !inherits(r, "try-error")))
+
 raw_results <- apply_ecmwf_second_opinion(raw_results)
+
+valid_after_ecmwf <- sum(sapply(raw_results, function(r) !is.null(r) && !inherits(r, "try-error")))
+if (valid_after_ecmwf != valid_before_ecmwf) {
+  cat(sprintf("WARNING: valid point count changed across apply_ecmwf_second_opinion(): %d -> %d\n",
+              valid_before_ecmwf, valid_after_ecmwf))
+} else {
+  cat(sprintf("Valid points unchanged across ECMWF second-opinion pass: %d\n", valid_before_ecmwf))
+}
 
 points <- vector("list", nrow(GRID)); day_labels <- NULL; ok <- 0
 for (k in seq_along(raw_results)){
