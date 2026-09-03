@@ -1,0 +1,52 @@
+name: Outlook watchdog
+
+# Catches the failure mode that actually cost a day of back-and-forth on 26-28 Aug 2026: the
+# scheduled daily-outlook.yml trigger silently not firing at all (2 straight days), then firing
+# nearly 4 hours late even after being fixed -- in both cases nobody found out until a human
+# noticed the map looked stale and asked. This runs once, late in the day (23:00 UTC = 7am AWST,
+# generous room past the 18:00 UTC/2am AWST slot even accounting for the ~4h scheduler lateness
+# already observed), checks whether today's outlook.json actually landed, and if not -- and
+# nothing is already running -- triggers one retry itself rather than waiting for a human to
+# notice. If that retry also fails, daily-outlook.yml's own failure is what notifies you (GitHub
+# emails the repo owner on workflow failure by default) -- this workflow doesn't loop or retry
+# more than once a day, matching the same "exactly one retry, not a loop" philosophy already
+# used for the per-point retry pass inside build_outlook.R.
+
+on:
+  schedule:
+    - cron: "0 23 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check outlook freshness, retrigger if stale and nothing is running
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -e
+          RUN_DATE=$(curl -sf "https://raw.githubusercontent.com/$REPO/main/docs/outlook.json" | python3 -c "import json,sys; print(json.load(sys.stdin)['run_date'])")
+          RUN_EPOCH=$(date -d "$RUN_DATE" +%s)
+          NOW_EPOCH=$(date -u +%s)
+          AGE_HOURS=$(( (NOW_EPOCH - RUN_EPOCH) / 3600 ))
+          echo "Live outlook.json run_date=$RUN_DATE ($AGE_HOURS hours old)"
+
+          if [ "$AGE_HOURS" -lt 20 ]; then
+            echo "Fresh enough (published within the last 20h) -- nothing to do."
+            exit 0
+          fi
+
+          IN_PROGRESS=$(gh run list --repo "$REPO" --workflow daily-outlook.yml --status in_progress --json databaseId --jq 'length')
+          if [ "$IN_PROGRESS" -gt 0 ]; then
+            echo "A run is already in progress -- leaving it to finish rather than piling on."
+            exit 0
+          fi
+
+          echo "Outlook is stale (>20h old) and nothing is running -- triggering one retry."
+          gh workflow run daily-outlook.yml --repo "$REPO"
