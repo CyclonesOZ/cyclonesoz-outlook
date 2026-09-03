@@ -519,7 +519,14 @@ process_point <- function(k){
 # mismatch) just leaves a day exactly as gated as it already is -- this can only ever ADD signal,
 # never remove it, and can never cause a point to fail or affect the completeness gate below,
 # since it only mutates already-successful results after the retry pass has run.
-MAX_ECMWF_CANDIDATES <- 500   # guardrail against a logic bug producing a runaway candidate count
+# Raised 500->1000 on 3 Sep 2026: the first live run found 935 real candidates (cape>=150 is a
+# low bar, so "primed but GFS-gated" turned out far more common than expected) and the 500 cap
+# truncated ~47% of them unchecked -- not a bug being caught, just legitimate volume the original
+# guess undershot. 1000 covers that run with headroom while still being a real guardrail against
+# a genuinely pathological candidate count (e.g. a future change to the base thermodynamics
+# thresholds firing far more broadly than intended), not a rubber-stamp raised to whatever showed
+# up once.
+MAX_ECMWF_CANDIDATES <- 1000
 ECMWF_BATCH_SIZE <- 100        # conservative per-request chunk size
 
 ecmwf_rain_batch <- function(lats, lons, date_str){
