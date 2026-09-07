@@ -385,6 +385,8 @@
   // cells per point) instead of looping over every point for every cell -- ~200x cheaper than the
   // old IDW loop, which is what makes the extra per-tier fields (and the wind field below)
   // affordable. The kernel is truncated at KRAD, where it is already below 0.004.
+  var HOLE_MIN_AREA=0.6;        // deg^2; interior holes smaller than this (~one 0.82 deg cell) are filled, see buildDayFeatures
+  function ringArea(ring){ var a=0; for(var i=0,n=ring.length-1;i<n;i++){ a+=ring[i][0]*ring[i+1][1]-ring[i+1][0]*ring[i][1]; } return a/2; }
   var KSIG=0.42, KRAD=1.4;      // degrees; hazard tiers
   var WSIG=0.60, WRAD=2.0;      // degrees; 500hPa wind field -- context only, so a broader, smoother kernel
   var denCache={}, streamCache={};
@@ -567,6 +569,15 @@
       contours.forEach(function(geo){
         if(!geo.coordinates.length) return;
         var coords=geo.coordinates.map(function(poly){return poly.map(function(ring){return ring.map(function(pt){return g2ll(pt[0],pt[1]);});});});
+        // Fill interior holes smaller than about one grid cell. A single non-qualifying point
+        // fully surrounded by qualifying ones punches a ~0.3 deg hole in the band (the kernel
+        // proportion there is ~0.41), which reads as a rendering glitch rather than information
+        // -- no forecaster hand-drawing an outlook would cut a 30km hole for one dry model point.
+        // This is the one deliberate departure from strict map/tooltip agreement: hovering that
+        // point still shows its own raw numbers. Holes bigger than a cell (a genuine gap of
+        // several points) are kept. Exterior rings are never dropped -- an isolated single-point
+        // disc is real, sparse signal and stays.
+        coords=coords.map(function(poly){ return poly.filter(function(ring,ri){ return ri===0 || Math.abs(ringArea(ring))>=HOLE_MIN_AREA; }); });
         var feat={type:'Feature',properties:{},geometry:{type:'MultiPolygon',coordinates:coords}};
         var clipped=tryIntersect(feat);
         if(!clipped) return;
