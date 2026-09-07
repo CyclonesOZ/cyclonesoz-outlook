@@ -226,6 +226,18 @@ thunder_prob <- function(tprob, cape, rain_mm){
   if (nz(cape) < 100)    return(as.integer(round(nz(tprob) * 0.15)))
   as.integer(round(nz(tprob) * 0.5))
 }
+# Thunderstorm-chance consistency floor (7 Sep 2026). A Category Outlook tier means storms are
+# expected in the area, so the Thunderstorm Chance pane must show at least "Chance" (20 -- the
+# viewer's lower tprob band, see HAZ_SPECS.tprob in docs/index.html) wherever cat >= 1, and
+# "Likely" (80) wherever cat >= 3, since MDT/HIGH imply storms are all but certain. Before this,
+# 234 of the 385 category point-days in one run had tprob < 20: thunder_prob() halves Open-Meteo's
+# mean precip probability, which over the dry interior sits at 10-30% even on days the sounding
+# parameters clearly support storms, so the category pane showed TSTM/MRGL over areas the thunder
+# pane left blank. Applied everywhere cat is set -- both day_topN() branches and the ECMWF
+# second-opinion un-gating -- so the two panes can never contradict each other.
+tprob_floor <- function(tprob, cat){
+  if (nz(cat) >= 3) max(nz(tprob), 80L) else if (nz(cat) >= 1) max(nz(tprob), 20L) else nz(tprob)
+}
 
 # SPC-style category from averaged parameters: 0 none,1 TSTM,2 MRGL,3 MDT,4 HIGH
 # SLGT was removed 26 Aug 2026 (on top of ENH's earlier removal): four tiers reads cleaner than
@@ -446,7 +458,7 @@ day_topN <- function(h, idxs, elev, lat){
     # single spurious overnight-drizzle hour from dominating the fallback the way max did before).
     tprob_fallback <- mean(sapply(idxs, function(i) nz(h[["precipitation_probability"]][i])))
     return(list(cat=rc, cape=0, shear=0, scp=0, stp=0, ship=0, cin=0, rain=round(rain_day), hatch=as.integer(rc>=3),
-                tprob=thunder_prob(tprob_fallback, 0, rain_day), hail=0,
+                tprob=tprob_floor(thunder_prob(tprob_fallback, 0, rain_day), rc), hail=0,
                 flood=flood_cat(rain_day, rain_rate, rain_pop, lat), pop=round(rain_pop),
                 fire=fire_tier(ffdi_day, rain_day), ffdi=round(ffdi_day), wind=0L,
                 u500=u500, v500=v500))
@@ -479,7 +491,7 @@ day_topN <- function(h, idxs, elev, lat){
   # over the SAME top-N instability-ranked hours as cape/shear/ship, not the whole day -- a whole-day
   # max picks up unrelated overnight drizzle (Open-Meteo's ensemble can be very confident about light,
   # non-convective rain at 7am) and reports it as a dramatic "thunderstorm chance" for the day.
-  c(cv, list(tprob=thunder_prob(m("tprob"), m("cape"), rain_day),
+  c(cv, list(tprob=tprob_floor(thunder_prob(m("tprob"), m("cape"), rain_day), cv$cat),
              # hail gated on the category (7 Sep 2026), the same way wind_tier() already is: no
              # storms means no hail. Before this, a marginal peak-hour SHIP (0.5-0.6) in a hot,
              # deeply capped (CIN -178), completely dry (0mm, 0% thunder chance) Kimberley airmass
@@ -613,6 +625,7 @@ apply_ecmwf_second_opinion <- function(raw_results){
         dd$rain_ecmwf <- round(ecmwf_rain[i], 1)
         if (ecmwf_rain[i] >= 2){
           dd$cat <- dd$pregate
+          dd$tprob <- tprob_floor(dd$tprob, dd$cat)   # keep the thunder pane consistent with the restored category
           dd$ecmwf_ungated <- TRUE
           n_ungated <- n_ungated + 1
         }
