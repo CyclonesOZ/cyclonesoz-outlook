@@ -419,6 +419,20 @@ day_topN <- function(h, idxs, elev, lat){
   wind_hr  <- sapply(idxs, function(i) nz(h[["wind_speed_10m"]][i])) * 1.852  # kn (fetch unit) -> km/h
   soil_hr  <- sapply(idxs, function(i) nz(h[["soil_moisture_0_to_1cm"]][i]))
   ffdi_day <- max(mapply(ffdi_hour, temp_hr, rh_hr, wind_hr, soil_hr))
+  # 500hPa steering flow for the viewer's faint streamline overlay (added 4 Sep 2026): the day's
+  # vector-mean wind as u/v components in knots (the fetch's wind_speed_unit=kn), meteorological
+  # convention -- direction is where the wind blows FROM, so u = -ws*sin(dir), v = -ws*cos(dir).
+  # Mean over ALL of the day's hours, not the top-N instability hours the severe parameters use:
+  # this is context (the general mid-level flow pattern), not a severity input, and a whole-day
+  # mean is the steadier picture of it. NA when the level is missing for the whole day (a fetch
+  # gap) -- the viewer simply skips points without it. Shared by both return branches below.
+  ws5 <- sapply(idxs, function(i) h[["wind_speed_500hPa"]][i])
+  wd5 <- sapply(idxs, function(i) h[["wind_direction_500hPa"]][i])
+  okw <- !is.na(ws5) & !is.na(wd5)
+  if (any(okw)){
+    u500 <- round(mean(-ws5[okw] * sin(wd5[okw] * pi/180)), 1)
+    v500 <- round(mean(-ws5[okw] * cos(wd5[okw] * pi/180)), 1)
+  } else { u500 <- NA; v500 <- NA }
 
   if (length(rows) == 0){
     rc <- rain_cat(rain_day)
@@ -429,7 +443,8 @@ day_topN <- function(h, idxs, elev, lat){
     return(list(cat=rc, cape=0, shear=0, scp=0, stp=0, ship=0, cin=0, rain=round(rain_day), hatch=as.integer(rc>=3),
                 tprob=thunder_prob(tprob_fallback, 0, rain_day), hail=0,
                 flood=flood_cat(rain_day, rain_rate, rain_pop, lat), pop=round(rain_pop),
-                fire=fire_tier(ffdi_day, rain_day), ffdi=round(ffdi_day), wind=0L))
+                fire=fire_tier(ffdi_day, rain_day), ffdi=round(ffdi_day), wind=0L,
+                u500=u500, v500=v500))
   }
   sev <- sapply(rows, function(r) r$sev)
   top <- rows[order(sev, decreasing=TRUE)[seq_len(min(TOPN, length(rows)))]]
@@ -463,7 +478,8 @@ day_topN <- function(h, idxs, elev, lat){
              hail=hail_tier(peak_ship_hr$ship, peak_ship_hr$cape, frz_day, t500_day),
              flood=flood_cat(rain_day, rain_rate, rain_pop, lat), pop=round(rain_pop),
              fire=fire_tier(ffdi_day, rain_day), ffdi=round(ffdi_day),
-             wind=wind_tier(m("cape"), m("shr"), cv$cat)))
+             wind=wind_tier(m("cape"), m("shr"), cv$cat),
+             u500=u500, v500=v500))
 }
 
 # each point is a fully independent fetch+compute (no shared state), so this is embarrassingly

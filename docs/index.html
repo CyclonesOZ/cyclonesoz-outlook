@@ -328,7 +328,7 @@
       polys.forEach(function(poly){poly[0].forEach(function(c){if(c[0]<minLon)minLon=c[0];if(c[0]>maxLon)maxLon=c[0];if(c[1]<minLat)minLat=c[1];if(c[1]>maxLat)maxLat=c[1];});});
     });
     minLat-=0.5;maxLat+=0.5;minLon-=0.5;maxLon+=0.5;
-    // 0.1 (not the old 0.2): the IDW field is evaluated at arbitrary density regardless of
+    // 0.1 (not the old 0.2): the kernel field is evaluated at arbitrary density regardless of
     // the ~0.2 degree spacing of the underlying grid points, so supersampling here doesn't
     // change what the map says -- it just gives d3.contours() 4x the vertices to work with,
     // which is what the blocky/rigid look actually traced back to (marching-squares facets
@@ -350,66 +350,161 @@
   // grid cell (gx,gy) -> [lon,lat]; row 0 = top = maxLat
   function g2ll(gx,gy){return [minLon+(gx/nx)*(maxLon-minLon), maxLat-(gy/ny)*(maxLat-minLat)];}
 
-  // interpolate a hazard field (category, thunder %, hail tier, flood risk...) for a day onto the nx*ny mesh (IDW)
-  function field(dayIdx,getter){
-    var sx=[],sy=[],sc=[];
-    for(var i=0;i<GRID.length;i++){var r=results[i]?results[i][dayIdx]:null;if(!r)continue;sx.push(GRID[i][1]);sy.push(GRID[i][0]);sc.push(getter(r));}
-    // P and the smoothing epsilon below are tuned against the REAL grid spacing (a uniform
-    // 0.82 degree lattice, ~90km -- confirmed from data/grid.json, not the ~0.2 degree this
-    // code originally assumed). At the old P:3/epsilon:0.02 a neighbouring grid point's weight
-    // fell to ~13% of the nearest point's by one full cell away, so each point effectively drew
-    // its own isolated little cell instead of blending into its neighbours, splitting what
-    // should be one storm area into scattered dots with holes punched through the middle --
-    // that mismatch between the tuning and the actual spacing is what produced the fragmented
-    // "island" look. epsilon:0.10 (~0.32 degree, well under half the real spacing) keeps a point
-    // from going fully to zero weight right next to its neighbours without diluting genuinely
-    // isolated single-point signal into nothing, and P:2.2 (down from 3) widens each point's
-    // falloff just enough for adjoining above-threshold cells to merge into one shape instead of
-    // snapping to nearest-neighbour boundaries. Tested against live data: the NT/QLD thunderstorm
-    // blob's internal holes closed up and its edge became one flowing shape, while the isolated
-    // Tennant Creek cell -- real, sparse signal, not noise -- stayed visible instead of being
-    // smoothed away.
-    var vals=new Float64Array(nx*ny),P=2.2;
-    var dLon=(maxLon-minLon)/nx,dLat=(maxLat-minLat)/ny;
-    for(var gy=0;gy<ny;gy++){
-      var lat=maxLat-gy*dLat;
-      for(var gx=0;gx<nx;gx++){
-        var lon=minLon+gx*dLon,num=0,den=0;
-        for(var k=0;k<sx.length;k++){var dx=lon-sx[k],dy=lat-sy[k],d2=dx*dx+dy*dy;var w=Math.pow(d2+0.10,-P/2);num+=w*sc[k];den+=w;}
-        vals[gy*nx+gx]=num/den;
+  // ---- hazard fields: kernel-smoothed proportion of grid points at-or-above each tier ----
+  //
+  // Rewritten 4 Sep 2026. The previous approach interpolated the CATEGORY NUMBER itself (IDW of
+  // the 0/1/2/3/4 values, then one d3.contours pass at 0.5/1.5/2.5/3.5) and had two problems
+  // that were really the same problem. Averaging a categorical value across neighbours means an
+  // MRGL (2) point whose neighbours are "No storms" (0) lands at ~1.4 in the field and is drawn
+  // as TSTM (1) -- so the hover tooltip (which reads the raw point) disagreed with the map, and
+  // always in the direction of the map under-calling. And because every grid point produced its
+  // own little IDW bump, the traced contour wobbled around each point, giving the scalloped /
+  // faceted edges that Chaikin could round off but never actually remove.
+  //
+  // Now each tier gets its OWN field,
+  //     F_c(x) = sum_k [value_k >= t_c] * K(x - p_k)  /  sum_k K(x - p_k),
+  // a Gaussian-kernel-weighted PROPORTION of nearby grid points at that tier or above (Nadaraya-
+  // Watson kernel regression of the indicator), contoured at 0.5. The properties that matter:
+  //   * every grid point at tier c or above is INSIDE the tier-c polygon: at the point itself its
+  //     own weight is 1, and with KSIG=0.42 deg the summed weight of all its neighbours on the
+  //     0.82 deg lattice is ~0.69 (4 x 0.149 + 4 x 0.022 + ...), so F >= 1/1.69 = 0.59 > 0.5 even
+  //     for a lone point with every neighbour at zero. That is the map/tooltip agreement
+  //     guarantee -- and it is why KSIG can't go much above ~0.45 (the neighbours' summed weight
+  //     would pass 1 and an isolated point could fall back under 0.5).
+  //   * between a qualifying point and a non-qualifying neighbour the 0.5 contour falls on the
+  //     midline between them (the proportion is symmetric there), so the drawn edge sits exactly
+  //     where the nearest-point tooltip flips too. A plain sum of kernels (metaballs) would
+  //     overshoot that midline and over-call instead.
+  //   * tiers nest by construction: the tier-(c+1) indicator is a subset of tier c's with the same
+  //     weights, so F_{c+1} <= F_c everywhere and the MRGL polygon always sits inside the TSTM one.
+  //   * the field is a ratio of two smooth Gaussian sums, so marching squares traces a genuinely
+  //     smooth curve -- there are no per-point bumps left to scallop the edge. The old 3x3 box-
+  //     blur pre-pass is gone: it would erode exactly the isolated-point margin the guarantee
+  //     above depends on.
+  // Evaluation splats each point's kernel onto only the cells within KRAD of it (a few hundred
+  // cells per point) instead of looping over every point for every cell -- ~200x cheaper than the
+  // old IDW loop, which is what makes the extra per-tier fields (and the wind field below)
+  // affordable. The kernel is truncated at KRAD, where it is already below 0.004.
+  var KSIG=0.42, KRAD=1.4;      // degrees; hazard tiers
+  var WSIG=0.60, WRAD=2.0;      // degrees; 500hPa wind field -- context only, so a broader, smoother kernel
+  var denCache={}, streamCache={};
+
+  // accumulate one point's kernel: den[idx] += w (if den given) and nums[j][idx] += w*vals[j]
+  function splat(lat,lon,sig,rad,den,nums,vals){
+    var dLon=(maxLon-minLon)/nx, dLat=(maxLat-minLat)/ny;
+    var gx0=(lon-minLon)/dLon, gy0=(maxLat-lat)/dLat;
+    var rx=Math.ceil(rad/dLon), ry=Math.ceil(rad/dLat);
+    var x0=Math.max(0,Math.floor(gx0-rx)), x1=Math.min(nx-1,Math.ceil(gx0+rx));
+    var y0=Math.max(0,Math.floor(gy0-ry)), y1=Math.min(ny-1,Math.ceil(gy0+ry));
+    var inv=-1/(2*sig*sig), r2max=rad*rad, nj=nums?nums.length:0;
+    for(var gy=y0;gy<=y1;gy++){
+      var dy=(maxLat-gy*dLat)-lat;
+      for(var gx=x0;gx<=x1;gx++){
+        var dx=(minLon+gx*dLon)-lon, d2=dx*dx+dy*dy;
+        if(d2>r2max) continue;
+        var w=Math.exp(d2*inv), idx=gy*nx+gx;
+        if(den) den[idx]+=w;
+        for(var j=0;j<nj;j++) nums[j][idx]+=w*vals[j];
       }
     }
-    return boxBlur(vals,nx,ny,2);
   }
-  // marching squares (d3.contours) traces the raw IDW field exactly as-is, so every cell boundary
-  // in that field becomes a facet in the output polygon -- the blocky/jagged look the reference
-  // thundeR-style plots don't have. Chaikin corner-cutting (below, applied post-contour) only
-  // rounds the CORNERS of that already-faceted polygon, it can't add the missing curvature back in
-  // between them -- so a coarse/noisy field still comes out looking scalloped rather than smooth
-  // however many Chaikin passes run on top of it. Blurring the field itself first (a standard
-  // marching-squares pre-pass) fixes it at the source: 2 passes of a 3x3 box blur removes the
-  // cell-to-cell steps the contour tracer would otherwise trace faithfully, so d3.contours starts
-  // from an already-smooth surface and the corner-cutting pass afterwards only has to polish it.
-  function boxBlur(vals,nx,ny,passes){
-    var out=vals;
-    for(var p=0;p<passes;p++){
-      var next=new Float64Array(nx*ny);
-      for(var gy=0;gy<ny;gy++){
-        for(var gx=0;gx<nx;gx++){
-          var sum=0,cnt=0;
-          for(var oy=-1;oy<=1;oy++){
-            var ny2=gy+oy; if(ny2<0||ny2>=ny) continue;
-            for(var ox=-1;ox<=1;ox++){
-              var nx2=gx+ox; if(nx2<0||nx2>=nx) continue;
-              sum+=out[ny2*nx+nx2]; cnt++;
-            }
-          }
-          next[gy*nx+gx]=sum/cnt;
-        }
-      }
-      out=next;
+  // kernel-weight denominator for a day: depends only on which points have data that day, not on
+  // the hazard or tier, so one array is shared by every tier field of that day
+  function dayDen(dayIdx){
+    if(denCache[dayIdx]) return denCache[dayIdx];
+    var den=new Float64Array(nx*ny);
+    for(var i=0;i<GRID.length;i++){ if(results[i]&&results[i][dayIdx]) splat(GRID[i][0],GRID[i][1],KSIG,KRAD,den,null,null); }
+    denCache[dayIdx]=den;
+    return den;
+  }
+  // the tier field described above: proportion (0..1) of nearby points with getter(r) >= t
+  function tierField(dayIdx,getter,t){
+    var den=dayDen(dayIdx), num=new Float64Array(nx*ny), one=[1];
+    for(var i=0;i<GRID.length;i++){
+      var r=results[i]?results[i][dayIdx]:null; if(!r) continue;
+      if(getter(r)>=t) splat(GRID[i][0],GRID[i][1],KSIG,KRAD,null,[num],one);
     }
-    return out;
+    var F=new Float64Array(nx*ny);
+    for(var k=0;k<F.length;k++) F[k]=den[k]>1e-9?num[k]/den[k]:0;
+    return F;
+  }
+
+  // ---- 500hPa streamlines (Category Outlook pane only) ----
+  // Faint background context showing the day's mid-level steering flow, in the style of the
+  // thundeR/SPC-type plots this viewer is modelled on. u500/v500 are the pipeline's whole-day
+  // vector-mean 500hPa wind per point (knots; added to outlook.json 4 Sep 2026) -- runs that
+  // predate that field (older archives) simply get no streamlines. The wind field is kernel-
+  // regressed onto the same mesh as the hazards (broader WSIG: it is context, so smoother is
+  // better, and there is no per-point guarantee to protect), then traced with a Jobard-Lefer
+  // style evenly-spaced placement: seeds on a coarse lattice, each line integrated (RK2 midpoint,
+  // direction only) both ways until it leaves the data, runs out of steps, or comes within
+  // STREAM_TEST of a line already placed -- so the result is an even texture rather than lines
+  // bunching along the strongest flow. A degree of longitude is cos(lat) shorter on the ground
+  // than a degree of latitude, so the lon step is divided by cos(lat) to keep a NE wind drawn at
+  // 45 degrees on the (conformal) map.
+  var STREAM_SEP=0.9, STREAM_TEST=0.45, STREAM_STEP=0.07, STREAM_MAXSTEPS=500;
+  function buildStreamlines(dayIdx){
+    if(streamCache[dayIdx]) return streamCache[dayIdx];
+    var nu=new Float64Array(nx*ny), nv=new Float64Array(nx*ny), dw=new Float64Array(nx*ny), any=false;
+    for(var i=0;i<GRID.length;i++){
+      var r=results[i]?results[i][dayIdx]:null;
+      if(!r||r.u500==null||r.v500==null) continue;
+      any=true; splat(GRID[i][0],GRID[i][1],WSIG,WRAD,dw,[nu,nv],[r.u500,r.v500]);
+    }
+    var lines=[];
+    if(!any){ streamCache[dayIdx]=lines; return lines; }
+    var dLon=(maxLon-minLon)/nx, dLat=(maxLat-minLat)/ny;
+    // bilinear sample of the unit flow direction; null where there is effectively no data
+    function sampleUV(lon,lat){
+      var gx=(lon-minLon)/dLon, gy=(maxLat-lat)/dLat;
+      if(gx<0||gy<0||gx>nx-1||gy>ny-1) return null;
+      var x0=Math.floor(gx), y0=Math.floor(gy), x1=Math.min(nx-1,x0+1), y1=Math.min(ny-1,y0+1), fx=gx-x0, fy=gy-y0;
+      function bl(a){ return a[y0*nx+x0]*(1-fx)*(1-fy)+a[y0*nx+x1]*fx*(1-fy)+a[y1*nx+x0]*(1-fx)*fy+a[y1*nx+x1]*fx*fy; }
+      var d=bl(dw); if(d<0.03) return null;
+      var u=bl(nu)/d, v=bl(nv)/d, sp=Math.sqrt(u*u+v*v);
+      if(sp<1) return null;
+      return {x:u/sp,y:v/sp};
+    }
+    var cs=STREAM_SEP, cw=Math.ceil((maxLon-minLon)/cs)+1, ch=Math.ceil((maxLat-minLat)/cs)+1, occ=new Array(cw*ch);
+    function cellIdx(lon,lat){ return Math.floor((lat-minLat)/cs)*cw+Math.floor((lon-minLon)/cs); }
+    function tooClose(lon,lat,minD){
+      var cx=Math.floor((lon-minLon)/cs), cy=Math.floor((lat-minLat)/cs), m2=minD*minD;
+      for(var oy=-1;oy<=1;oy++){ for(var ox=-1;ox<=1;ox++){
+        var x=cx+ox, y=cy+oy; if(x<0||y<0||x>=cw||y>=ch) continue;
+        var b=occ[y*cw+x]; if(!b) continue;
+        for(var k=0;k<b.length;k++){ var dx=b[k][0]-lon, dy=b[k][1]-lat; if(dx*dx+dy*dy<m2) return true; }
+      } }
+      return false;
+    }
+    function trace(lon,lat,dir){
+      var pts=[];
+      for(var s=0;s<STREAM_MAXSTEPS;s++){
+        var v1=sampleUV(lon,lat); if(!v1) break;
+        var cp=Math.cos(lat*Math.PI/180);
+        var v2=sampleUV(lon+dir*v1.x*STREAM_STEP*0.5/cp, lat+dir*v1.y*STREAM_STEP*0.5); if(!v2) break;
+        var nlon=lon+dir*v2.x*STREAM_STEP/cp, nlat=lat+dir*v2.y*STREAM_STEP;
+        if(nlon<minLon||nlon>maxLon||nlat<minLat||nlat>maxLat) break;
+        if(tooClose(nlon,nlat,STREAM_TEST)) break;
+        // don't spiral onto our own tail: also check against this line's samples well behind the head
+        var stop=false;
+        for(var q=0;q<pts.length-30;q+=3){ var ddx=pts[q][0]-nlon, ddy=pts[q][1]-nlat; if(ddx*ddx+ddy*ddy<STREAM_TEST*STREAM_TEST){ stop=true; break; } }
+        if(stop) break;
+        lon=nlon; lat=nlat; pts.push([lon,lat]);
+      }
+      return pts;
+    }
+    for(var sy=minLat+cs*0.5; sy<maxLat; sy+=cs){
+      for(var sx=minLon+cs*0.5; sx<maxLon; sx+=cs){
+        if(tooClose(sx,sy,STREAM_SEP)||!sampleUV(sx,sy)) continue;
+        var fwd=trace(sx,sy,1), back=trace(sx,sy,-1).reverse();
+        var line=back.concat([[sx,sy]],fwd);
+        if(line.length<8) continue;
+        line.forEach(function(p){ var ci=cellIdx(p[0],p[1]); (occ[ci]||(occ[ci]=[])).push(p); });
+        lines.push(line.map(function(p){ return [p[1],p[0]]; }));   // Leaflet wants [lat,lon]
+      }
+    }
+    streamCache[dayIdx]=lines;
+    return lines;
   }
 
   function tryIntersect(bandFeat){
@@ -451,13 +546,12 @@
     } catch(e){ return feat; }
   }
 
-  // compute clipped+smoothed contour bands for a day + hazard (expensive: IDW, d3 contours, turf
-  // clip/simplify, Chaikin smoothing) -- cached, and independent of any particular Leaflet map so the
-  // same bands can be drawn on whichever plane(s) currently show that hazard.
+  // compute clipped+smoothed contour bands for a day + hazard (expensive: per-tier kernel fields, d3
+  // contours, turf clip/simplify, Chaikin smoothing) -- cached, and independent of any particular
+  // Leaflet map so the same bands can be drawn on whichever plane(s) currently show that hazard.
   function buildDayFeatures(dayIdx,hz){
     var key=hz+'|'+dayIdx;
     if(featureCache[key]) return featureCache[key];
-    var vals=field(dayIdx,HAZ_GET[hz]);
     var spec;
     if(hz==='cat'){
       var ext=dayIdx>=4;                   // days 5-8 use coarse scale
@@ -466,26 +560,35 @@
       var hs=HAZ_SPECS[hz];
       spec=hs.thresholds.map(function(t,i){return {t:t,color:hs.colors[i]};});
     }
-    var ths=spec.map(function(s){return s.t;});
-    var contours=d3.contours().size([nx,ny]).thresholds(ths)(vals);
     var out=[];
-    contours.forEach(function(geo){
-      var sp=null; for(var m=0;m<spec.length;m++){if(Math.abs(spec[m].t-geo.value)<1e-6){sp=spec[m];break;}}
-      if(!sp||!geo.coordinates.length) return;
-      var coords=geo.coordinates.map(function(poly){return poly.map(function(ring){return ring.map(function(pt){return g2ll(pt[0],pt[1]);});});});
-      var feat={type:'Feature',properties:{},geometry:{type:'MultiPolygon',coordinates:coords}};
-      var clipped=tryIntersect(feat);
-      if(!clipped) return;
-      clipped=trySimplify(clipped);
-      clipped=trySmooth(clipped,5);
-      out.push({geo:clipped,style:{color:darker(sp.color,0.45),weight:1.1,opacity:0.9,fillColor:rgb(sp.color),fillOpacity:0.62}});
+    spec.forEach(function(sp,ti){
+      var F=tierField(dayIdx,HAZ_GET[hz],sp.t);
+      var contours=d3.contours().size([nx,ny]).thresholds([0.5])(F);
+      contours.forEach(function(geo){
+        if(!geo.coordinates.length) return;
+        var coords=geo.coordinates.map(function(poly){return poly.map(function(ring){return ring.map(function(pt){return g2ll(pt[0],pt[1]);});});});
+        var feat={type:'Feature',properties:{},geometry:{type:'MultiPolygon',coordinates:coords}};
+        var clipped=tryIntersect(feat);
+        if(!clipped) return;
+        clipped=trySimplify(clipped);
+        clipped=trySmooth(clipped,5);
+        // the outermost tier carries the heavy outline that defines the shape; inner tiers get a
+        // slightly lighter one so the nesting reads as bands rather than a pile of equal borders
+        out.push({geo:clipped,style:{color:darker(sp.color,0.42),weight:ti===0?2.6:2.0,opacity:0.95,lineJoin:'round',fillColor:rgb(sp.color),fillOpacity:0.72}});
+      });
     });
     featureCache[key]=out;
     return out;
   }
-  // cheap: builds a fresh Leaflet layerGroup from cached feature data for one specific map instance
+  // cheap: builds a fresh Leaflet layerGroup from cached feature data for one specific map instance.
+  // Streamlines go in first so they sit under the hazard bands.
   function renderOnMap(m,dayIdx,hz){
     var group=L.layerGroup();
+    if(hz==='cat'){
+      buildStreamlines(dayIdx).forEach(function(line){
+        L.polyline(line,{interactive:false,color:'#26323f',weight:0.9,opacity:0.14,smoothFactor:1.2}).addTo(group);
+      });
+    }
     buildDayFeatures(dayIdx,hz).forEach(function(f){ L.geoJSON(f.geo,{interactive:false,style:f.style}).addTo(group); });
     group.addTo(m);
     return group;
@@ -777,7 +880,7 @@
       GRID=[]; results=[];
       DAYS=o.days||['Day 1','Day 2','Day 3','Day 4','Day 5','Day 6','Day 7','Day 8'];
       o.points.forEach(function(p){GRID.push([p.lat,p.lon]);results.push(p.d);});
-      featureCache={};
+      featureCache={}; denCache={}; streamCache={};
       document.getElementById('updatedtxt').textContent='Updated '+(o.run_date?new Date(o.run_date).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'—');
       return o;
     });
