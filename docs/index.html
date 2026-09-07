@@ -364,7 +364,9 @@
   // Now each tier gets its OWN field,
   //     F_c(x) = sum_k [value_k >= t_c] * K(x - p_k)  /  sum_k K(x - p_k),
   // a Gaussian-kernel-weighted PROPORTION of nearby grid points at that tier or above (Nadaraya-
-  // Watson kernel regression of the indicator), contoured at 0.5. The properties that matter:
+  // Watson kernel regression of the indicator), contoured at a fixed level. As FIRST tuned
+  // (KSIG=0.42, every tier at 0.5) the properties were as follows -- the 7 Sep retune note
+  // further down explains which of these were then deliberately traded away and why:
   //   * every grid point at tier c or above is INSIDE the tier-c polygon: at the point itself its
   //     own weight is 1, and with KSIG=0.42 deg the summed weight of all its neighbours on the
   //     0.82 deg lattice is ~0.69 (4 x 0.149 + 4 x 0.022 + ...), so F >= 1/1.69 = 0.59 > 0.5 even
@@ -387,7 +389,32 @@
   // affordable. The kernel is truncated at KRAD, where it is already below 0.004.
   var HOLE_MIN_AREA=0.6;        // deg^2; interior holes smaller than this (~one 0.82 deg cell) are filled, see buildDayFeatures
   function ringArea(ring){ var a=0; for(var i=0,n=ring.length-1;i<n;i++){ a+=ring[i][0]*ring[i+1][1]-ring[i+1][0]*ring[i][1]; } return a/2; }
-  var KSIG=0.42, KRAD=1.4;      // degrees; hazard tiers
+  var KSIG=0.60, KRAD=2.0;      // degrees; hazard tiers (see the retune note below)
+  // Retuned 7 Sep 2026 after the first live look at the 0.42 deg version. KSIG=0.42 with every
+  // tier contoured at 0.5 kept the strict "every point is inside its own tier" property, but the
+  // result hugged the lattice: outlines bulged around individual points, a single MDT point
+  // painted its own blob inside a MRGL area on a day that plainly wasn't an MDT day, and an
+  // isolated Large-hail point produced IDENTICAL Small and Large polygons (both tiers' indicator
+  // fields are the same when every neighbour is zero), so the red sat exactly on top of the
+  // yellow and the hazard looked un-nested. The broader kernel plus this threshold ladder trades
+  // that per-point property for the forecaster-drawn look:
+  //   * a tier needs support from at least two adjacent points to render at all. A lone point's
+  //     proportion at its own location is 1/(1+S) with S (its neighbours' summed weight) ~2.4 at
+  //     KSIG=0.60, i.e. ~0.30, under TIER_T[0]=0.35; a pair reaches ~0.41 and shows. Single-
+  //     point noise on a ~90km lattice is not a synoptic-scale outlook signal.
+  //   * the outermost tier's envelope is generous (0.35 puts the edge ~0.6 deg beyond the last
+  //     qualifying point) and holes/gaps of fewer than ~3x3 points are smoothed over, which is
+  //     what a hand-drawn outline does.
+  //   * each inner tier is contoured at a STRICTER level than the tier outside it. Because
+  //     F_{c+1} <= F_c everywhere, {F_{c+1} >= 0.48} sits strictly inside {F_c >= 0.35} with a
+  //     visible band between them even where the two indicator fields coincide -- an inner tier
+  //     can approach the outer border but never share it. The rising ladder also means MDT/HIGH
+  //     need progressively more solid support than TSTM does, which is the right conservatism
+  //     for the top tiers.
+  // The hover tooltip still reads the raw point, so it can report a higher tier than the map
+  // draws for an unsupported single point -- that is now deliberate: the tooltip is the point
+  // value, the map is the synoptic-scale synthesis.
+  var TIER_T=[0.35,0.48,0.58,0.68];   // proportion contour level by tier index (outermost first)
   var WSIG=0.60, WRAD=2.0;      // degrees; 500hPa wind field -- context only, so a broader, smoother kernel
   var denCache={}, streamCache={};
 
@@ -565,7 +592,7 @@
     var out=[];
     spec.forEach(function(sp,ti){
       var F=tierField(dayIdx,HAZ_GET[hz],sp.t);
-      var contours=d3.contours().size([nx,ny]).thresholds([0.5])(F);
+      var contours=d3.contours().size([nx,ny]).thresholds([TIER_T[Math.min(ti,TIER_T.length-1)]])(F);
       contours.forEach(function(geo){
         if(!geo.coordinates.length) return;
         var coords=geo.coordinates.map(function(poly){return poly.map(function(ring){return ring.map(function(pt){return g2ll(pt[0],pt[1]);});});});
