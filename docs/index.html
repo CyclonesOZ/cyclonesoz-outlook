@@ -415,6 +415,21 @@
   // draws for an unsupported single point -- that is now deliberate: the tooltip is the point
   // value, the map is the synoptic-scale synthesis.
   var TIER_T=[0.35,0.48,0.58,0.68];   // proportion contour level by tier index (outermost first)
+  // Outermost-tier bridging (7 Sep 2026): the lowest band of each hazard (TSTM, Chance, Small,
+  // Slight...) gets a grayscale morphological CLOSING -- dilate then erode by a disc of
+  // CLOSE_R cells -- applied to its proportion field before contouring. Closing fills any gap or
+  // notch narrower than 2*CLOSE_R and changes nothing else: a chain of small TSTM patches one or
+  // two lattice points apart down the WA interior becomes one envelope of baseline risk (how a
+  // forecaster would draw it), while genuinely separate regimes stay separate because the
+  // operation is purely distance-based -- a WA cluster and a QLD cluster thousands of km apart
+  // can never be joined. At CLOSE_R=8 (0.8 deg) gaps of up to two missing lattice points
+  // (~165km edge to edge) are bridged; three or more are not. Nesting is preserved because a
+  // closing always CONTAINS the original region, and the original already contains every inner
+  // tier. Inner tiers are not closed -- bridging MRGL/MDT areas would be over-calling severity.
+  // (A first attempt used a broader-kernel proportion field instead; that fails for exactly the
+  // small clusters that need joining, because a normalised proportion is DILUTED by a broader
+  // kernel -- more zero neighbours enter the average -- so it never bridged anything.)
+  var CLOSE_R=8;
   var WSIG=0.60, WRAD=2.0;      // degrees; 500hPa wind field -- context only, so a broader, smoother kernel
   var denCache={}, streamCache={};
 
@@ -439,24 +454,58 @@
   }
   // kernel-weight denominator for a day: depends only on which points have data that day, not on
   // the hazard or tier, so one array is shared by every tier field of that day
-  function dayDen(dayIdx){
-    if(denCache[dayIdx]) return denCache[dayIdx];
+  function dayDen(dayIdx,sig,rad){
+    var key=dayIdx+'|'+sig;
+    if(denCache[key]) return denCache[key];
     var den=new Float64Array(nx*ny);
-    for(var i=0;i<GRID.length;i++){ if(results[i]&&results[i][dayIdx]) splat(GRID[i][0],GRID[i][1],KSIG,KRAD,den,null,null); }
-    denCache[dayIdx]=den;
+    for(var i=0;i<GRID.length;i++){ if(results[i]&&results[i][dayIdx]) splat(GRID[i][0],GRID[i][1],sig,rad,den,null,null); }
+    denCache[key]=den;
     return den;
   }
   // the tier field described above: proportion (0..1) of nearby points with getter(r) >= t
-  function tierField(dayIdx,getter,t){
-    var den=dayDen(dayIdx), num=new Float64Array(nx*ny), one=[1];
+  function tierField(dayIdx,getter,t,sig,rad){
+    var den=dayDen(dayIdx,sig,rad), num=new Float64Array(nx*ny), one=[1];
     for(var i=0;i<GRID.length;i++){
       var r=results[i]?results[i][dayIdx]:null; if(!r) continue;
-      if(getter(r)>=t) splat(GRID[i][0],GRID[i][1],KSIG,KRAD,null,[num],one);
+      if(getter(r)>=t) splat(GRID[i][0],GRID[i][1],sig,rad,null,[num],one);
     }
     var F=new Float64Array(nx*ny);
     for(var k=0;k<F.length;k++) F[k]=den[k]>1e-9?num[k]/den[k]:0;
     return F;
   }
+  // 1D sliding-window max/min along each row, window half-width w (van Herk / Gil-Werman, O(n)
+  // per row regardless of w). Rows are padded with -Inf (max) / +Inf (min) so the window simply
+  // clips at the mesh edge.
+  function rowExtreme(src,w,isMax){
+    var out=new Float64Array(nx*ny); if(w<=0){ out.set(src); return out; }
+    var k=2*w+1, len=nx+2*w, pad=isMax?-Infinity:Infinity, op=isMax?Math.max:Math.min;
+    var buf=new Float64Array(len), pre=new Float64Array(len), suf=new Float64Array(len);
+    for(var y=0;y<ny;y++){
+      var o=y*nx, i, x;
+      for(i=0;i<len;i++) buf[i]=(i<w||i>=w+nx)?pad:src[o+i-w];
+      for(i=0;i<len;i++) pre[i]=(i%k===0)?buf[i]:op(pre[i-1],buf[i]);
+      for(i=len-1;i>=0;i--) suf[i]=(i%k===k-1||i===len-1)?buf[i]:op(suf[i+1],buf[i]);
+      for(x=0;x<nx;x++) out[o+x]=op(suf[x],pre[x+k-1]);
+    }
+    return out;
+  }
+  // grayscale dilation (isMax) or erosion (!isMax) by a disc of radius r cells, built as the
+  // union of row-wise 1D filters (one per disc row, widths shared between symmetric rows)
+  function discExtreme(src,r,isMax){
+    var out=new Float64Array(nx*ny); out.fill(isMax?-Infinity:Infinity);
+    var op=isMax?Math.max:Math.min, rows={};
+    for(var dy=-r;dy<=r;dy++){
+      var w=Math.floor(Math.sqrt(r*r-dy*dy));
+      var f=rows[w]||(rows[w]=rowExtreme(src,w,isMax));
+      for(var y=0;y<ny;y++){
+        var ys=y+dy; if(ys<0||ys>=ny) continue;
+        var o=y*nx, os=ys*nx;
+        for(var x=0;x<nx;x++){ var v=f[os+x]; if(isMax?v>out[o+x]:v<out[o+x]) out[o+x]=v; }
+      }
+    }
+    return out;
+  }
+  function closeField(F,r){ return discExtreme(discExtreme(F,r,true),r,false); }
 
   // ---- 500hPa streamlines (Category Outlook pane only) ----
   // Faint background context showing the day's mid-level steering flow, in the style of the
@@ -591,7 +640,8 @@
     }
     var out=[];
     spec.forEach(function(sp,ti){
-      var F=tierField(dayIdx,HAZ_GET[hz],sp.t);
+      var F=tierField(dayIdx,HAZ_GET[hz],sp.t,KSIG,KRAD);
+      if(ti===0) F=closeField(F,CLOSE_R);
       var contours=d3.contours().size([nx,ny]).thresholds([TIER_T[Math.min(ti,TIER_T.length-1)]])(F);
       contours.forEach(function(geo){
         if(!geo.coordinates.length) return;
