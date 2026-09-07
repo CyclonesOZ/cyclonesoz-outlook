@@ -284,7 +284,12 @@ categorise_vals <- function(cape, shr, scp, stp, ship, cin, rain_mm){
   c <- 0
   if (cape >= 150) c <- 1                                                                   # TSTM
   if ((cape >= 450 & shr_kt >= 18) | (scp >= 0.9 & cape >= 900) | ship >= 0.45) c <- max(c, 2)  # MRGL
-  if ((scp >= 3.6 & cape >= 900) | stp >= 1.8 | ship >= 1.8) c <- max(c, 3)   # MDT
+  # MDT via the SCP route now also needs some STP or SHIP backing (the same 0.9 "sig" bar the
+  # hatching uses) -- 7 Sep 2026, after a lone point at 24.0S 128.5E hit MDT on SCP 3.7 (vs the
+  # 3.6 bar) with STP -0.6 and SHIP 0.7 on a day that was plainly not a 3-of-4 day. SCP alone is a
+  # supercell-ENVIRONMENT composite; without any tornado or hail composite support it should
+  # cap at MRGL. The direct STP/SHIP routes are unchanged.
+  if ((scp >= 3.6 & cape >= 900 & (stp >= 0.9 | ship >= 0.9)) | stp >= 1.8 | ship >= 1.8) c <- max(c, 3)   # MDT
   if ((scp >= 9   & cape >= 900) | stp >= 4.5)               c <- max(c, 4)   # HIGH
 
   capped  <- nz(cin) <= -75      # stout cap even on the best hour of the day
@@ -475,7 +480,11 @@ day_topN <- function(h, idxs, elev, lat){
   # max picks up unrelated overnight drizzle (Open-Meteo's ensemble can be very confident about light,
   # non-convective rain at 7am) and reports it as a dramatic "thunderstorm chance" for the day.
   c(cv, list(tprob=thunder_prob(m("tprob"), m("cape"), rain_day),
-             hail=hail_tier(peak_ship_hr$ship, peak_ship_hr$cape, frz_day, t500_day),
+             # hail gated on the category (7 Sep 2026), the same way wind_tier() already is: no
+             # storms means no hail. Before this, a marginal peak-hour SHIP (0.5-0.6) in a hot,
+             # deeply capped (CIN -178), completely dry (0mm, 0% thunder chance) Kimberley airmass
+             # drew a Small-hail zone on a day the category logic had correctly gated to 0.
+             hail=if (cv$cat >= 1) hail_tier(peak_ship_hr$ship, peak_ship_hr$cape, frz_day, t500_day) else 0L,
              flood=flood_cat(rain_day, rain_rate, rain_pop, lat), pop=round(rain_pop),
              fire=fire_tier(ffdi_day, rain_day), ffdi=round(ffdi_day),
              wind=wind_tier(m("cape"), m("shr"), cv$cat),
