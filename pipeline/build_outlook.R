@@ -454,6 +454,15 @@ day_topN <- function(h, idxs, elev, lat){
       sev  = sev_score(par),
       cape = nz(par[["MU_CAPE"]]), shr = nz(par[["BS_EFF_MU"]]),
       scp  = nz(par[["SCP_new"]]), stp = nz(par[["STP_new"]]), ship = nz(par[["SHIP"]]),
+      # left-mover variants, DIAGNOSTIC ONLY for now (9 Sep 2026): thundeR's SCP_new/STP_new use
+      # right-mover storm-relative helicity, the Northern-Hemisphere convention. In the Southern
+      # Hemisphere the mirror-image left-mover is the dominant supercell, and on the 1 Nov 2025
+      # reconstruction SCP/STP read ~0 or NEGATIVE over SE QLD in a CAPE 2500-3000 / 45-50kt
+      # environment -- i.e. the two composites that drive MDT/HIGH are contributing nothing here.
+      # Emitted alongside so a run can show whether the _LM fields carry the signal before the
+      # category logic is switched to them. Guarded: NA if a thundeR build lacks the field.
+      scp_lm = if ("SCP_new_LM" %in% names(par)) nz(par[["SCP_new_LM"]]) else NA,
+      stp_lm = if ("STP_new_LM" %in% names(par)) nz(par[["STP_new_LM"]]) else NA,
       cin  = nz(par[["MU_CIN"]]), frz = h[["freezing_level_height"]][i],
       t500 = h[["temperature_500hPa"]][i],
       tprob = nz(h[["precipitation_probability"]][i]))
@@ -536,6 +545,7 @@ day_topN <- function(h, idxs, elev, lat){
              flood=flood_cat(rain_day, rain_rate, rain_pop, lat), pop=round(rain_pop),
              fire=fire_tier(ffdi_day, rain_day), ffdi=round(ffdi_day),
              wind=wind_tier(m("cape"), m("shr"), cv$cat),
+             scp_lm=round(m("scp_lm"),1), stp_lm=round(m("stp_lm"),1),   # diagnostic, see day_topN rows
              u500=u500, v500=v500))
 }
 
