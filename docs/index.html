@@ -699,8 +699,13 @@
   // misrepresent what that historical day actually looked like. Category Outlook's cat field is
   // the one thing that's stayed a stable, comparable definition since the archive feature shipped.
   var isLiveRun=true;
+  // set from the loaded file: full_hazards means every hazard in it was computed by the current
+  // pipeline (all runs from 9 Sep 2026 on, including historical reconstructions), so an archive
+  // carrying it can show all planes; historical marks a reconstruction built from archived model
+  // data for a past date (a promotional/demo run) rather than a run that was ever the live one.
+  var runFullHazards=false, runHistorical=false;
   function placeholderReason(dayIdx, hz){
-    if (!isLiveRun && hz!=='cat') return 'Historical runs only show Category Outlook — switch this pane to Category Outlook, or return to Today (live).';
+    if (!isLiveRun && !runFullHazards && hz!=='cat') return 'Historical runs only show Category Outlook — switch this pane to Category Outlook, or return to Today (live).';
     if (extendedRange(dayIdx, hz)) return 'Extended range (days 5–8) shows Category only';
     return null;
   }
@@ -969,6 +974,7 @@
       DAYS=o.days||['Day 1','Day 2','Day 3','Day 4','Day 5','Day 6','Day 7','Day 8'];
       o.points.forEach(function(p){GRID.push([p.lat,p.lon]);results.push(p.d);});
       featureCache={}; denCache={}; streamCache={};
+      runFullHazards=!!o.full_hazards; runHistorical=!!o.historical;
       document.getElementById('updatedtxt').textContent='Updated '+(o.run_date?new Date(o.run_date).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'—');
       return o;
     });
@@ -976,7 +982,9 @@
   function syncRunBanner(isLive, label){
     var el=document.getElementById('runBanner');
     if(isLive){ el.classList.remove('show'); return; }
-    el.innerHTML='Viewing an archived run from <b>'+label+'</b> &mdash; not the live forecast.';
+    el.innerHTML=runHistorical
+      ? 'Viewing a reconstructed run for <b>'+label+'</b> &mdash; built from the model data archived for that date, exactly as the outlook would have issued it that morning. Not the live forecast.'
+      : 'Viewing an archived run from <b>'+label+'</b> &mdash; not the live forecast.';
     el.classList.add('show');
   }
   // archive/index.json (written by the pipeline alongside each run) lists which past dates are
@@ -996,7 +1004,11 @@
       sel.appendChild(liveOpt);
       hist.forEach(function(d){
         var opt=document.createElement('option'); opt.value=d;
-        opt.textContent=new Date(d+'T00:00:00Z').toLocaleDateString('en-AU',{day:'numeric',month:'short'});
+        // show the year whenever it isn't the current one, so a pinned historical reconstruction
+        // (e.g. 1 Nov 2025) can't be mistaken for a date in the last fortnight
+        var fmt={day:'numeric',month:'short',timeZone:'UTC'};
+        if(d.slice(0,4)!==String(new Date().getUTCFullYear())) fmt.year='numeric';
+        opt.textContent=new Date(d+'T00:00:00Z').toLocaleDateString('en-AU',fmt);
         sel.appendChild(opt);
       });
       sel.value='live';

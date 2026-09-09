@@ -13,6 +13,7 @@ suppressMessages({
 
 GRID   <- fromJSON("data/grid.json")           # matrix [,1]=lat [,2]=lon
 OUT    <- "docs/outlook.json"
+ARCHIVE_DIR <- "docs/archive"
 LEVELS <- c(1000,975,950,925,900,850,800,700,600,500,400,300,250,200,150,100)
 FDAYS  <- 8                                     # forecast days
 TOPN   <- 6                                     # average the N highest-severity hours
@@ -26,6 +27,32 @@ TOPN   <- 6                                     # average the N highest-severity
 # manual run: Day 1 always comes out as whichever Australian day has most recently started.
 START_DATE <- format(Sys.time() + 8*3600, "%Y-%m-%d", tz="UTC")
 END_DATE   <- as.character(as.Date(START_DATE) + FDAYS - 1)
+
+# ---- historical reconstruction mode (added 9 Sep 2026) ----
+# A one-off run anchored to a PAST Day 1, built from Open-Meteo's archive of past model runs:
+# historical-forecast-api.open-meteo.com serves the forecast exactly as it was issued at the
+# time, with the same variables as the live endpoint (verified live for 2025-11-01: all 192
+# hours, every pressure level, soil moisture, freezing level and the ECMWF model all present),
+# so the result is what this outlook WOULD have shown that morning -- not a hindcast fitted to
+# what later happened. Triggered by pipeline/historical_run.txt holding a YYYY-MM-DD date (or
+# the OUTLOOK_HIST_DATE env var for local use), and in Actions ONLY on a manual
+# workflow_dispatch: the scheduled 18Z run ignores the file entirely, so leaving it in the repo
+# can never hijack the live outlook. Output goes to docs/archive/<date>.json only -- never to
+# docs/outlook.json -- and the date is pinned in archive/pinned.json so the rolling prune at the
+# bottom of this script leaves it alone. run_date is stamped as what the live schedule would
+# have written that morning (18Z the previous UTC day = 02:00 AWST on Day 1).
+HIST_FILE <- "pipeline/historical_run.txt"
+HIST_DATE <- NULL
+hist_candidate <- Sys.getenv("OUTLOOK_HIST_DATE", "")
+if (hist_candidate == "" && file.exists(HIST_FILE) && identical(Sys.getenv("GITHUB_EVENT_NAME"), "workflow_dispatch"))
+  hist_candidate <- trimws(readLines(HIST_FILE, warn=FALSE)[1])
+if (grepl("^\\d{4}-\\d{2}-\\d{2}$", hist_candidate) && as.Date(hist_candidate) < as.Date(START_DATE)) HIST_DATE <- hist_candidate
+if (!is.null(HIST_DATE)){
+  START_DATE <- HIST_DATE
+  END_DATE   <- as.character(as.Date(START_DATE) + FDAYS - 1)
+  cat(sprintf("HISTORICAL RECONSTRUCTION: Day 1 = %s, from the Open-Meteo historical-forecast archive\n", START_DATE))
+}
+OM_HOST <- if (is.null(HIST_DATE)) "https://api.open-meteo.com" else "https://historical-forecast-api.open-meteo.com"
 
 nz <- function(x){ if (is.null(x) || is.na(x)) 0 else x }
 
@@ -346,7 +373,7 @@ om_url <- function(lat, lon){
   # SPC-style outlooks use one fixed reference frame instead of each location's own midnight.
   # start_date/end_date (not forecast_days) pin that boundary to START_DATE/END_DATE (see
   # above) instead of letting Open-Meteo default to raw UTC "today".
-  sprintf(paste0("https://api.open-meteo.com/v1/forecast?latitude=%.3f&longitude=%.3f",
+  sprintf(paste0(OM_HOST, "/v1/forecast?latitude=%.3f&longitude=%.3f",
     "&hourly=%s,%s&start_date=%s&end_date=%s&timezone=UTC&wind_speed_unit=kn&cell_selection=nearest"),
     lat, lon, sfc, lv, START_DATE, END_DATE)
 }
@@ -569,7 +596,7 @@ ECMWF_BATCH_SIZE <- 100        # conservative per-request chunk size
 ecmwf_rain_batch <- function(lats, lons, date_str){
   n <- length(lats)
   url <- sprintf(
-    "https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s&hourly=precipitation&models=ecmwf_ifs025&start_date=%s&end_date=%s&timezone=UTC",
+    paste0(OM_HOST, "/v1/forecast?latitude=%s&longitude=%s&hourly=precipitation&models=ecmwf_ifs025&start_date=%s&end_date=%s&timezone=UTC"),
     paste(sprintf("%.3f", lats), collapse=","),
     paste(sprintf("%.3f", lons), collapse=","),
     date_str, date_str)
@@ -692,11 +719,19 @@ for (k in seq_along(raw_results)){
 }
 
 points <- Filter(Negate(is.null), points)
-out <- list(run_date = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz="UTC"),
+# full_hazards: every hazard in this file was computed by the CURRENT pipeline, so the viewer may
+# show all planes for it even when it's loaded as an archive (older archives predate some hazards
+# or used since-changed thresholds, and the viewer restricts those to Category Outlook).
+out <- list(run_date = if (is.null(HIST_DATE)) format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz="UTC")
+                       else paste0(as.Date(START_DATE) - 1, "T18:00:00Z"),
             days = if (is.null(day_labels)) paste("Day", seq_len(FDAYS)) else day_labels,
+            full_hazards = TRUE,
+            historical = !is.null(HIST_DATE),
             points = points)
-write_json(out, OUT, auto_unbox=TRUE, digits=2)
-cat(sprintf("Wrote %s  (%d points OK)\n", OUT, ok))
+OUT_PATH <- if (is.null(HIST_DATE)) OUT else file.path(ARCHIVE_DIR, paste0(START_DATE, ".json"))
+if (!dir.exists(dirname(OUT_PATH))) dir.create(dirname(OUT_PATH), recursive=TRUE)
+write_json(out, OUT_PATH, auto_unbox=TRUE, digits=2)
+cat(sprintf("Wrote %s  (%d points OK)\n", OUT_PATH, ok))
 # a bare "not literally zero" check let a genuinely broken run (556/1032, 54%, 22 Aug 2026 --
 # Open-Meteo degrading partway through and every retry after that point failing) through as
 # "success": the workflow committed and published a map with an entire missing hemisphere of
@@ -725,14 +760,19 @@ if (ok < MIN_OK_FRAC * nrow(GRID)) {
 # already uses. Kept to a rolling ARCHIVE_DAYS window (pruned every run) so the repo doesn't
 # grow unbounded; index.json lists what's currently available so the viewer doesn't have to
 # guess dates and eat 404s.
-ARCHIVE_DIR <- "docs/archive"
 ARCHIVE_DAYS <- 14
 if (!dir.exists(ARCHIVE_DIR)) dir.create(ARCHIVE_DIR, recursive=TRUE)
-file.copy(OUT, file.path(ARCHIVE_DIR, paste0(START_DATE, ".json")), overwrite=TRUE)
+if (is.null(HIST_DATE)) file.copy(OUT, file.path(ARCHIVE_DIR, paste0(START_DATE, ".json")), overwrite=TRUE)
+# pinned.json: dates exempt from the rolling prune (historical reconstructions live here; the
+# 14-day window is measured from the LIVE run's date, which would otherwise drop them next run)
+PINNED_FILE <- file.path(ARCHIVE_DIR, "pinned.json")
+pinned <- if (file.exists(PINNED_FILE)) as.character(unlist(fromJSON(PINNED_FILE))) else character(0)
+if (!is.null(HIST_DATE)){ pinned <- sort(unique(c(pinned, START_DATE))); write_json(pinned, PINNED_FILE) }
 existing <- list.files(ARCHIVE_DIR, pattern="^\\d{4}-\\d{2}-\\d{2}\\.json$")
 existing_dates <- sub("\\.json$", "", existing)
-cutoff <- as.Date(START_DATE) - ARCHIVE_DAYS
-keep <- existing_dates[!is.na(as.Date(existing_dates)) & as.Date(existing_dates) >= cutoff]
+# prune relative to the live calendar, not START_DATE -- a historical run must not shift the window
+cutoff <- as.Date(format(Sys.time() + 8*3600, "%Y-%m-%d", tz="UTC")) - ARCHIVE_DAYS
+keep <- existing_dates[!is.na(as.Date(existing_dates)) & (as.Date(existing_dates) >= cutoff | existing_dates %in% pinned)]
 stale <- setdiff(existing, paste0(keep, ".json"))
 if (length(stale) > 0) file.remove(file.path(ARCHIVE_DIR, stale))
 write_json(sort(keep), file.path(ARCHIVE_DIR, "index.json"))  # NOT auto_unbox: must stay an
