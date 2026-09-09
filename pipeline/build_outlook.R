@@ -78,7 +78,7 @@ dewpoint <- function(T, RH){
 # the _LM switch can be redone together with a proper threshold recalibration against real data.
 sev_score <- function(p){
   cape <- nz(p[["MU_CAPE"]]); shr <- nz(p[["BS_EFF_MU"]])*1.94384
-  scp  <- nz(p[["SCP_new"]]); stp <- nz(p[["STP_new"]]); ship <- nz(p[["SHIP"]])
+  scp  <- sh_composite(p, "SCP_new"); stp <- sh_composite(p, "STP_new"); ship <- nz(p[["SHIP"]])   # left-mover composites, see sh_composite()
   2*scp + 2*stp + 2*ship + cape/500 + shr/20
 }
 
@@ -328,7 +328,12 @@ categorise_vals <- function(cape, shr, scp, stp, ship, cin, rain_mm){
   # 3.6 bar) with STP -0.6 and SHIP 0.7 on a day that was plainly not a 3-of-4 day. SCP alone is a
   # supercell-ENVIRONMENT composite; without any tornado or hail composite support it should
   # cap at MRGL. The direct STP/SHIP routes are unchanged.
-  if ((scp >= 3.6 & cape >= 900 & (stp >= 0.9 | ship >= 0.9)) | stp >= 1.8 | ship >= 1.8) c <- max(c, 3)   # MDT
+  # MDT via SHIP uses a shear-dependent bar (Josh, 9 Sep 2026): 2.0 below 35kt, 1.5 at 35-50kt,
+  # 1.2 above 50kt. Strong deep-layer shear organises the updraft that a given SHIP implies, so
+  # the same hail composite means more in a 55kt environment than a 25kt one. Replaces both the
+  # flat 1.8 bar and the interim "SHIP >= 0.9 is SIG" floor from earlier the same day.
+  ship_mdt <- if (shr_kt < 35) 2.0 else if (shr_kt <= 50) 1.5 else 1.2
+  if ((scp >= 3.6 & cape >= 900 & (stp >= 0.9 | ship >= 0.9)) | stp >= 1.8 | ship >= ship_mdt) c <- max(c, 3)   # MDT
   if ((scp >= 9   & cape >= 900) | stp >= 4.5)               c <- max(c, 4)   # HIGH
 
   capped  <- nz(cin) <= -75      # stout cap even on the best hour of the day
@@ -352,7 +357,8 @@ categorise_vals <- function(cape, shr, scp, stp, ship, cin, rain_mm){
   # moderate with very large hail. SCP-alone is dropped from the SIG definition at the same
   # time, consistent with the 7 Sep MDT calibration (SCP is an environment composite, not a
   # hazard one; SCP-only support caps at MRGL). Heavy-rain tier 3 remains SIG.
-  sig <- stp >= 0.9 | ship >= 0.9 | rc >= 3
+  # SHIP's SIG bar is the same shear-dependent MDT bar above, so "SIG is at least MDT" stays true.
+  sig <- stp >= 0.9 | ship >= ship_mdt | rc >= 3
 
   pregate <- c
   if (capped & pregate >= 3) pregate <- pregate - 1
@@ -406,6 +412,22 @@ fetch_point <- function(lat, lon){
   NULL
 }
 
+# Southern-Hemisphere supercell composites (9 Sep 2026). thundeR's SCP_new / STP_new are built on
+# RIGHT-mover storm-relative helicity -- the Northern-Hemisphere convention, where the cyclonic
+# supercell deviates to the right of the mean wind. In the Southern Hemisphere the mirror-image
+# LEFT-mover is the cyclonic, dominant supercell, and the right-mover SRH has the opposite sign,
+# so the RM composites read ~0 or negative in exactly the environments they are meant to flag:
+# on the 1 Nov 2025 reconstruction SCP was -1.2..+1.5 and STP negative everywhere across SE QLD
+# with CAPE 2500-3000 and 45-50kt shear, i.e. the two composites that drive MDT/HIGH contributed
+# nothing. Every grid point here is in the Southern Hemisphere, so the _LM variants are used
+# outright. abs() makes this robust to either sign convention thundeR may use for the LM
+# helicity term (the LM member is the cyclonic one here, so its magnitude IS the supercell
+# potential); the RM field is the fallback only if a thundeR build lacks the _LM output.
+sh_composite <- function(par, base){
+  lm <- paste0(base, "_LM")
+  if (lm %in% names(par) && !is.na(par[[lm]])) abs(par[[lm]]) else nz(par[[base]])
+}
+
 build_profile <- function(h, i, elev){
   pres <- c(h[["surface_pressure"]][i])
   alt  <- c(if (!is.na(elev)) elev else 0)
@@ -453,14 +475,8 @@ day_topN <- function(h, idxs, elev, lat){
     rows[[length(rows)+1]] <- list(
       sev  = sev_score(par),
       cape = nz(par[["MU_CAPE"]]), shr = nz(par[["BS_EFF_MU"]]),
-      scp  = nz(par[["SCP_new"]]), stp = nz(par[["STP_new"]]), ship = nz(par[["SHIP"]]),
-      # left-mover variants, DIAGNOSTIC ONLY for now (9 Sep 2026): thundeR's SCP_new/STP_new use
-      # right-mover storm-relative helicity, the Northern-Hemisphere convention. In the Southern
-      # Hemisphere the mirror-image left-mover is the dominant supercell, and on the 1 Nov 2025
-      # reconstruction SCP/STP read ~0 or NEGATIVE over SE QLD in a CAPE 2500-3000 / 45-50kt
-      # environment -- i.e. the two composites that drive MDT/HIGH are contributing nothing here.
-      # Emitted alongside so a run can show whether the _LM fields carry the signal before the
-      # category logic is switched to them. Guarded: NA if a thundeR build lacks the field.
+      scp  = sh_composite(par, "SCP_new"), stp = sh_composite(par, "STP_new"), ship = nz(par[["SHIP"]]),
+      # raw signed left-mover values kept as diagnostics (null if the thundeR build lacks them)
       scp_lm = if ("SCP_new_LM" %in% names(par)) nz(par[["SCP_new_LM"]]) else NA,
       stp_lm = if ("STP_new_LM" %in% names(par)) nz(par[["STP_new_LM"]]) else NA,
       cin  = nz(par[["MU_CIN"]]), frz = h[["freezing_level_height"]][i],
