@@ -334,7 +334,12 @@ categorise_vals <- function(cape, shr, scp, stp, ship, cin, rain_mm){
   # flat 1.8 bar and the interim "SHIP >= 0.9 is SIG" floor from earlier the same day.
   ship_mdt <- if (shr_kt < 35) 2.0 else if (shr_kt <= 50) 1.5 else 1.2
   if ((scp >= 3.6 & cape >= 900 & (stp >= 0.9 | ship >= 0.9)) | stp >= 1.8 | ship >= ship_mdt) c <- max(c, 3)   # MDT
-  if ((scp >= 9   & cape >= 900) | stp >= 4.5)               c <- max(c, 4)   # HIGH
+  # HIGH (Josh, 9 Sep 2026): exceptionally potent only -- CAPE >= 4000, SHIP >= 2.5, SCP >= 9
+  # ("huge") and 10mm+ rain, ALL required. The old (SCP>=9 & CAPE>=900) | STP>=4.5 routes are
+  # gone: HIGH is meant to be the rare outbreak signal, not something one composite can reach on
+  # its own. A tornado-composite day without that hail/instability backing still lands at MDT
+  # via the SIG floor.
+  if (cape >= 4000 & ship >= 2.5 & scp >= 9 & nz(rain_mm) >= 10) c <- max(c, 4)   # HIGH
 
   capped  <- nz(cin) <= -75      # stout cap even on the best hour of the day
   no_trig <- nz(rain_mm) < 2     # GFS's own 24h precip forecast shows essentially no rain
