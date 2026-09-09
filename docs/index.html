@@ -506,6 +506,26 @@
     return out;
   }
   function closeField(F,r){ return discExtreme(discExtreme(F,r,true),r,false); }
+  // Drop degenerate rings after clip/simplify/smooth. turf's clip and simplify can leave 2-3
+  // point rings a pixel or two across (found 9 Sep 2026: 35 of the 37 sub-rings in one hail band
+  // were these), and the heavy 2.6px round-joined outline draws each one as a dark speck
+  // scattered over the map. Anything under SLIVER_MIN_AREA (0.02 deg^2, ~15km across -- far
+  // smaller than the ~0.3 deg^2 disc even a lone supported pair of points produces) is noise
+  // from the geometry pipeline, not signal. A polygon whose outer ring is a sliver is dropped
+  // whole; sliver holes are dropped from otherwise-kept polygons.
+  var SLIVER_MIN_AREA=0.02;
+  function dropSlivers(feat){
+    try{
+      var g=feat.geometry;
+      function cleanPoly(poly){
+        if(!poly.length || Math.abs(ringArea(poly[0]))<SLIVER_MIN_AREA) return null;
+        return poly.filter(function(ring,ri){ return ri===0 || Math.abs(ringArea(ring))>=SLIVER_MIN_AREA; });
+      }
+      var polys=(g.type==='Polygon'?[g.coordinates]:g.coordinates).map(cleanPoly).filter(Boolean);
+      if(!polys.length) return null;
+      return {type:'Feature',properties:feat.properties||{},geometry:{type:'MultiPolygon',coordinates:polys}};
+    }catch(e){ return feat; }
+  }
 
   // ---- 500hPa streamlines (Category Outlook pane only) ----
   // Faint background context showing the day's mid-level steering flow, in the style of the
@@ -660,6 +680,7 @@
         if(!clipped) return;
         clipped=trySimplify(clipped);
         clipped=trySmooth(clipped,5);
+        clipped=dropSlivers(clipped);
         // the outermost tier carries the heavy outline that defines the shape; inner tiers get a
         // slightly lighter one so the nesting reads as bands rather than a pile of equal borders
         out.push({geo:clipped,style:{color:darker(sp.color,0.42),weight:ti===0?2.6:2.0,opacity:0.95,lineJoin:'round',fillColor:rgb(sp.color),fillOpacity:0.72}});

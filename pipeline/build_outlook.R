@@ -344,16 +344,25 @@ categorise_vals <- function(cape, shr, scp, stp, ship, cin, rain_mm){
   # caller: on a gated day c is forced to 0 immediately below regardless of pregate, so this
   # doesn't change cat's value for anything already live -- only pregate (new, previously unused)
   # is affected.
+  rc <- rain_cat(nz(rain_mm))
+  # SIG ("hatched" / significant-severe) is now defined up front so it can LIFT the category:
+  # per Josh, 9 Sep 2026, anything SIG is at least MDT. The 1 Nov 2025 reconstruction showed why
+  # -- SHIP 0.9-1.9 with CAPE 1600-3000 and 35-50kt shear across SE QLD/NE NSW came out MRGL
+  # nearly everywhere (MDT then needed SHIP >= 1.8), on a day that verified as widespread
+  # moderate with very large hail. SCP-alone is dropped from the SIG definition at the same
+  # time, consistent with the 7 Sep MDT calibration (SCP is an environment composite, not a
+  # hazard one; SCP-only support caps at MRGL). Heavy-rain tier 3 remains SIG.
+  sig <- stp >= 0.9 | ship >= 0.9 | rc >= 3
+
   pregate <- c
   if (capped & pregate >= 3) pregate <- pregate - 1
+  if (sig & pregate >= 1) pregate <- max(pregate, 3)   # SIG floor sits AFTER the CIN discount: SIG is always at least MDT
 
   c <- pregate
   if (no_trig) c <- 0
-
-  rc <- rain_cat(nz(rain_mm))
   c  <- max(c, rc)
 
-  hatch <- as.integer(stp >= 0.9 | ship >= 0.9 | scp >= 3.6 | rc >= 3)
+  hatch <- as.integer(sig)
   list(cat=c, pregate=pregate, cape=round(cape), shear=round(shr_kt), scp=round(scp,1),
        stp=round(stp,1), ship=round(ship,1), cin=round(cin), rain=round(nz(rain_mm)), hatch=hatch)
 }
@@ -590,7 +599,7 @@ process_point <- function(k){
 # a genuinely pathological candidate count (e.g. a future change to the base thermodynamics
 # thresholds firing far more broadly than intended), not a rubber-stamp raised to whatever showed
 # up once.
-MAX_ECMWF_CANDIDATES <- 1000
+MAX_ECMWF_CANDIDATES <- 3000   # 1000 -> 3000 on 9 Sep 2026: the 1 Nov 2025 reconstruction had 2637 candidates and lost 1637 of them to the cap
 ECMWF_BATCH_SIZE <- 100        # conservative per-request chunk size
 
 ecmwf_rain_batch <- function(lats, lons, date_str){
