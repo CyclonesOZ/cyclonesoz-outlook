@@ -727,6 +727,7 @@ out <- list(run_date = if (is.null(HIST_DATE)) format(Sys.time(), "%Y-%m-%dT%H:%
             days = if (is.null(day_labels)) paste("Day", seq_len(FDAYS)) else day_labels,
             full_hazards = TRUE,
             historical = !is.null(HIST_DATE),
+            coverage = round(ok / nrow(GRID), 3),   # fraction of grid points with data (viewer shows it when partial)
             points = points)
 OUT_PATH <- if (is.null(HIST_DATE)) OUT else file.path(ARCHIVE_DIR, paste0(START_DATE, ".json"))
 if (!dir.exists(dirname(OUT_PATH))) dir.create(dirname(OUT_PATH), recursive=TRUE)
@@ -749,9 +750,17 @@ cat(sprintf("Wrote %s  (%d points OK)\n", OUT_PATH, ok))
 # actual problem it was compensating for.
 MIN_OK_FRAC <- 0.85
 if (ok < MIN_OK_FRAC * nrow(GRID)) {
-  cat(sprintf("Only %d/%d points OK (%.0f%%) -- below the %.0f%% completeness floor, not publishing this run.\n",
-              ok, nrow(GRID), 100*ok/nrow(GRID), 100*MIN_OK_FRAC))
-  quit(status=1)
+  if (!is.null(HIST_DATE)) {
+    # a historical reconstruction is a one-off demo, not the live product: a partial map is
+    # worth far more than no map, and the viewer states the coverage on its banner. The live
+    # run keeps the hard floor below.
+    cat(sprintf("Only %d/%d points OK (%.0f%%) -- below the %.0f%% floor, but this is a historical reconstruction: publishing with partial coverage.\n",
+                ok, nrow(GRID), 100*ok/nrow(GRID), 100*MIN_OK_FRAC))
+  } else {
+    cat(sprintf("Only %d/%d points OK (%.0f%%) -- below the %.0f%% completeness floor, not publishing this run.\n",
+                ok, nrow(GRID), 100*ok/nrow(GRID), 100*MIN_OK_FRAC))
+    quit(status=1)
+  }
 }
 
 # archive this run for the viewer's historical-run picker, dated by START_DATE (the run's own

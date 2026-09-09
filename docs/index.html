@@ -703,7 +703,7 @@
   // pipeline (all runs from 9 Sep 2026 on, including historical reconstructions), so an archive
   // carrying it can show all planes; historical marks a reconstruction built from archived model
   // data for a past date (a promotional/demo run) rather than a run that was ever the live one.
-  var runFullHazards=false, runHistorical=false;
+  var runFullHazards=false, runHistorical=false, runCoverage=1;
   function placeholderReason(dayIdx, hz){
     if (!isLiveRun && !runFullHazards && hz!=='cat') return 'Historical runs only show Category Outlook — switch this pane to Category Outlook, or return to Today (live).';
     if (extendedRange(dayIdx, hz)) return 'Extended range (days 5–8) shows Category only';
@@ -974,7 +974,7 @@
       DAYS=o.days||['Day 1','Day 2','Day 3','Day 4','Day 5','Day 6','Day 7','Day 8'];
       o.points.forEach(function(p){GRID.push([p.lat,p.lon]);results.push(p.d);});
       featureCache={}; denCache={}; streamCache={};
-      runFullHazards=!!o.full_hazards; runHistorical=!!o.historical;
+      runFullHazards=!!o.full_hazards; runHistorical=!!o.historical; runCoverage=(o.coverage!=null)?o.coverage:1;
       document.getElementById('updatedtxt').textContent='Updated '+(o.run_date?new Date(o.run_date).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'—');
       return o;
     });
@@ -984,6 +984,7 @@
     if(isLive){ el.classList.remove('show'); return; }
     el.innerHTML=runHistorical
       ? 'Viewing a reconstructed run for <b>'+label+'</b> &mdash; built from the model data archived for that date, exactly as the outlook would have issued it that morning. Not the live forecast.'
+        +(runCoverage<0.95?' Coverage: <b>'+Math.round(runCoverage*100)+'%</b> of grid points &mdash; areas without data are left blank.':'')
       : 'Viewing an archived run from <b>'+label+'</b> &mdash; not the live forecast.';
     el.classList.add('show');
   }
