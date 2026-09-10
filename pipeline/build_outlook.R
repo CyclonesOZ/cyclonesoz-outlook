@@ -170,34 +170,43 @@ fire_tier <- function(ffdi, rain_mm){
 }
 
 # damaging-wind tier: 0 none, 1 Damaging (>=90km/h gust potential), 2 Destructive (>=125km/h),
-# 3 Very Destructive (>=160km/h) -- 90 and 125km/h are BOM's own real criteria for issuing and
-# escalating a Severe Thunderstorm Warning for damaging/destructive winds; 160km/h is this
-# pipeline's own extension for the rarer very-destructive tier, not a distinct BOM threshold.
-# Magnitude comes from SPC's WNDG parameter -- a real, published convective wind-damage-potential
-# index, WNDG = (MU_CAPE/2000) * (effective shear in m/s / 20) -- run through an unvalidated,
-# hand-picked mapping onto these three tiers, since WNDG doesn't have a citable direct-to-gust-
-# speed conversion; treat the exact breakpoints as approximate the same way hail_tier()'s are.
-# EXPLICITLY zeroed below MDT (cat>=3 under the current 0-4 TSTM/MRGL/MDT/HIGH scale -- this was
-# SLGT+ before SLGT was removed 26 Aug 2026; the literal "3" didn't need to change, only what it
-# now means did, since MDT shifted down a slot to fill SLGT's old number): this is a "does the
-# day's overall severe environment even support it" gate layered on top of the magnitude calc,
-# unlike hail_tier(), which is shown regardless of the day's overall category.
-# THRESHOLDS HALVED 25 Aug 2026: the original 0.6/1.4/2.4 guesses turned out to sit well above
-# what this pipeline's own CAPE/shear ever actually produces for a genuinely SLGT+ day -- checked
-# against the live run that day, every one of that day's 20 SLGT+ point-days computed a WNDG of
-# 0.07-0.94 (median ~0.45), so only the single most extreme point in the whole country ever cleared
-# the old 0.6 floor. NSW's north-coast SLGT points that day (CAPE ~900-1000 J/kg, shear ~28-36kt --
-# a genuine, garden-variety severe-thunderstorm wind setup) sat at 0.34-0.44, comfortably inside a
-# real damaging-gust risk but always displaying as "none" on the map. Halved rather than re-derived
-# from scratch (still no citable WNDG-to-tier conversion exists), which lands the same top point at
-# Destructive and puts most other SLGT+ days into Damaging -- validate again if a future run's
-# WNDG distribution looks meaningfully different from this one.
-wind_tier <- function(cape, shr, cat){
-  if (nz(cat) < 3) return(0L)
-  wndg <- (nz(cape)/2000) * (nz(shr)/20)
-  if (wndg >= 1.2) return(3L)
-  if (wndg >= 0.7) return(2L)
-  if (wndg >= 0.3) return(1L)
+# 3 Very Destructive (>=160km/h). 90 and 125km/h are BOM's own criteria for issuing and escalating
+# a Severe Thunderstorm Warning for damaging/destructive winds; 160km/h is this pipeline's own
+# extension for the rarer very-destructive tier.
+#
+# REBUILT 10 Sep 2026 on downdraft physics (per Josh: "build the DCAPE pipeline"). The previous
+# version used only WNDG = (CAPE/2000)*(shear/20) -- instability x organisation -- which says
+# nothing about the DOWNDRAFT that actually produces damaging surface gusts, so a hot, dry,
+# high-based inland environment with modest CAPE and weak shear (a classic Australian microburst
+# setup) scored ~0 while a moist, sheared coastal supercell environment scored highest whether or
+# not wind was its main hazard. It also double-counted the CAPE/shear already driving the category.
+# Inputs now, each the mean over the day's top-N hours:
+#   dcape  thundeR's DCAPE (J/kg): evaporative-cooling downdraft potential, the core signal.
+#          ~700 is where damaging gusts become plausible, 1000+ strong, 1300+ extreme.
+#   dd700  700hPa dewpoint depression (degC) from the hourly fields: dry mid-levels feed the
+#          evaporative cooling; >= 8 supportive, >= 12 very dry.
+#   lr03   0-3km lapse rate (degC/km): a steep, deep-mixed boundary layer lets a downdraft
+#          accelerate to the surface; >= 7 supportive.
+#   dcp    thundeR's Derecho Composite Parameter (DCAPE x MUCAPE x 0-6km shear x mean wind):
+#          the organised-system (bow echo / derecho) route to destructive winds; ~1 supportive,
+#          2+ strongly so.
+#   cape / shr_kt: storm intensity and organisation, as before but no longer the whole story.
+# Gate LOWERED from MDT to MRGL at the same time: damaging gusts are common on marginal days --
+# a downburst needs a storm, not a moderate-risk environment. TSTM-only days (no severe
+# environment at all) and rain-gated days stay zero.
+# Breakpoints are physically standard (SPC's DCAPE and DCP guidance, the 700hPa dryness rule of
+# thumb) but hand-assembled into tiers; there is no citable DCAPE-to-gust-speed conversion, so
+# treat exact tier edges as approximate the same way hail_tier()'s are.
+wind_tier <- function(dcape, dd700, lr03, dcp, cape, shr, cat){
+  if (nz(cat) < 2) return(0L)
+  dcape <- nz(dcape); dd700 <- nz(dd700); lr03 <- nz(lr03); dcp <- nz(dcp); cape <- nz(cape)
+  shr_kt <- nz(shr) * 1.94384
+  very_destructive <- (dcape >= 1300 & shr_kt >= 40 & cape >= 2000) | dcp >= 3
+  destructive      <- (dcape >= 1000 & shr_kt >= 30 & cape >= 1000) | (dcape >= 1300 & dd700 >= 12) | dcp >= 1.5
+  damaging         <- (dcape >= 700 & (dd700 >= 8 | lr03 >= 7 | shr_kt >= 25)) | dcp >= 0.5
+  if (very_destructive) return(3L)
+  if (destructive)      return(2L)
+  if (damaging)         return(1L)
   0L
 }
 
@@ -428,6 +437,14 @@ fetch_point <- function(lat, lon){
 # outright. abs() makes this robust to either sign convention thundeR may use for the LM
 # helicity term (the LM member is the cyclonic one here, so its magnitude IS the supercell
 # potential); the RM field is the fallback only if a thundeR build lacks the _LM output.
+# safe read of a thundeR parameter by name: 0 if this build lacks it or it is NA
+gpar <- function(par, k){ if (k %in% names(par)) nz(par[[k]]) else 0 }
+# 700hPa dewpoint depression (degC) for hour i, NA if either field is missing
+dd700_hour <- function(h, i){
+  t7 <- h[["temperature_700hPa"]][i]; rh7 <- h[["relative_humidity_700hPa"]][i]
+  if (is.null(t7) || is.null(rh7) || is.na(t7) || is.na(rh7)) return(NA)
+  t7 - dewpoint(t7, rh7)
+}
 sh_composite <- function(par, base){
   lm <- paste0(base, "_LM")
   if (lm %in% names(par) && !is.na(par[[lm]])) abs(par[[lm]]) else nz(par[[base]])
@@ -486,7 +503,10 @@ day_topN <- function(h, idxs, elev, lat){
       stp_lm = if ("STP_new_LM" %in% names(par)) nz(par[["STP_new_LM"]]) else NA,
       cin  = nz(par[["MU_CIN"]]), frz = h[["freezing_level_height"]][i],
       t500 = h[["temperature_500hPa"]][i],
-      tprob = nz(h[["precipitation_probability"]][i]))
+      tprob = nz(h[["precipitation_probability"]][i]),
+      # downdraft / damaging-wind inputs, see wind_tier()
+      dcape = gpar(par, "DCAPE"), lr03 = gpar(par, "LR_03km"), dcp = gpar(par, "DCP"),
+      dd700 = dd700_hour(h, i))
   }
   rain_day  <- sum(sapply(idxs, function(i) nz(h[["precipitation"]][i])))
   rain_rate <- max(sapply(idxs, function(i) nz(h[["precipitation"]][i])))  # peak single-hour rate, for flood_cat()
@@ -532,6 +552,7 @@ day_topN <- function(h, idxs, elev, lat){
   sev <- sapply(rows, function(r) r$sev)
   top <- rows[order(sev, decreasing=TRUE)[seq_len(min(TOPN, length(rows)))]]
   m <- function(k) mean(sapply(top, function(r) r[[k]]))
+  mna <- function(k){ v <- sapply(top, function(r) r[[k]]); if (all(is.na(v))) NA else mean(v, na.rm=TRUE) }
   # coldest freezing level AND coldest 500hPa temp among the day's most unstable hours -- see
   # hail_tier() for why both cold-aloft signals are taken as the day's min rather than paired to
   # one specific hour the way cape/ship below are.
@@ -565,7 +586,8 @@ day_topN <- function(h, idxs, elev, lat){
              hail=if (cv$cat >= 1) hail_tier(peak_ship_hr$ship, peak_ship_hr$cape, frz_day, t500_day) else 0L,
              flood=flood_cat(rain_day, rain_rate, rain_pop, lat), pop=round(rain_pop),
              fire=fire_tier(ffdi_day, rain_day), ffdi=round(ffdi_day),
-             wind=wind_tier(m("cape"), m("shr"), cv$cat),
+             wind=wind_tier(m("dcape"), mna("dd700"), m("lr03"), m("dcp"), m("cape"), m("shr"), cv$cat),
+             dcape=round(m("dcape")),   # shown nowhere yet; kept so wind tiers can be checked against their driver
              scp_lm=round(m("scp_lm"),1), stp_lm=round(m("stp_lm"),1),   # diagnostic, see day_topN rows
              u500=u500, v500=v500))
 }
