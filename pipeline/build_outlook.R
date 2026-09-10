@@ -747,8 +747,19 @@ raw_results <- mclapply(seq_len(nrow(GRID)), process_point, mc.cores=NCORES, mc.
 # so a genuinely bad Open-Meteo day still fails fast and predictably rather than this step alone
 # silently retrying forever and blowing out the job's wall-clock budget.
 failed_idx <- which(sapply(raw_results, function(r) is.null(r) || inherits(r, "try-error")))
-if (length(failed_idx) > 0) {
-  cat(sprintf("First pass: %d/%d failed. Retrying failed points...\n", length(failed_idx), nrow(GRID)))
+if (length(failed_idx) > 0) cat(sprintf("First pass: %d/%d failed. Retrying failed points...\n", length(failed_idx), nrow(GRID)))
+# Up to RETRY_ROUNDS rounds (was exactly one), each after a RETRY_PAUSE_S pause -- 11 Sep 2026.
+# The failures this is rescuing are Open-Meteo HTTP 429 rate limits, which are per-minute/hour
+# quotas: retrying the moment the first pass ends just re-hits the same exhausted window, which
+# is why 10 Sep's scheduled run recovered only 154 of 296 and missed the 85% floor at 80%.
+# Pausing first lets the window reset, and a second round catches what the first still lost.
+# Still bounded, not a loop: at most 2 rounds x (pause + retry), ~6-8 extra minutes worst case,
+# so a genuinely dead Open-Meteo day still fails fast rather than running for hours.
+RETRY_ROUNDS <- 2; RETRY_PAUSE_S <- 120
+for (round in seq_len(RETRY_ROUNDS)) {
+  if (length(failed_idx) == 0) break
+  cat(sprintf("Retry round %d: pausing %ds for the rate-limit window, then retrying %d points...\n", round, RETRY_PAUSE_S, length(failed_idx)))
+  Sys.sleep(RETRY_PAUSE_S)
   retry_results <- mclapply(failed_idx, process_point, mc.cores=NCORES, mc.preschedule=FALSE)
   recovered <- 0
   for (j in seq_along(failed_idx)) {
@@ -756,7 +767,8 @@ if (length(failed_idx) > 0) {
     if (!is.null(res) && !inherits(res, "try-error")) recovered <- recovered + 1
     raw_results[[failed_idx[j]]] <- res
   }
-  cat(sprintf("Retry recovered %d/%d previously-failed points.\n", recovered, length(failed_idx)))
+  cat(sprintf("Retry round %d recovered %d/%d previously-failed points.\n", round, recovered, length(failed_idx)))
+  failed_idx <- which(sapply(raw_results, function(r) is.null(r) || inherits(r, "try-error")))
 }
 
 # Diagnostic added 3 Sep 2026: a small, not-yet-explained gap has shown up twice between
