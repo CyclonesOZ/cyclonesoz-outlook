@@ -204,7 +204,9 @@ wind_tier <- function(dcape, dd700, lr03, dcp, cape, shr, cat){
   shr_kt <- nz(shr) * 1.94384
   very_destructive <- (dcape >= 1300 & shr_kt >= 40 & cape >= 2000) | dcp >= 3
   destructive      <- (dcape >= 1000 & shr_kt >= 30 & cape >= 1000) | (dcape >= 1300 & dd700 >= 12) | dcp >= 1.5
-  damaging         <- (dcape >= 700 & (dd700 >= 8 | lr03 >= 7 | shr_kt >= 25)) | dcp >= 0.5
+  # DCP route carries a DCAPE >= 500 floor (Josh, 11 Sep 2026): on the first live run half the
+  # Damaging points came in on DCP alone with DCAPE 410-560, i.e. no real downdraft signal.
+  damaging         <- (dcape >= 700 & (dd700 >= 8 | lr03 >= 7 | shr_kt >= 25)) | (dcp >= 0.5 & dcape >= 500)
   tier <- if (very_destructive) 3L else if (destructive) 2L else if (damaging) 1L else 0L
   # Tiered gate (Josh, 10 Sep 2026): Damaging (90-125km/h) is reachable from MRGL -- a marginal
   # day can and does produce damaging gusts -- but Destructive (125km/h+) and Very Destructive
