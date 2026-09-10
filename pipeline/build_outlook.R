@@ -191,9 +191,10 @@ fire_tier <- function(ffdi, rain_mm){
 #          the organised-system (bow echo / derecho) route to destructive winds; ~1 supportive,
 #          2+ strongly so.
 #   cape / shr_kt: storm intensity and organisation, as before but no longer the whole story.
-# Gate LOWERED from MDT to MRGL at the same time: damaging gusts are common on marginal days --
-# a downburst needs a storm, not a moderate-risk environment. TSTM-only days (no severe
-# environment at all) and rain-gated days stay zero.
+# Gate is now TIERED (was a flat MDT gate): Damaging is reachable from MRGL, since damaging gusts
+# are common on marginal days -- a downburst needs a storm, not a moderate-risk environment --
+# while Destructive and above still need MDT+ (see the end of the function). TSTM-only days (no
+# severe environment at all) and rain-gated days stay zero.
 # Breakpoints are physically standard (SPC's DCAPE and DCP guidance, the 700hPa dryness rule of
 # thumb) but hand-assembled into tiers; there is no citable DCAPE-to-gust-speed conversion, so
 # treat exact tier edges as approximate the same way hail_tier()'s are.
@@ -204,10 +205,14 @@ wind_tier <- function(dcape, dd700, lr03, dcp, cape, shr, cat){
   very_destructive <- (dcape >= 1300 & shr_kt >= 40 & cape >= 2000) | dcp >= 3
   destructive      <- (dcape >= 1000 & shr_kt >= 30 & cape >= 1000) | (dcape >= 1300 & dd700 >= 12) | dcp >= 1.5
   damaging         <- (dcape >= 700 & (dd700 >= 8 | lr03 >= 7 | shr_kt >= 25)) | dcp >= 0.5
-  if (very_destructive) return(3L)
-  if (destructive)      return(2L)
-  if (damaging)         return(1L)
-  0L
+  tier <- if (very_destructive) 3L else if (destructive) 2L else if (damaging) 1L else 0L
+  # Tiered gate (Josh, 10 Sep 2026): Damaging (90-125km/h) is reachable from MRGL -- a marginal
+  # day can and does produce damaging gusts -- but Destructive (125km/h+) and Very Destructive
+  # additionally need the day's overall environment at MDT or higher. That is on top of, not
+  # instead of, the parameter conditions above: a moderate day still has to have the downdraft
+  # and organisation numbers line up to reach those tiers.
+  if (nz(cat) < 3) tier <- min(tier, 1L)
+  tier
 }
 
 # Excessive Rainfall Outlook: 3-tier flash-flood risk (0 none, 1 slight, 2 moderate, 3 high),
