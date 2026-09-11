@@ -386,12 +386,23 @@ categorise_vals <- function(cape, shr, scp, stp, ship, cin, rain_mm){
   if (sig & pregate >= 1) pregate <- max(pregate, 3)   # SIG floor sits AFTER the CIN discount: SIG is always at least MDT
 
   c <- pregate
+  conditional <- FALSE
   if (no_trig) c <- 0
+  # CONDITIONAL MRGL (11 Sep 2026): the 2mm gate is binary, and a strongly favourable environment
+  # with only a TRACE of forecast rain (0.2-2mm) is not the same thing as a dry one -- it is a
+  # low-probability, initiation-dependent setup, which is exactly what a Marginal risk means. Caught
+  # live on 12 Sep 2026 over the Nullarbor: CAPE 1952, 44kt shear, SCP 6.6, SHIP 1.2, GFS 0mm, and
+  # ECMWF showing 0-0.5mm blobs across the region, drawn as "No storms". So: a day whose
+  # thermodynamics alone reach MRGL+ and that carries a trace in GFS shows as MRGL, capped there
+  # (never MDT/HIGH off a trace), and flagged conditional. The same rule is applied for an ECMWF
+  # trace in apply_ecmwf_second_opinion() and for >=2mm at an adjacent grid point in
+  # apply_neighbour_trigger(). Genuinely dry days (<0.2mm in both models, nothing nearby) still gate.
+  if (no_trig & nz(rain_mm) >= 0.2 & pregate >= 2){ c <- 2; conditional <- TRUE }
   c  <- max(c, rc)
 
   hatch <- as.integer(sig)
-  list(cat=c, pregate=pregate, cape=round(cape), shear=round(shr_kt), scp=round(scp,1),
-       stp=round(stp,1), ship=round(ship,1), cin=round(cin), rain=round(nz(rain_mm)), hatch=hatch)
+  list(cat=c, pregate=pregate, conditional=conditional, cape=round(cape), shear=round(shr_kt), scp=round(scp,1),
+       stp=round(stp,1), ship=round(ship,1), cin=round(cin), rain=round(nz(rain_mm), 1), hatch=hatch)
 }
 
 om_url <- function(lat, lon){
@@ -721,7 +732,15 @@ apply_ecmwf_second_opinion <- function(raw_results){
         dd$rain_ecmwf <- round(ecmwf_rain[i], 1)
         if (ecmwf_rain[i] >= 2){
           dd$cat <- dd$pregate
+          dd$conditional <- FALSE
           dd$tprob <- tprob_floor(dd$tprob, dd$cat)   # keep the thunder pane consistent with the restored category
+          dd$ecmwf_ungated <- TRUE
+          n_ungated <- n_ungated + 1
+        } else if (ecmwf_rain[i] >= 0.2 & nz(dd$pregate) >= 2 & nz(dd$cat) == 0){
+          # ECMWF trace only: conditional MRGL, capped -- see categorise_vals()
+          dd$cat <- 2L
+          dd$conditional <- TRUE
+          dd$tprob <- tprob_floor(dd$tprob, dd$cat)
           dd$ecmwf_ungated <- TRUE
           n_ungated <- n_ungated + 1
         }
@@ -771,6 +790,40 @@ for (round in seq_len(RETRY_ROUNDS)) {
   failed_idx <- which(sapply(raw_results, function(r) is.null(r) || inherits(r, "try-error")))
 }
 
+# Neighbourhood trigger (11 Sep 2026), run after the ECMWF pass so rain_ecmwf is populated. A
+# 0.25 deg model routinely misplaces convective initiation by a grid cell or two, so a point with
+# a MRGL+ environment and no rain of its own, sitting next to a point where either model DOES put
+# >=2mm, is a plausible-but-uncertain storm location -- shown as conditional MRGL (capped), the
+# same treatment as a trace. "Adjacent" = within 1.0 deg in both lat and lon on the 0.82 deg
+# lattice, i.e. the 8 surrounding points. Purely additive: only ever lifts a gated 0 to 2.
+apply_neighbour_trigger <- function(raw_results){
+  ok <- which(sapply(raw_results, function(r) !is.null(r) && !inherits(r, "try-error")))
+  if (length(ok) == 0) return(raw_results)
+  lat <- sapply(ok, function(k) raw_results[[k]]$lat); lon <- sapply(ok, function(k) raw_results[[k]]$lon)
+  n_lifted <- 0
+  for (a in seq_along(ok)){
+    k <- ok[a]; res <- raw_results[[k]]
+    nb <- ok[abs(lat - lat[a]) <= 1.0 & abs(lon - lon[a]) <= 1.0 & ok != k]
+    if (length(nb) == 0) next
+    for (j in seq_along(res$d)){
+      dd <- res$d[[j]]
+      if (nz(dd$cat) != 0 || nz(dd$pregate) < 2) next
+      wet <- any(sapply(nb, function(m){
+        nd <- raw_results[[m]]$d; if (length(nd) < j) return(FALSE)
+        x <- nd[[j]]; !is.null(x) && (nz(x$rain) >= 2 || nz(x$rain_ecmwf) >= 2)
+      }))
+      if (wet){
+        dd$cat <- 2L; dd$conditional <- TRUE; dd$neighbour_trigger <- TRUE
+        dd$tprob <- tprob_floor(dd$tprob, dd$cat)
+        raw_results[[k]]$d[[j]] <- dd
+        n_lifted <- n_lifted + 1
+      }
+    }
+  }
+  cat(sprintf("Neighbourhood trigger: %d gated point-days lifted to conditional MRGL\n", n_lifted))
+  raw_results
+}
+
 # Diagnostic added 3 Sep 2026: a small, not-yet-explained gap has shown up twice between
 # (points valid after retry) and the final "points OK" count -- 91 points on one run, 18 on
 # another, both correlated with how much Open-Meteo rate-limiting (HTTP 429s) hit that run.
@@ -781,6 +834,7 @@ for (round in seq_len(RETRY_ROUNDS)) {
 valid_before_ecmwf <- sum(sapply(raw_results, function(r) !is.null(r) && !inherits(r, "try-error")))
 
 raw_results <- apply_ecmwf_second_opinion(raw_results)
+raw_results <- apply_neighbour_trigger(raw_results)
 
 valid_after_ecmwf <- sum(sapply(raw_results, function(r) !is.null(r) && !inherits(r, "try-error")))
 if (valid_after_ecmwf != valid_before_ecmwf) {

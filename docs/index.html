@@ -930,10 +930,15 @@
     // like "No storms" with a clearly favorable CAPE/shear/SCP reading legible instead of looking
     // like a pipeline miss: either ECMWF agreed with GFS (still dry, correctly stayed gated) or it
     // disagreed and the category shown already reflects that (ecmwf_ungated).
-    var rainLine='Rain '+Math.round(r.rain||0)+'mm';
-    if(r.rain_ecmwf!=null) rainLine+=' · ECMWF '+r.rain_ecmwf+'mm'+(r.ecmwf_ungated?' (confirmed)':'');
-    return '<div class="cat" style="color:'+col2+'">'+(r.cat===0?'No storms':(c.abbr?c.abbr+' · ':'')+c.name)+(r.hatch&&r.cat>=2?' (sig)':'')+'</div>'+
-      'CAPE '+Math.round(r.cape)+' J/kg · Shear '+Math.round(r.shear)+' kt<div class="sm">SCP '+r.scp+' · SHIP '+r.ship+' · '+rainLine+'</div>';
+    // rain shows one decimal under 2mm so a trace (the conditional-MRGL trigger) reads as 0.3mm, not 0mm
+    var rv=r.rain||0, rainLine='Rain '+(rv<2?rv.toFixed(1):Math.round(rv))+'mm';
+    if(r.rain_ecmwf!=null) rainLine+=' · ECMWF '+r.rain_ecmwf+'mm'+(r.ecmwf_ungated&&!r.conditional?' (confirmed)':'');
+    // conditional: environment supports MRGL+ but the trigger is uncertain (only a trace of rain in
+    // either model, or rain at a neighbouring point) -- capped at MRGL by the pipeline
+    var tag=r.conditional?' (conditional)':(r.hatch&&r.cat>=2?' (sig)':'');
+    var note=r.conditional?'<div class="sm">Conditional: favourable environment, '+(r.neighbour_trigger?'rain forecast nearby but not here':'only a trace of rain forecast')+' &mdash; storms depend on initiation.</div>':'';
+    return '<div class="cat" style="color:'+col2+'">'+(r.cat===0?'No storms':(c.abbr?c.abbr+' · ':'')+c.name)+tag+'</div>'+
+      'CAPE '+Math.round(r.cape)+' J/kg · Shear '+Math.round(r.shear)+' kt<div class="sm">SCP '+r.scp+' · SHIP '+r.ship+' · '+rainLine+'</div>'+note;
   }
   // single shared tooltip, positioned near the cursor (clamped to viewport) rather than pinned to
   // one fixed corner, since there's no longer a single "main" map -- it can be triggered from
