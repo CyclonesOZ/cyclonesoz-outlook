@@ -793,7 +793,7 @@ for (round in seq_len(RETRY_ROUNDS)) {
 # Neighbourhood trigger (11 Sep 2026), run after the ECMWF pass so rain_ecmwf is populated. A
 # 0.25 deg model routinely misplaces convective initiation by a grid cell or two, so a point with
 # a MRGL+ environment and no rain of its own, sitting next to a point where either model DOES put
-# >=2mm, is a plausible-but-uncertain storm location -- shown as conditional MRGL (capped), the
+# at least a trace (>=0.2mm), is a plausible-but-uncertain storm location -- shown as conditional MRGL (capped), the
 # same treatment as a trace. "Adjacent" = within 1.0 deg in both lat and lon on the 0.82 deg
 # lattice, i.e. the 8 surrounding points. Purely additive: only ever lifts a gated 0 to 2.
 apply_neighbour_trigger <- function(raw_results){
@@ -810,7 +810,9 @@ apply_neighbour_trigger <- function(raw_results){
       if (nz(dd$cat) != 0 || nz(dd$pregate) < 2) next
       wet <- any(sapply(nb, function(m){
         nd <- raw_results[[m]]$d; if (length(nd) < j) return(FALSE)
-        x <- nd[[j]]; !is.null(x) && (nz(x$rain) >= 2 || nz(x$rain_ecmwf) >= 2)
+        # a TRACE (>=0.2mm) at the neighbour is enough (Josh, 11 Sep 2026; was >=2mm): the point
+        # itself already needs MRGL+ thermodynamics, and the result is capped at conditional MRGL
+        x <- nd[[j]]; !is.null(x) && (nz(x$rain) >= 0.2 || nz(x$rain_ecmwf) >= 0.2)
       }))
       if (wet){
         dd$cat <- 2L; dd$conditional <- TRUE; dd$neighbour_trigger <- TRUE
