@@ -199,7 +199,11 @@ fire_tier <- function(ffdi, rain_mm){
 # thumb) but hand-assembled into tiers; there is no citable DCAPE-to-gust-speed conversion, so
 # treat exact tier edges as approximate the same way hail_tier()'s are.
 wind_tier <- function(dcape, dd700, lr03, dcp, cape, shr, cat){
-  if (nz(cat) < 2) return(0L)
+  # entry gate is TSTM (was MRGL): damaging gusts inside a general storm chance are real, and
+  # day_topN() upgrades any such day to MRGL straight after, so the published map still never
+  # carries a Damaging tier below MRGL -- it arrives there by lifting the category, not by
+  # showing winds under it. Destructive+ still needs MDT (the cap at the end of this function).
+  if (nz(cat) < 1) return(0L)
   dcape <- nz(dcape); dd700 <- nz(dd700); lr03 <- nz(lr03); dcp <- nz(dcp); cape <- nz(cape)
   shr_kt <- nz(shr) * 1.94384
   very_destructive <- (dcape >= 1300 & shr_kt >= 40 & cape >= 2000) | dcp >= 3
@@ -364,7 +368,17 @@ categorise_vals <- function(cape, shr, scp, stp, ship, cin, rain_mm, strict=FALS
   shr_kt <- shr * 1.94384
   c <- 0
   if (cape >= 150) c <- 1                                                                   # TSTM
-  if ((cape >= 450 & shr_kt >= 18) | (scp >= 0.9 & cape >= 900) | ship >= 0.45) c <- max(c, 2)  # MRGL
+  # MRGL floor RAISED 13 Sep 2026 (Josh: "1000 J/kg and 25kts shear"), from CAPE 450 / 18kt.
+  # 450 J/kg with 18kt is an ordinary shower environment, and it was admitting essentially every
+  # storm day as a severe risk: on the 12 Sep run all 132 MRGL point-days qualified through that
+  # route and 93 of them through it alone. The two old side-routes went with it, because a rule
+  # that admits a weaker day than the stated floor IS the floor: SCP 0.9 with CAPE 900 is a
+  # marginal supercell composite at best, and a bare SHIP 0.45 is well below any real hail signal
+  # (SHIP now reaches MRGL through hail_tier instead, which needs ~1.0, or 0.5 with cold air
+  # aloft). SCP survives at 2.5, which is a genuine supercell environment and is what keeps
+  # high-shear / moderate-CAPE days (e.g. CAPE 600 with 50kt and SCP 3.3) from being under-called.
+  # Large hail and damaging winds are the other way in -- see the upgrade in day_topN().
+  if ((cape >= 1000 & shr_kt >= 25) | scp >= 2.5) c <- max(c, 2)  # MRGL
   # MDT via the SCP route now also needs some STP or SHIP backing (the same 0.9 "sig" bar the
   # hatching uses) -- 7 Sep 2026, after a lone point at 24.0S 128.5E hit MDT on SCP 3.7 (vs the
   # 3.6 bar) with STP -0.6 and SHIP 0.7 on a day that was plainly not a 3-of-4 day. SCP alone is a
@@ -632,15 +646,27 @@ day_topN <- function(h, idxs, elev, lat, strict=FALSE){
   # over the SAME top-N instability-ranked hours as cape/shear/ship, not the whole day -- a whole-day
   # max picks up unrelated overnight drizzle (Open-Meteo's ensemble can be very confident about light,
   # non-convective rain at 7am) and reports it as a dramatic "thunderstorm chance" for the day.
+  # Large hail or damaging winds inside a general storm chance IS a marginal severe risk
+  # (Josh, 13 Sep 2026), so compute both first and let them lift the category.
+  hail_d <- if (cv$cat >= 1) hail_tier(peak_ship_hr$ship, peak_ship_hr$cape, frz_day, t500_day) else 0L
+  wind_d <- wind_tier(m("dcape"), mna("dd700"), m("lr03"), m("dcp"), m("cape"), m("shr"), cv$cat)
+  # Conditional days are excluded. Their flag means we are not confident storms form at all, and
+  # hail/wind potential is conditional on a storm existing -- letting it lift them would undo the
+  # 12 Sep conditional downgrade outright (18 of the 26 upgrades on that run's data were exactly
+  # the trace-rain WA interior points that downgrade had just demoted).
+  if (cv$cat == 1 && !isTRUE(cv$conditional) && (hail_d >= 2 || wind_d >= 1)) {
+    cv$cat <- 2L
+    cv$upgraded <- TRUE     # reached MRGL on the hazard itself, not on the CAPE/shear floor
+  }
   c(cv, list(tprob=tprob_floor(thunder_prob(m("tprob"), m("cape"), rain_day), cv$cat),
              # hail gated on the category (7 Sep 2026), the same way wind_tier() already is: no
              # storms means no hail. Before this, a marginal peak-hour SHIP (0.5-0.6) in a hot,
              # deeply capped (CIN -178), completely dry (0mm, 0% thunder chance) Kimberley airmass
              # drew a Small-hail zone on a day the category logic had correctly gated to 0.
-             hail=if (cv$cat >= 1) hail_tier(peak_ship_hr$ship, peak_ship_hr$cape, frz_day, t500_day) else 0L,
+             hail=hail_d,
              flood=flood_cat(rain_day, rain_rate, rain_pop, lat), pop=round(rain_pop),
              fire=fire_tier(ffdi_day, rain_day), ffdi=round(ffdi_day),
-             wind=wind_tier(m("dcape"), mna("dd700"), m("lr03"), m("dcp"), m("cape"), m("shr"), cv$cat),
+             wind=wind_d,
              dcape=round(m("dcape")),   # shown nowhere yet; kept so wind tiers can be checked against their driver
              scp_lm=round(m("scp_lm"),1), stp_lm=round(m("stp_lm"),1),   # diagnostic, see day_topN rows
              u500=u500, v500=v500))
