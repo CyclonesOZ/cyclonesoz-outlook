@@ -658,6 +658,13 @@ day_topN <- function(h, idxs, elev, lat, strict=FALSE){
     cv$cat <- 2L
     cv$upgraded <- TRUE     # reached MRGL on the hazard itself, not on the CAPE/shear floor
   }
+  # A day left below MRGL must not advertise a severe hazard its own category denies. In practice
+  # this only bites conditional days: a non-conditional day with Large hail or a damaging gust was
+  # just upgraded above, so it keeps both. A conditional one stayed at TSTM precisely because we
+  # are not confident storms form, and on the first run of this change 8 such points were painting
+  # a Damaging tier on the wind pane under a TSTM category -- the same cross-pane contradiction
+  # the thunder-chance floor fixed in September.
+  if (cv$cat < 2) { wind_d <- 0L; hail_d <- min(hail_d, 1L) }
   c(cv, list(tprob=tprob_floor(thunder_prob(m("tprob"), m("cape"), rain_day), cv$cat),
              # hail gated on the category (7 Sep 2026), the same way wind_tier() already is: no
              # storms means no hail. Before this, a marginal peak-hour SHIP (0.5-0.6) in a hot,
