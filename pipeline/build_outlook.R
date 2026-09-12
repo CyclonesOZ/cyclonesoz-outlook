@@ -334,7 +334,33 @@ tprob_floor <- function(tprob, cat){
 # the bar the tier-3 cape+shear branch already uses (1000 J/kg at the same ~10% reduction) --
 # the shear-only path shouldn't reach a higher tier with less instability than the explicitly
 # CAPE-gated path at the same tier.
-categorise_vals <- function(cape, shr, scp, stp, ship, cin, rain_mm){
+# ---- tropical coastal zone (12 Sep 2026) ----
+# North of a Carnarvon -> Rockhampton line AND within 200km of the coast, the build-up/wet-season
+# airmass carries high CAPE with modest shear almost daily and sea-breeze showers put a trace (or a
+# couple of mm) of rain somewhere nearly every day, so rain is not the evidence of a severe-storm
+# trigger there that it is further south -- seen live 12 Sep 2026 as a conditional MRGL band down
+# the Kimberley coast off 0.1mm GFS / 0.9mm ECMWF. Per Josh: up here MRGL and above need >= 3mm of
+# forecast rain, and the conditional (trace / neighbour) rules do not apply at all. TSTM -- the
+# general, non-severe storm chance -- keeps the normal 2mm gate. The coast test uses the viewer's
+# own simplified coastline (docs/coastline.geo.json, ~1800 vertices ~40km apart, so the 200km ring
+# is good to about +/-20km), read once at load rather than per point.
+coast_xy <- local({
+  txt <- paste(readLines("docs/coastline.geo.json", warn=FALSE), collapse="")
+  m <- regmatches(txt, gregexpr("\\[ *-?[0-9.]+ *, *-?[0-9.]+ *\\]", txt))[[1]]
+  do.call(rbind, lapply(m, function(p) as.numeric(strsplit(gsub("\\[|\\]| ", "", p), ",")[[1]])))   # cols: lon, lat
+})
+coast_km <- function(lat, lon){
+  dlat <- (coast_xy[,2] - lat) * pi/180; dlon <- (coast_xy[,1] - lon) * pi/180
+  a <- sin(dlat/2)^2 + cos(lat*pi/180) * cos(coast_xy[,2]*pi/180) * sin(dlon/2)^2
+  min(6371 * 2 * asin(sqrt(pmin(1, a))))
+}
+tropical_coastal <- function(lat, lon){
+  line_lat <- -24.88 + (lon - 113.66) * ((-23.38 - (-24.88)) / (150.51 - 113.66))   # Carnarvon -> Rockhampton
+  isTRUE(lat > line_lat && coast_km(lat, lon) <= 200)
+}
+
+# strict=TRUE marks the tropical coastal zone: 3mm floor for MRGL+, no conditional un-gating
+categorise_vals <- function(cape, shr, scp, stp, ship, cin, rain_mm, strict=FALSE){
   shr_kt <- shr * 1.94384
   c <- 0
   if (cape >= 150) c <- 1                                                                   # TSTM
@@ -397,8 +423,18 @@ categorise_vals <- function(cape, shr, scp, stp, ship, cin, rain_mm){
   # (never MDT/HIGH off a trace), and flagged conditional. The same rule is applied for an ECMWF
   # trace in apply_ecmwf_second_opinion() and for >=2mm at an adjacent grid point in
   # apply_neighbour_trigger(). Genuinely dry days (<0.2mm in both models, nothing nearby) still gate.
-  if (no_trig & nz(rain_mm) >= 0.2 & pregate >= 2){ c <- 2; conditional <- TRUE }
+  # A conditional trigger COSTS ONE CATEGORY (12 Sep 2026). Flat "conditional -> MRGL" painted a
+  # 1200km MRGL blanket across the WA interior on 14 Sep: scattered 0.1-0.5mm drizzle traces, each
+  # lifting itself and its neighbours, over garden-variety CAPE 500-1000 / 20-40kt (pregate 2, SHIP
+  # 0.1-0.4). Uncertainty about whether storms form at all is exactly what TSTM means, so an
+  # ordinary MRGL environment on a trace now reads TSTM, while a genuinely severe environment
+  # (pregate 3+: the Nullarbor case, SCP 7-10 with SHIP 1.2-1.5) still reads MRGL. Floor TSTM,
+  # cap MRGL -- a trace never buys MDT or HIGH.
+  if (no_trig & nz(rain_mm) >= 0.2 & pregate >= 2 & !strict){
+    c <- max(1, min(2, pregate - 1)); conditional <- TRUE
+  }
   c  <- max(c, rc)
+  if (strict & nz(rain_mm) < 3) c <- min(c, 1)   # tropical coastal zone: MRGL+ needs 3mm+; TSTM still allowed on 2mm
 
   hatch <- as.integer(sig)
   list(cat=c, pregate=pregate, conditional=conditional, cape=round(cape), shear=round(shr_kt), scp=round(scp,1),
@@ -503,7 +539,7 @@ day_groups <- function(times){
 # WHOLE day (not just the top-N severity hours) since those hours are picked by an instability
 # score, not a precip score -- the day's actual rain chance/total can peak at an hour that
 # score didn't select.
-day_topN <- function(h, idxs, elev, lat){
+day_topN <- function(h, idxs, elev, lat, strict=FALSE){
   rows <- list()
   for (i in idxs){
     prof <- tryCatch(build_profile(h, i, elev), error=function(e) NULL)
@@ -591,7 +627,7 @@ day_topN <- function(h, idxs, elev, lat){
   # not capturing these often highly localized supercell environments, a harder problem than a
   # threshold or averaging tweak.
   peak_ship_hr <- top[[which.max(sapply(top, function(r) r$ship))]]
-  cv <- categorise_vals(m("cape"), m("shr"), m("scp"), m("stp"), m("ship"), m("cin"), rain_day)
+  cv <- categorise_vals(m("cape"), m("shr"), m("scp"), m("stp"), m("ship"), m("cin"), rain_day, strict)
   # thunderstorm chance: Open-Meteo's own ensemble-based precipitation_probability (%), averaged
   # over the SAME top-N instability-ranked hours as cape/shear/ship, not the whole day -- a whole-day
   # max picks up unrelated overnight drizzle (Open-Meteo's ensemble can be very confident about light,
@@ -628,9 +664,10 @@ process_point <- function(k){
     if (is.null(r)) return(NULL)
     h <- r$hourly; elev <- r$elevation
     gp <- day_groups(h$time)
-    dres <- lapply(gp$idx, function(ix) day_topN(h, ix, elev, lat))
+    trop <- tropical_coastal(lat, lon)
+    dres <- lapply(gp$idx, function(ix) day_topN(h, ix, elev, lat, trop))
     Sys.sleep(0.15)   # stay a courteous, gently-paced client per worker even with 4x concurrency
-    list(lat=lat, lon=lon, d=dres, days=gp$days)
+    list(lat=lat, lon=lon, d=dres, days=gp$days, tropical=trop)
   }, error=function(e) NULL)
 }
 
@@ -730,15 +767,22 @@ apply_ecmwf_second_opinion <- function(raw_results){
         n_checked <- n_checked + 1
         dd <- raw_results[[c_$k]]$d[[c_$j]]
         dd$rain_ecmwf <- round(ecmwf_rain[i], 1)
-        if (ecmwf_rain[i] >= 2){
+        strict <- isTRUE(raw_results[[c_$k]]$tropical)
+        if (ecmwf_rain[i] >= (if (strict) 3 else 2)){
           dd$cat <- dd$pregate
           dd$conditional <- FALSE
           dd$tprob <- tprob_floor(dd$tprob, dd$cat)   # keep the thunder pane consistent with the restored category
           dd$ecmwf_ungated <- TRUE
           n_ungated <- n_ungated + 1
-        } else if (ecmwf_rain[i] >= 0.2 & nz(dd$pregate) >= 2 & nz(dd$cat) == 0){
-          # ECMWF trace only: conditional MRGL, capped -- see categorise_vals()
-          dd$cat <- 2L
+        } else if (strict & ecmwf_rain[i] >= 2 & nz(dd$cat) == 0){
+          # tropical coastal zone with 2-3mm in ECMWF: general storm chance only, no severe tier
+          dd$cat <- 1L
+          dd$tprob <- tprob_floor(dd$tprob, dd$cat)
+          dd$ecmwf_ungated <- TRUE
+          n_ungated <- n_ungated + 1
+        } else if (!strict & ecmwf_rain[i] >= 0.2 & nz(dd$pregate) >= 2 & nz(dd$cat) == 0){
+          # ECMWF trace only: conditional, one category below the environment -- see categorise_vals()
+          dd$cat <- max(1L, min(2L, as.integer(nz(dd$pregate)) - 1L))
           dd$conditional <- TRUE
           dd$tprob <- tprob_floor(dd$tprob, dd$cat)
           dd$ecmwf_ungated <- TRUE
@@ -803,11 +847,15 @@ apply_neighbour_trigger <- function(raw_results){
   n_lifted <- 0
   for (a in seq_along(ok)){
     k <- ok[a]; res <- raw_results[[k]]
+    if (isTRUE(res$tropical)) next   # tropical coastal zone: no conditional un-gating at all
     nb <- ok[abs(lat - lat[a]) <= 1.0 & abs(lon - lon[a]) <= 1.0 & ok != k]
     if (length(nb) == 0) next
     for (j in seq_along(res$d)){
       dd <- res$d[[j]]
-      if (nz(dd$cat) != 0 || nz(dd$pregate) < 2) next
+      # pregate >= 3 (was 2): borrowing a neighbour's rain is the weakest evidence there is, so it
+      # is reserved for environments that are genuinely severe on their own. With the old bar every
+      # ordinary MRGL point next to a drizzle trace was lifted, which is what spread the WA blanket.
+      if (nz(dd$cat) != 0 || nz(dd$pregate) < 3) next
       wet <- any(sapply(nb, function(m){
         nd <- raw_results[[m]]$d; if (length(nd) < j) return(FALSE)
         # a TRACE (>=0.2mm) at the neighbour is enough (Josh, 11 Sep 2026; was >=2mm): the point
@@ -851,7 +899,7 @@ for (k in seq_along(raw_results)){
   res <- raw_results[[k]]
   if (is.null(res) || inherits(res, "try-error")) next
   if (is.null(day_labels)) day_labels <- format(as.Date(res$days), "%a %e %b")
-  points[[k]] <- list(lat=res$lat, lon=res$lon, d=res$d)
+  points[[k]] <- list(lat=res$lat, lon=res$lon, tropical=isTRUE(res$tropical), d=res$d)
   ok <- ok + 1
 }
 

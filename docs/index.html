@@ -187,7 +187,7 @@
   // SLGT's old yellow; HIGH keeps its old, deliberately extreme bar (exceptional/life-threatening
   // outbreak days only) and moves to red now that SLGT's magenta slot is free.
   var FINE=[null,
-    {abbr:'TSTM',name:'Increased chance of storm activity',color:[150,205,150]},
+    {abbr:'TSTM',name:'General storm chance (not severe)',color:[150,205,150]},
     {abbr:'MRGL',name:'Marginal',color:[86,158,86]},
     {abbr:'MDT',name:'Moderate',color:[248,220,90]},
     {abbr:'HIGH',name:'High',color:[214,44,44]}];
@@ -196,7 +196,7 @@
   var COARSE=[{t:0.5,color:[120,192,120],name:'Chance of storm'},{t:3.5,color:[228,120,86],name:'Chance of severe storm'}];
 
   var HAZARDS_LIST=[
-    {key:'cat',   label:'Category Outlook',    enabled:true,  desc:'SPC-style overall severe risk (TSTM to HIGH), from instability, shear and rainfall.'},
+    {key:'cat',   label:'Category Outlook',    enabled:true,  desc:'Three severe-risk categories \u2014 Marginal, Moderate and High \u2014 from instability, shear and rainfall. TSTM below them marks a general, non-severe storm chance.'},
     {key:'tprob', label:'Thunderstorm Chance',  enabled:true,  desc:"Likelihood of any thunderstorm activity, from the model's own rain probability."},
     {key:'flood', label:'Excessive Rainfall',   enabled:true,  desc:'Flash-flood risk tiers (Slight/Moderate/High) from forecast rainfall totals and rates.'},
     {key:'hail',  label:'Hail',                 enabled:true,  desc:'Potential hail size (Small/Large/Very Large) from supercell composite parameters.'},
@@ -315,7 +315,7 @@
     sync();
   }
 
-  var GRID=[],results=[],DAYS=[],selDay=0,LAND=null,DISTRICTS=null,minLat,maxLat,minLon,maxLon,nx,ny;
+  var GRID=[],results=[],TROP=[],DAYS=[],selDay=0,LAND=null,DISTRICTS=null,minLat,maxLat,minLon,maxLon,nx,ny;
   var featureCache={};
 
   function darker(col,f){return 'rgb('+Math.round(col[0]*f)+','+Math.round(col[1]*f)+','+Math.round(col[2]*f)+')';}
@@ -917,7 +917,7 @@
   // real, but came back as a flat 0 on every elevated-risk day in the validation run against the
   // thresholds this pipeline currently has -- see pipeline/build_outlook.R's sev_score() comment.
   // Re-add once the pipeline switches to STP_new_LM together with a proper recalibration.
-  function infoHtml(r){
+  function infoHtml(r, trop){
     if(selDay>=4){
       var lbl=r.cat>=4?'Chance of severe weather':(r.cat>=1?'Chance of storm':'No storms');
       var col=r.cat>=4?rgb(COARSE[1].color):(r.cat>=1?rgb(COARSE[0].color):'#5c6c7d');
@@ -936,7 +936,9 @@
     // conditional: environment supports MRGL+ but the trigger is uncertain (only a trace of rain in
     // either model, or rain at a neighbouring point) -- capped at MRGL by the pipeline
     var tag=r.conditional?' (conditional)':(r.hatch&&r.cat>=2?' (sig)':'');
-    var note=r.conditional?'<div class="sm">Conditional: favourable environment, '+(r.neighbour_trigger?'rain forecast nearby but not here':'only a trace of rain forecast')+' &mdash; storms depend on initiation.</div>':'';
+    var note=r.conditional?'<div class="sm">Conditional: favourable environment, '+(r.neighbour_trigger?'rain forecast nearby but not here':'only a trace of rain forecast')+' &mdash; storms depend on initiation, so this sits one category below what the environment alone would support.</div>':'';
+    // tropical coastal zone: explain an environment held below MRGL by the stricter 3mm floor
+    if(trop&&r.cat<=1&&r.pregate>=2) note+='<div class="sm">Tropical coastal zone: a severe (MRGL+) risk needs 3mm+ of forecast rain here.</div>';
     return '<div class="cat" style="color:'+col2+'">'+(r.cat===0?'No storms':(c.abbr?c.abbr+' · ':'')+c.name)+tag+'</div>'+
       'CAPE '+Math.round(r.cape)+' J/kg · Shear '+Math.round(r.shear)+' kt<div class="sm">SCP '+r.scp+' · SHIP '+r.ship+' · '+rainLine+'</div>'+note;
   }
@@ -963,7 +965,7 @@
       box.style.left=Math.max(4,x)+'px'; box.style.top=Math.max(4,y)+'px';
       box.classList.add('show');
       if(best<0||bd>3||!results[best]||!results[best][selDay]){ box.innerHTML='<span class="hint">No data here.</span>'; return; }
-      box.innerHTML=infoHtml(results[best][selDay]);
+      box.innerHTML=infoHtml(results[best][selDay], TROP[best]);
     });
     planeMaps[i].on('mouseout', function(){ box.classList.remove('show'); });
   }
@@ -996,9 +998,9 @@
   // previous run's contour geometry into the newly loaded one.
   function loadRunData(url){
     return fetch(url).then(function(r){ if(!r.ok) throw new Error('no outlook data at '+url); return r.json(); }).then(function(o){
-      GRID=[]; results=[];
+      GRID=[]; results=[]; TROP=[];
       DAYS=o.days||['Day 1','Day 2','Day 3','Day 4','Day 5','Day 6','Day 7','Day 8'];
-      o.points.forEach(function(p){GRID.push([p.lat,p.lon]);results.push(p.d);});
+      o.points.forEach(function(p){GRID.push([p.lat,p.lon]);results.push(p.d);TROP.push(!!p.tropical);});
       featureCache={}; denCache={}; streamCache={};
       runFullHazards=!!o.full_hazards; runHistorical=!!o.historical; runCoverage=(o.coverage!=null)?o.coverage:1;
       document.getElementById('updatedtxt').textContent='Updated '+(o.run_date?new Date(o.run_date).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'—');
