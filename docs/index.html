@@ -105,7 +105,7 @@
 </head>
 <body>
 <div id="wrap">
-  <div id="planes" class="mode-quad">
+  <div id="planes" class="mode-dual">
     <div class="plane" data-idx="0"><div class="planeMap" id="planeMap-0"></div><div class="planeHeader"><div class="planeIdx" id="planeIdx-0">A</div><select class="planeSelect" id="planeSelect-0"></select></div><div class="planeLegend" id="planeLegend-0"></div><div class="planePlaceholder" id="planePlaceholder-0">Extended range (days 5&ndash;8) shows Category only</div></div>
     <div class="plane" data-idx="1"><div class="planeMap" id="planeMap-1"></div><div class="planeHeader"><div class="planeIdx" id="planeIdx-1">B</div><select class="planeSelect" id="planeSelect-1"></select></div><div class="planeLegend" id="planeLegend-1"></div><div class="planePlaceholder" id="planePlaceholder-1">Extended range (days 5&ndash;8) shows Category only</div></div>
     <div class="plane" data-idx="2"><div class="planeMap" id="planeMap-2"></div><div class="planeHeader"><div class="planeIdx" id="planeIdx-2">C</div><select class="planeSelect" id="planeSelect-2"></select></div><div class="planeLegend" id="planeLegend-2"></div><div class="planePlaceholder" id="planePlaceholder-2">Extended range (days 5&ndash;8) shows Category only</div></div>
@@ -113,7 +113,7 @@
   </div>
   <div id="topbar">
     <div class="title"><span class="eyebrow">Automated Severe Weather</span>CyclonesOZ<small>8-day severe storm outlook</small></div>
-    <div id="modeToggle"><button class="modeBtn" data-mode="dual">Dual plane</button><button class="modeBtn active" data-mode="quad">Quad plane</button></div>
+    <div id="modeToggle"><button class="modeBtn active" data-mode="dual">Dual plane</button><button class="modeBtn" data-mode="quad">Quad plane</button></div>
     <div id="runPicker"><label for="runSelect">Run</label><select id="runSelect"></select></div>
     <div id="runBanner"></div>
     <div id="about"><b>How this runs:</b> every day the outlook takes 32 sounding snapshots of the atmosphere at a 0.25&deg; scale and analyses instability, winds and other severe-weather parameters to judge whether the environment is conducive to storm activity &mdash; and if so, how severe that activity may be. By comparing the set-up against historical observations and data, it can also identify where specific hazards such as hail and damaging winds may occur within any thunderstorm activity.</div>
@@ -187,7 +187,7 @@
   // SLGT's old yellow; HIGH keeps its old, deliberately extreme bar (exceptional/life-threatening
   // outbreak days only) and moves to red now that SLGT's magenta slot is free.
   var FINE=[null,
-    {abbr:'TSTM',name:'General storm chance (not severe)',color:[150,205,150]},
+    {abbr:'TSTM',name:'General storm chance',color:[150,205,150]},
     {abbr:'MRGL',name:'Marginal',color:[86,158,86]},
     {abbr:'MDT',name:'Moderate',color:[248,220,90]},
     {abbr:'HIGH',name:'High',color:[214,44,44]}];
@@ -235,7 +235,7 @@
 
   // ---- plane state: up to 4 Leaflet map instances are created once at load; dual mode simply
   // hides planes 2/3 via CSS rather than destroying/recreating maps when the mode is toggled ----
-  var planeMode='quad';
+  var planeMode='dual';   // default view: Category Outlook + Thunderstorm Chance, side by side
   var planeAssign=['cat','tprob','hail','flood'];
   var planeMaps=[null,null,null,null], planeLayers=[null,null,null,null];
   var planeLandLayers=[null,null,null,null], planeHillshadeLayers=[null,null,null,null];
@@ -743,6 +743,20 @@
     planeSyncing=false;
   }
 
+  // Re-measure the panes and refit them as one. invalidateSize() PANS a map by half its size
+  // delta and fires 'move', which the sync handler above then broadcasts -- so invalidating each
+  // pane in a loop let a stale pane (including the two hidden in dual mode, whose size is 0x0)
+  // push its own centre onto the others. That surfaced as the two dual panes sitting 211px apart
+  // vertically at load once dual became the default view, 13 Sep 2026. Fix: suppress the sync
+  // while measuring, pass pan:false so measuring never moves a map, and fit ONCE from plane 0.
+  function refitPlanes(){
+    planeSyncing=true;
+    for(var i=0;i<visibleCount();i++){ if(planeMaps[i]) planeMaps[i].invalidateSize({pan:false}); }
+    planeSyncing=false;
+    coverFit(planeMaps[0],4);
+    syncPlaneView(planeMaps[0]);
+  }
+
   // dual-plane's two panels are big enough for the hillshade texture to read as an accent; the
   // four quad-plane panels are smaller, where the same texture reads as clutter -- so hillshade
   // (and the land layer's matching semi-transparent fill) is added/removed from planes 0/1 as the
@@ -855,8 +869,7 @@
   function refreshAll(modeChanged){
     dedupeAssign();
     if(modeChanged){
-      for(var i=0;i<4;i++){ if(i<visibleCount() && planeMaps[i]){ planeMaps[i].invalidateSize(); coverFit(planeMaps[i],4); } }
-      syncPlaneView(planeMaps[0]);
+      refitPlanes();
     }
     syncHillshade();
     for(var i=0;i<visibleCount();i++) renderPlane(i);
@@ -900,11 +913,10 @@
     syncPlaneView(planeMaps[0]);
     // layout may not have finished settling on this same tick, so coverFit above can measure a
     // too-small container and under-zoom -- correct it once the browser has actually painted.
-    requestAnimationFrame(function(){
-      for(var i=0;i<4;i++) planeMaps[i].invalidateSize();
-      coverFit(planeMaps[0],4);
-      syncPlaneView(planeMaps[0]);
-    });
+    requestAnimationFrame(refitPlanes);
+    // and once more after the sidebar text/webfonts have settled, which can change the panes'
+    // measured height a second time
+    setTimeout(refitPlanes, 250);
   }
 
   // Category Outlook is the only pane with a hover tooltip (see attachHover below), so this only
