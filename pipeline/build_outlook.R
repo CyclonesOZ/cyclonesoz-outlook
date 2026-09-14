@@ -799,7 +799,14 @@ day_topN <- function(h, idxs, elev, lat, strict=FALSE, want_frames=FALSE){
 # the grid into 4 fixed static chunks up front, so one slow/retrying point doesn't leave a worker
 # idle while the others finish their chunk.
 suppressMessages(library(parallel))
-NCORES <- max(1, min(4, parallel::detectCores()))
+# 10 workers, not the core count (14 Sep 2026). This loop is not CPU-bound: measured across two
+# keyed runs, each point costs ~5.35s of which roughly half is a worker sitting blocked on a
+# 195-variable, ~194KB HTTP response. Capping at the runner's 4 vCPUs therefore left the machine
+# idle about half the time. Oversubscribing overlaps one worker's network wait with another's
+# sounding maths. Only safe now that the key removed rate limiting -- on the free endpoint extra
+# concurrency just bought extra 429s. If Open-Meteo ever starts refusing concurrent connections it
+# will show up as a jump in first-pass failures; dial this back here.
+NCORES <- 10
 cat(sprintf("Processing %d grid points (%d days, avg of top %d hours) across %d workers...\n", nrow(GRID), FDAYS, TOPN, NCORES))
 
 process_point <- function(k){
@@ -812,7 +819,7 @@ process_point <- function(k){
     trop <- tropical_coastal(lat, lon)
     dres <- lapply(seq_along(gp$idx), function(j)
                      day_topN(h, gp$idx[[j]], elev, lat, trop, want_frames = (ENABLE_FRAMES && j <= FRAME_DAYS)))
-    Sys.sleep(0.15)   # stay a courteous, gently-paced client per worker even with 4x concurrency
+    if (!nzchar(OM_KEY)) Sys.sleep(0.15)   # courtesy pacing for the free endpoint; needless on a paid key
     list(lat=lat, lon=lon, d=dres, days=gp$days, tropical=trop)
   }, error=function(e) NULL)
 }

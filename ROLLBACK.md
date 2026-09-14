@@ -64,7 +64,7 @@ These are the numbers most likely to need tuning rather than reverting. All live
 | ECMWF candidate cap | `MAX_ECMWF_CANDIDATES <- 3000` | Second-opinion checks per run |
 | Grid spacing | 0.72 deg, 1342 points | ~80 km. Costs ~27,500 API calls/run, ~83% of 1M a month at one run a day |
 | Pressure levels | 37 with a key, 16 without | `LEVELS_FULL` / `LEVELS_BASE`; 19.5 vs 9 API calls per point |
-| Workers | `NCORES <- max(1, min(4, ...))` | 4. Roughly half of each worker's time is spent waiting on HTTP, so raising this is the main remaining speed lever |
+| Workers | `NCORES <- 10` | Deliberately above the 4 vCPUs: the loop is network-bound, so workers overlap. Lower it if first-pass failures jump |
 
 ## 4. If a run publishes something wrong
 
