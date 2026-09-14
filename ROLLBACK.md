@@ -1,0 +1,71 @@
+# Rolling back
+
+Every change since 12 Sep 2026 is either behind a switch or tagged, so nothing needs a
+hand-written revert. Work from the cheapest option down.
+
+## 1. Turn a feature off without touching history
+
+Edit one line in `pipeline/build_outlook.R`, commit, and the next run behaves as if the feature
+had never shipped. The daily `docs/outlook.json` schema is unchanged by all of these.
+
+| Feature | Line | Off value | Effect when off |
+|---|---|---|---|
+| 3-hourly frames (days 1-4) | `ENABLE_FRAMES <- TRUE` | `FALSE` | No frames computed, no `docs/archive/frames/` written. Run time and `outlook.json` identical to before 14 Sep. |
+| Default map zoom | `var FIT_ZOOM_OUT=1;` in `docs/index.html` | `0` | Back to the strict cover fit that crops to the panel. |
+| Default pane layout | `var planeMode='dual';` in `docs/index.html` | `'quad'` | Also set `class="mode-dual"` back to `mode-quad` on `#planes` and move the `active` class on the two `.modeBtn` buttons. |
+
+After switching frames off, the stale files under `docs/archive/frames/` can be deleted; nothing
+reads them unless the viewer asks for them.
+
+## 2. Roll the code back to a tagged point
+
+Two tags mark known-good states:
+
+| Tag | What it is |
+|---|---|
+| `pre-frames` | Everything through the dual-plane default and the wider zoom, before any frame work. |
+| `pre-marginal-recal` | Before the Marginal floor was raised to CAPE 1000 / 25 kt and before the hail/wind upgrade. |
+
+To put a file back to a tagged state without discarding anything else:
+
+```bash
+git checkout pre-frames -- pipeline/build_outlook.R docs/index.html
+git commit -m "Roll pipeline and viewer back to pre-frames"
+git push
+```
+
+To undo one specific commit and keep the history intact:
+
+```bash
+git revert <sha>
+git push
+```
+
+Never force-push `main`. The workflow commits `docs/outlook.json` and `docs/archive` on every run,
+so a force-push races the scheduled job and can drop a published outlook.
+
+## 3. Calibration values worth knowing
+
+These are the numbers most likely to need tuning rather than reverting. All live in
+`categorise_vals()` and its neighbours in `pipeline/build_outlook.R`.
+
+| Setting | Current | Meaning |
+|---|---|---|
+| Marginal floor | `cape >= 1000 & shr_kt >= 25` | Plus an SCP route at 2.5, plus large hail or damaging winds |
+| Moderate via SHIP | 2.0 / 1.5 / 1.2 | By shear band: under 35 kt, 35-50 kt, over 50 kt |
+| High | CAPE 4000, SHIP 2.5, SCP 9, rain 10 mm | All four required |
+| Day rain gate | `trig = 2` mm | Trace bar is 0.1x it, tropical floor 1.5x it |
+| Frame rain gate | `FRAME_TRIG <- 0.5` mm per 3 h | Frames only |
+| Tropical coastal zone | Carnarvon to Rockhampton line, 200 km inland | Needs 3 mm for Marginal and above |
+| ECMWF candidate cap | `MAX_ECMWF_CANDIDATES <- 3000` | Second-opinion checks per run |
+
+## 4. If a run publishes something wrong
+
+The last 14 days of runs are kept in `docs/archive/` and are selectable in the viewer's run
+picker. To republish an earlier day as the live outlook:
+
+```bash
+cp docs/archive/YYYY-MM-DD.json docs/outlook.json
+git commit -am "Republish YYYY-MM-DD outlook"
+git push
+```

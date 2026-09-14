@@ -26,6 +26,10 @@ ARCHIVE_DIR <- "docs/archive"
 # Frames live UNDER docs/archive because the workflow's commit step adds "docs/outlook.json
 # docs/archive" and changing that list needs the workflow OAuth scope; move them to docs/frames
 # when that scope is next available.
+# Single off switch for the whole frame product: set FALSE and the pipeline behaves exactly as it
+# did before 14 Sep 2026 -- no frames computed, no frame files written, outlook.json unchanged.
+# See ROLLBACK.md.
+ENABLE_FRAMES <- TRUE
 FRAME_DAYS  <- 4
 FRAME_HOURS <- 3
 FRAME_TRIG  <- 0.5
@@ -761,7 +765,7 @@ process_point <- function(k){
     gp <- day_groups(h$time)
     trop <- tropical_coastal(lat, lon)
     dres <- lapply(seq_along(gp$idx), function(j)
-                     day_topN(h, gp$idx[[j]], elev, lat, trop, want_frames = (j <= FRAME_DAYS)))
+                     day_topN(h, gp$idx[[j]], elev, lat, trop, want_frames = (ENABLE_FRAMES && j <= FRAME_DAYS)))
     Sys.sleep(0.15)   # stay a courteous, gently-paced client per worker even with 4x concurrency
     list(lat=lat, lon=lon, d=dres, days=gp$days, tropical=trop)
   }, error=function(e) NULL)
@@ -1054,7 +1058,7 @@ if (ok < MIN_OK_FRAC * nrow(GRID)) {
 # one-off demo and does not need them). Each point's 8 frames are compact numeric arrays in
 # FRAME_COLS order rather than named objects, which keeps the four files a few hundred KB each
 # instead of a few MB.
-if (is.null(HIST_DATE)) {
+if (ENABLE_FRAMES && is.null(HIST_DATE)) {
   if (!dir.exists(FRAME_DIR)) dir.create(FRAME_DIR, recursive=TRUE)
   all_times <- character(0)
   for (j in seq_len(FRAME_DAYS)) {
