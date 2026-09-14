@@ -14,6 +14,23 @@ suppressMessages({
 GRID   <- fromJSON("data/grid.json")           # matrix [,1]=lat [,2]=lon
 OUT    <- "docs/outlook.json"
 ARCHIVE_DIR <- "docs/archive"
+# ---- 3-hourly frame product (14 Sep 2026) ----
+# Days 1-4 also get a 3-hourly breakdown: 4 days x 8 frames = 32 frames the viewer can slide
+# through. This costs NO extra fetching and NO extra sounding maths -- day_topN() already runs a
+# full sounding_compute() on every one of the 192 hours and then throws the hourly detail away
+# when it collapses each day to a top-6-hour mean. Frames just keep what was already computed.
+# FRAME_TRIG is the rain gate for a 3-hour window (Josh: 0.5mm), against the 2mm the whole-day
+# category uses; the conditional/ECMWF/neighbour machinery is daily-total logic and is switched
+# OFF for frames (Josh's option 2), so a frame shows the straightforward category for its own
+# window and the daily panel stays the official product.
+# Frames live UNDER docs/archive because the workflow's commit step adds "docs/outlook.json
+# docs/archive" and changing that list needs the workflow OAuth scope; move them to docs/frames
+# when that scope is next available.
+FRAME_DAYS  <- 4
+FRAME_HOURS <- 3
+FRAME_TRIG  <- 0.5
+FRAME_DIR   <- file.path(ARCHIVE_DIR, "frames")
+FRAME_COLS  <- c("cat","tprob","hail","wind","flood","cape","shear","ship","rain")
 LEVELS <- c(1000,975,950,925,900,850,800,700,600,500,400,300,250,200,150,100)
 FDAYS  <- 8                                     # forecast days
 TOPN   <- 6                                     # average the N highest-severity hours
@@ -364,7 +381,12 @@ tropical_coastal <- function(lat, lon){
 }
 
 # strict=TRUE marks the tropical coastal zone: 3mm floor for MRGL+, no conditional un-gating
-categorise_vals <- function(cape, shr, scp, stp, ship, cin, rain_mm, strict=FALSE){
+# trig: the rain total that counts as a trigger for this window (2mm for a whole day, FRAME_TRIG
+# for a 3-hour frame). The trace and tropical bars are expressed as multiples of it so they scale
+# together and the daily numbers stay exactly what they were (0.1*2 = 0.2mm, 1.5*2 = 3mm).
+# allow_conditional=FALSE switches off the trace/neighbour downgrade path for frames.
+categorise_vals <- function(cape, shr, scp, stp, ship, cin, rain_mm, strict=FALSE,
+                            trig=2, allow_conditional=TRUE){
   shr_kt <- shr * 1.94384
   c <- 0
   if (cape >= 150) c <- 1                                                                   # TSTM
@@ -398,7 +420,7 @@ categorise_vals <- function(cape, shr, scp, stp, ship, cin, rain_mm, strict=FALS
   if (cape >= 4000 & ship >= 2.5 & scp >= 9 & nz(rain_mm) >= 10) c <- max(c, 4)   # HIGH
 
   capped  <- nz(cin) <= -75      # stout cap even on the best hour of the day
-  no_trig <- nz(rain_mm) < 2     # GFS's own 24h precip forecast shows essentially no rain
+  no_trig <- nz(rain_mm) < trig   # the model's own precip forecast shows essentially no rain
 
   # PREGATE added 5 Sep 2026: the category this day would show on thermodynamics alone, before
   # the rain-trigger gate below -- read by apply_ecmwf_second_opinion() to know what to restore a
@@ -444,11 +466,11 @@ categorise_vals <- function(cape, shr, scp, stp, ship, cin, rain_mm, strict=FALS
   # ordinary MRGL environment on a trace now reads TSTM, while a genuinely severe environment
   # (pregate 3+: the Nullarbor case, SCP 7-10 with SHIP 1.2-1.5) still reads MRGL. Floor TSTM,
   # cap MRGL -- a trace never buys MDT or HIGH.
-  if (no_trig & nz(rain_mm) >= 0.2 & pregate >= 2 & !strict){
+  if (no_trig & nz(rain_mm) >= 0.1*trig & pregate >= 2 & !strict & allow_conditional){
     c <- max(1, min(2, pregate - 1)); conditional <- TRUE
   }
   c  <- max(c, rc)
-  if (strict & nz(rain_mm) < 3) c <- min(c, 1)   # tropical coastal zone: MRGL+ needs 3mm+; TSTM still allowed on 2mm
+  if (strict & nz(rain_mm) < 1.5*trig) c <- min(c, 1)   # tropical coastal zone: MRGL+ needs 1.5x the trigger
 
   hatch <- as.integer(sig)
   list(cat=c, pregate=pregate, conditional=conditional, cape=round(cape), shear=round(shr_kt), scp=round(scp,1),
@@ -553,7 +575,7 @@ day_groups <- function(times){
 # WHOLE day (not just the top-N severity hours) since those hours are picked by an instability
 # score, not a precip score -- the day's actual rain chance/total can peak at an hour that
 # score didn't select.
-day_topN <- function(h, idxs, elev, lat, strict=FALSE){
+day_topN <- function(h, idxs, elev, lat, strict=FALSE, want_frames=FALSE){
   rows <- list()
   for (i in idxs){
     prof <- tryCatch(build_profile(h, i, elev), error=function(e) NULL)
@@ -563,6 +585,7 @@ day_topN <- function(h, idxs, elev, lat, strict=FALSE){
       error=function(e) NULL)
     if (is.null(par)) next
     rows[[length(rows)+1]] <- list(
+      hr   = i,                       # hourly index, so frames can regroup these by 3-hour bin
       sev  = sev_score(par),
       cape = nz(par[["MU_CAPE"]]), shr = nz(par[["BS_EFF_MU"]]),
       scp  = sh_composite(par, "SCP_new"), stp = sh_composite(par, "STP_new"), ship = nz(par[["SHIP"]]),
@@ -605,6 +628,45 @@ day_topN <- function(h, idxs, elev, lat, strict=FALSE){
     v500 <- round(mean(-ws5[okw] * cos(wd5[okw] * pi/180)), 1)
   } else { u500 <- NA; v500 <- NA }
 
+  # 3-hourly frames for this day, built from the per-hour rows already computed above. Each frame
+  # sums its window's precipitation, takes the peak probability, and means the instability over
+  # whichever of its hours produced a sounding. A frame with no sounding at all falls back to the
+  # rain category alone, the same way the whole-day branch below does.
+  fr <- NULL
+  if (want_frames){
+    hrs  <- as.integer(substr(h[["time"]][idxs], 12, 13))
+    bins <- hrs %/% FRAME_HOURS
+    fr <- lapply(sort(unique(bins)), function(b){
+      ii <- idxs[bins == b]
+      rr <- Filter(function(r) (as.integer(substr(h[["time"]][r$hr], 12, 13)) %/% FRAME_HOURS) == b, rows)
+      rain_f <- sum(sapply(ii, function(i) nz(h[["precipitation"]][i])))
+      rate_f <- max(sapply(ii, function(i) nz(h[["precipitation"]][i])))
+      pop_f  <- max(sapply(ii, function(i) nz(h[["precipitation_probability"]][i])))
+      flood_f <- flood_cat(rain_f, rate_f, pop_f, lat)
+      if (length(rr) == 0){
+        rcf <- rain_cat(rain_f)
+        return(list(t=substr(h[["time"]][ii[1]], 1, 16),
+                    v=unname(c(rcf, tprob_floor(thunder_prob(pop_f, 0, rain_f), rcf), 0, 0, flood_f,
+                               0, 0, 0, round(rain_f, 1)))))
+      }
+      mf   <- function(k) mean(sapply(rr, function(r) r[[k]]))
+      mfna <- function(k){ v <- sapply(rr, function(r) r[[k]]); if (all(is.na(v))) NA else mean(v, na.rm=TRUE) }
+      frzf <- suppressWarnings(min(sapply(rr, function(r) r$frz),  na.rm=TRUE)); if (!is.finite(frzf)) frzf <- NA
+      t5f  <- suppressWarnings(min(sapply(rr, function(r) r$t500), na.rm=TRUE)); if (!is.finite(t5f))  t5f  <- NA
+      pk   <- rr[[which.max(sapply(rr, function(r) r$ship))]]
+      cvf  <- categorise_vals(mf("cape"), mf("shr"), mf("scp"), mf("stp"), mf("ship"), mf("cin"),
+                              rain_f, strict, trig=FRAME_TRIG, allow_conditional=FALSE)
+      hf <- if (cvf$cat >= 1) hail_tier(pk$ship, pk$cape, frzf, t5f) else 0L
+      wf <- wind_tier(mf("dcape"), mfna("dd700"), mf("lr03"), mf("dcp"), mf("cape"), mf("shr"), cvf$cat)
+      if (cvf$cat == 1 && (hf >= 2 || wf >= 1)) cvf$cat <- 2L    # same hazard upgrade as the daily product
+      if (cvf$cat < 2) { wf <- 0L; hf <- min(hf, 1L) }
+      list(t=substr(h[["time"]][ii[1]], 1, 16),
+           v=unname(c(cvf$cat, tprob_floor(thunder_prob(mf("tprob"), mf("cape"), rain_f), cvf$cat),
+                      hf, wf, flood_f, round(mf("cape")), round(mf("shr")*1.94384),
+                      round(mf("ship"), 1), round(rain_f, 1))))
+    })
+  }
+
   if (length(rows) == 0){
     rc <- rain_cat(rain_day)
     # no successful soundings this day -- no instability-based hour selection to lean on, so fall
@@ -615,7 +677,7 @@ day_topN <- function(h, idxs, elev, lat, strict=FALSE){
                 tprob=tprob_floor(thunder_prob(tprob_fallback, 0, rain_day), rc), hail=0,
                 flood=flood_cat(rain_day, rain_rate, rain_pop, lat), pop=round(rain_pop),
                 fire=fire_tier(ffdi_day, rain_day), ffdi=round(ffdi_day), wind=0L,
-                u500=u500, v500=v500))
+                u500=u500, v500=v500, fr=fr))
   }
   sev <- sapply(rows, function(r) r$sev)
   top <- rows[order(sev, decreasing=TRUE)[seq_len(min(TOPN, length(rows)))]]
@@ -676,7 +738,7 @@ day_topN <- function(h, idxs, elev, lat, strict=FALSE){
              wind=wind_d,
              dcape=round(m("dcape")),   # shown nowhere yet; kept so wind tiers can be checked against their driver
              scp_lm=round(m("scp_lm"),1), stp_lm=round(m("stp_lm"),1),   # diagnostic, see day_topN rows
-             u500=u500, v500=v500))
+             u500=u500, v500=v500, fr=fr))
 }
 
 # each point is a fully independent fetch+compute (no shared state), so this is embarrassingly
@@ -698,7 +760,8 @@ process_point <- function(k){
     h <- r$hourly; elev <- r$elevation
     gp <- day_groups(h$time)
     trop <- tropical_coastal(lat, lon)
-    dres <- lapply(gp$idx, function(ix) day_topN(h, ix, elev, lat, trop))
+    dres <- lapply(seq_along(gp$idx), function(j)
+                     day_topN(h, gp$idx[[j]], elev, lat, trop, want_frames = (j <= FRAME_DAYS)))
     Sys.sleep(0.15)   # stay a courteous, gently-paced client per worker even with 4x concurrency
     list(lat=lat, lon=lon, d=dres, days=gp$days, tropical=trop)
   }, error=function(e) NULL)
@@ -928,11 +991,17 @@ if (valid_after_ecmwf != valid_before_ecmwf) {
 }
 
 points <- vector("list", nrow(GRID)); day_labels <- NULL; ok <- 0
+frames <- vector("list", nrow(GRID)); frame_ll <- vector("list", nrow(GRID))
 for (k in seq_along(raw_results)){
   res <- raw_results[[k]]
   if (is.null(res) || inherits(res, "try-error")) next
   if (is.null(day_labels)) day_labels <- format(as.Date(res$days), "%a %e %b")
-  points[[k]] <- list(lat=res$lat, lon=res$lon, tropical=isTRUE(res$tropical), d=res$d)
+  # fr rides along on each day record so it survives the parallel workers; split it out here so
+  # outlook.json keeps exactly the schema it had and the frames go to their own files.
+  frames[[k]] <- lapply(res$d[seq_len(min(FRAME_DAYS, length(res$d)))], function(dd) dd$fr)
+  frame_ll[[k]] <- c(res$lat, res$lon)
+  points[[k]] <- list(lat=res$lat, lon=res$lon, tropical=isTRUE(res$tropical),
+                      d=lapply(res$d, function(dd){ dd$fr <- NULL; dd }))
   ok <- ok + 1
 }
 
@@ -979,6 +1048,34 @@ if (ok < MIN_OK_FRAC * nrow(GRID)) {
                 ok, nrow(GRID), 100*ok/nrow(GRID), 100*MIN_OK_FRAC))
     quit(status=1)
   }
+}
+
+# 3-hourly frame files, one per day, written only for live runs (a historical reconstruction is a
+# one-off demo and does not need them). Each point's 8 frames are compact numeric arrays in
+# FRAME_COLS order rather than named objects, which keeps the four files a few hundred KB each
+# instead of a few MB.
+if (is.null(HIST_DATE)) {
+  if (!dir.exists(FRAME_DIR)) dir.create(FRAME_DIR, recursive=TRUE)
+  all_times <- character(0)
+  for (j in seq_len(FRAME_DAYS)) {
+    fpts <- list(); times_j <- NULL
+    for (k in seq_along(frames)) {
+      fk <- frames[[k]]
+      if (is.null(fk) || length(fk) < j || is.null(fk[[j]])) next
+      day_fr <- fk[[j]]
+      if (is.null(times_j)) times_j <- sapply(day_fr, function(f) f$t)
+      fpts[[length(fpts)+1]] <- list(lat=frame_ll[[k]][1], lon=frame_ll[[k]][2],
+                                     f=lapply(day_fr, function(f) f$v))
+    }
+    if (length(fpts) == 0) next
+    all_times <- c(all_times, times_j)
+    write_json(list(day=j, times=times_j, cols=FRAME_COLS, points=fpts),
+               file.path(FRAME_DIR, sprintf("d%d.json", j)), auto_unbox=TRUE, digits=2)
+    cat(sprintf("Wrote %s/d%d.json  (%d points x %d frames)\n", FRAME_DIR, j, length(fpts), length(times_j)))
+  }
+  write_json(list(run_date=out$run_date, days=out$days[seq_len(FRAME_DAYS)],
+                  frame_hours=FRAME_HOURS, times=all_times, cols=FRAME_COLS),
+             file.path(FRAME_DIR, "index.json"), auto_unbox=TRUE)
 }
 
 # archive this run for the viewer's historical-run picker, dated by START_DATE (the run's own
