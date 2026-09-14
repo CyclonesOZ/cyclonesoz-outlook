@@ -14,6 +14,8 @@ had never shipped. The daily `docs/outlook.json` schema is unchanged by all of t
 | 3-hourly frames (days 1-8) | `ENABLE_FRAMES <- TRUE` | `FALSE` | No frames computed, no `docs/archive/frames/` written. Run time and `outlook.json` identical to before 14 Sep. |
 | Default map zoom | `var FIT_ZOOM_OUT=1;` in `docs/index.html` | `0` | Back to the strict cover fit that crops to the panel. |
 | Default pane layout | `var planeMode='dual';` in `docs/index.html` | `'quad'` | Also set `class="mode-dual"` back to `mode-quad` on `#planes` and move the `active` class on the two `.modeBtn` buttons. |
+| Default view | `var viewMode='hourly';` in `docs/index.html` | `'daily'` | Opens on the 8-day daily panels instead of the 3-hourly slider. Also move the `active` class on the two `.viewBtn` buttons. |
+| Grid resolution | `data/grid.json` | `git checkout pre-grid-072 -- data/grid.json` | Back to 1032 points at 0.82 deg. Nothing else needs touching: the viewer measures the spacing of whatever grid it loads and rescales its own smoothing constants. Cost falls from ~83% to ~63% of the monthly API budget. |
 
 After switching frames off, the stale files under `docs/archive/frames/` can be deleted; nothing
 reads them unless the viewer asks for them.
@@ -26,6 +28,7 @@ Two tags mark known-good states:
 |---|---|
 | `pre-frames` | Everything through the dual-plane default and the wider zoom, before any frame work. |
 | `pre-marginal-recal` | Before the Marginal floor was raised to CAPE 1000 / 25 kt and before the hail/wind upgrade. |
+| `pre-grid-072` | 1032 points at 0.82 deg, before the grid went to 0.72 deg and the smoothing constants became spacing-relative. |
 
 To put a file back to a tagged state without discarding anything else:
 
@@ -59,6 +62,9 @@ These are the numbers most likely to need tuning rather than reverting. All live
 | Frame rain gate | `FRAME_TRIG <- 0.5` mm per 3 h | Frames only |
 | Tropical coastal zone | Carnarvon to Rockhampton line, 200 km inland | Needs 3 mm for Marginal and above |
 | ECMWF candidate cap | `MAX_ECMWF_CANDIDATES <- 3000` | Second-opinion checks per run |
+| Grid spacing | 0.72 deg, 1342 points | ~80 km. Costs ~27,500 API calls/run, ~83% of 1M a month at one run a day |
+| Pressure levels | 37 with a key, 16 without | `LEVELS_FULL` / `LEVELS_BASE`; 19.5 vs 9 API calls per point |
+| Workers | `NCORES <- max(1, min(4, ...))` | 4. Roughly half of each worker's time is spent waiting on HTTP, so raising this is the main remaining speed lever |
 
 ## 4. If a run publishes something wrong
 
