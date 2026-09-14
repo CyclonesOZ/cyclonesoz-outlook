@@ -10,7 +10,8 @@ had never shipped. The daily `docs/outlook.json` schema is unchanged by all of t
 
 | Feature | Line | Off value | Effect when off |
 |---|---|---|---|
-| 3-hourly frames (days 1-4) | `ENABLE_FRAMES <- TRUE` | `FALSE` | No frames computed, no `docs/archive/frames/` written. Run time and `outlook.json` identical to before 14 Sep. |
+| Full 37-level soundings | presence of the `OPENMETEO_KEY` secret | remove the secret | Falls back to the free endpoint and the original 16 levels automatically. |
+| 3-hourly frames (days 1-8) | `ENABLE_FRAMES <- TRUE` | `FALSE` | No frames computed, no `docs/archive/frames/` written. Run time and `outlook.json` identical to before 14 Sep. |
 | Default map zoom | `var FIT_ZOOM_OUT=1;` in `docs/index.html` | `0` | Back to the strict cover fit that crops to the panel. |
 | Default pane layout | `var planeMode='dual';` in `docs/index.html` | `'quad'` | Also set `class="mode-dual"` back to `mode-quad` on `#planes` and move the `active` class on the two `.modeBtn` buttons. |
 

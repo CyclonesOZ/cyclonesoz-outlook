@@ -37,7 +37,23 @@ FRAME_HOURS <- 3
 FRAME_TRIG  <- 0.5
 FRAME_DIR   <- file.path(ARCHIVE_DIR, "frames")
 FRAME_COLS  <- c("cat","tprob","hail","wind","flood","cape","shear","ship","rain")
-LEVELS <- c(1000,975,950,925,900,850,800,700,600,500,400,300,250,200,150,100)
+# ---- vertical resolution, and the API key that pays for it (14 Sep 2026) ----
+# Open-Meteo prices a request as max(1, variables*models/10) * max(1, days/14) * locations, so our
+# one-location sounding costs (levels*5 + 10 surface)/10 calls -- 9 at 16 levels, 19.5 at 37. The
+# free tier allows 10,000 calls a DAY, which one 1032-point run has always blown through partway;
+# that, not the code, is what produced the endless HTTP 429s, the 88-476 first-pass failures and
+# the hour-long runs. So the level count is tied to whether a key is present: with one we use the
+# full 37 levels Open-Meteo actually serves below 100hPa, without one we stay on the old 16 and the
+# run still fits the shape it always had. Never hard-code the key here -- this repo is public. It
+# comes from the OPENMETEO_KEY secret via the workflow's env.
+OM_KEY <- Sys.getenv("OPENMETEO_KEY", "")
+# 16 levels leaves 100hPa gaps right through the mid-levels (900-850-800-700-600-500), which is
+# exactly where CAPE integration, lapse rates and DCAPE are most sensitive. The full set halves
+# every one of those gaps.
+LEVELS_BASE <- c(1000,975,950,925,900,850,800,700,600,500,400,300,250,200,150,100)
+LEVELS_FULL <- c(1000,975,950,925,900,875,850,825,800,775,750,725,700,675,650,625,600,575,550,525,
+                 500,475,450,425,400,375,350,325,300,275,250,225,200,175,150,125,100)
+LEVELS <- if (nzchar(OM_KEY)) LEVELS_FULL else LEVELS_BASE
 FDAYS  <- 8                                     # forecast days
 TOPN   <- 6                                     # average the N highest-severity hours
 
@@ -75,7 +91,17 @@ if (!is.null(HIST_DATE)){
   END_DATE   <- as.character(as.Date(START_DATE) + FDAYS - 1)
   cat(sprintf("HISTORICAL RECONSTRUCTION: Day 1 = %s, from the Open-Meteo historical-forecast archive\n", START_DATE))
 }
-OM_HOST <- if (is.null(HIST_DATE)) "https://api.open-meteo.com" else "https://historical-forecast-api.open-meteo.com"
+# The key is only valid on the customer endpoint, and only for the live forecast API -- the keyed
+# historical host answers 403 -- so a historical reconstruction stays on the free archive host and
+# on the 16-level set it was built with.
+OM_HOST <- if (!is.null(HIST_DATE)) "https://historical-forecast-api.open-meteo.com"
+           else if (nzchar(OM_KEY)) "https://customer-api.open-meteo.com"
+           else "https://api.open-meteo.com"
+OM_AUTH <- if (nzchar(OM_KEY) && is.null(HIST_DATE)) paste0("&apikey=", OM_KEY) else ""
+if (!is.null(HIST_DATE)) LEVELS <- LEVELS_BASE
+cat(sprintf("Open-Meteo: %s, %d pressure levels, %d variables/request (~%.1f API calls per point)\n",
+            if (nzchar(OM_AUTH)) "keyed customer endpoint" else "free endpoint (no OPENMETEO_KEY set)",
+            length(LEVELS), length(LEVELS)*5 + 10, max(1, (length(LEVELS)*5 + 10)/10)))
 
 nz <- function(x){ if (is.null(x) || is.na(x)) 0 else x }
 
@@ -499,7 +525,7 @@ om_url <- function(lat, lon){
   # start_date/end_date (not forecast_days) pin that boundary to START_DATE/END_DATE (see
   # above) instead of letting Open-Meteo default to raw UTC "today".
   sprintf(paste0(OM_HOST, "/v1/forecast?latitude=%.3f&longitude=%.3f",
-    "&hourly=%s,%s&start_date=%s&end_date=%s&timezone=UTC&wind_speed_unit=kn&cell_selection=nearest"),
+    "&hourly=%s,%s&start_date=%s&end_date=%s&timezone=UTC&wind_speed_unit=kn&cell_selection=nearest", OM_AUTH),
     lat, lon, sfc, lv, START_DATE, END_DATE)
 }
 
@@ -815,7 +841,7 @@ ECMWF_BATCH_SIZE <- 100        # conservative per-request chunk size
 ecmwf_rain_batch <- function(lats, lons, date_str){
   n <- length(lats)
   url <- sprintf(
-    paste0(OM_HOST, "/v1/forecast?latitude=%s&longitude=%s&hourly=precipitation&models=ecmwf_ifs025&start_date=%s&end_date=%s&timezone=UTC"),
+    paste0(OM_HOST, "/v1/forecast?latitude=%s&longitude=%s&hourly=precipitation&models=ecmwf_ifs025&start_date=%s&end_date=%s&timezone=UTC", OM_AUTH),
     paste(sprintf("%.3f", lats), collapse=","),
     paste(sprintf("%.3f", lons), collapse=","),
     date_str, date_str)
