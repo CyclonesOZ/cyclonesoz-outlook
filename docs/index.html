@@ -339,11 +339,14 @@
   // leaves large empty margins on the wide axis. This instead picks the zoom that fills the panel
   // on its DOMINANT axis, cropping a little off the other axis if needed -- the same "cover"
   // tradeoff SPC's own outlook maps make.
+  var FIT_ZOOM_OUT=1;          // zoom levels to back off from the computed cover fit
   function coverFit(m,padPx){
     var size=m.getSize(), availW=Math.max(1,size.x-2*padPx), availH=Math.max(1,size.y-2*padPx);
     var p1=m.project([maxLat,minLon],0), p2=m.project([minLat,maxLon],0);
     var wAtZ0=Math.abs(p2.x-p1.x), hAtZ0=Math.abs(p2.y-p1.y);
     var z=Math.max(Math.log(availW/wAtZ0)/Math.LN2, Math.log(availH/hAtZ0)/Math.LN2);
+    z=z-FIT_ZOOM_OUT;   // 14 Sep 2026: sit one level wider than a strict cover fit, so the default
+                        // view carries context around the outlook area instead of cropping to it
     z=Math.min(z,m.getMaxZoom()); z=Math.max(z,m.getMinZoom());
     m.setView([(minLat+maxLat)/2,(minLon+maxLon)/2], z, {animate:false});
   }
