@@ -94,9 +94,16 @@ if (!is.null(HIST_DATE)){
 # The key is only valid on the customer endpoint, and only for the live forecast API -- the keyed
 # historical host answers 403 -- so a historical reconstruction stays on the free archive host and
 # on the 16-level set it was built with.
-OM_HOST <- if (!is.null(HIST_DATE)) "https://historical-forecast-api.open-meteo.com"
-           else if (nzchar(OM_KEY)) "https://customer-api.open-meteo.com"
-           else "https://api.open-meteo.com"
+# braces are load-bearing here: at top level R ends the statement at the end of the if-branch, so
+# a bare `else` starting the next line is a parse error ("unexpected 'else'"). Keeping `} else` on
+# one line is what makes a multi-line conditional legal outside a function body.
+OM_HOST <- if (!is.null(HIST_DATE)) {
+             "https://historical-forecast-api.open-meteo.com"
+           } else if (nzchar(OM_KEY)) {
+             "https://customer-api.open-meteo.com"
+           } else {
+             "https://api.open-meteo.com"
+           }
 OM_AUTH <- if (nzchar(OM_KEY) && is.null(HIST_DATE)) paste0("&apikey=", OM_KEY) else ""
 if (!is.null(HIST_DATE)) LEVELS <- LEVELS_BASE
 cat(sprintf("Open-Meteo: %s, %d pressure levels, %d variables/request (~%.1f API calls per point)\n",
