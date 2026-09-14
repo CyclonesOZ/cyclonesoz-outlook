@@ -30,6 +30,8 @@ jobs:
         run: Rscript -e 'install.packages(c("thunder","jsonlite")); if (!requireNamespace("thunder", quietly=TRUE)) stop("thunder failed to install")'
 
       - name: Build outlook
+        env:
+          OPENMETEO_KEY: ${{ secrets.OPENMETEO_KEY }}
         run: Rscript pipeline/build_outlook.R
 
       - name: Commit result
