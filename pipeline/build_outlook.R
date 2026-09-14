@@ -15,8 +15,9 @@ GRID   <- fromJSON("data/grid.json")           # matrix [,1]=lat [,2]=lon
 OUT    <- "docs/outlook.json"
 ARCHIVE_DIR <- "docs/archive"
 # ---- 3-hourly frame product (14 Sep 2026) ----
-# Days 1-4 also get a 3-hourly breakdown: 4 days x 8 frames = 32 frames the viewer can slide
-# through. This costs NO extra fetching and NO extra sounding maths -- day_topN() already runs a
+# Every forecast day also gets a 3-hourly breakdown: 8 days x 8 frames = 64 frames the viewer can
+# slide through. Days 5-8 inherit the daily product's extended-range rule in the viewer, so they
+# show Category and Thunderstorm Chance only. This costs NO extra fetching and NO extra sounding maths -- day_topN() already runs a
 # full sounding_compute() on every one of the 192 hours and then throws the hourly detail away
 # when it collapses each day to a top-6-hour mean. Frames just keep what was already computed.
 # FRAME_TRIG is the rain gate for a 3-hour window (Josh: 0.5mm), against the 2mm the whole-day
@@ -30,7 +31,8 @@ ARCHIVE_DIR <- "docs/archive"
 # did before 14 Sep 2026 -- no frames computed, no frame files written, outlook.json unchanged.
 # See ROLLBACK.md.
 ENABLE_FRAMES <- TRUE
-FRAME_DAYS  <- 4
+FRAME_DAYS  <- 8   # 4 -> 8 on 14 Sep 2026: soundings for days 5-8 are already computed too, so the
+                   # only cost is four more ~200KB files, and the viewer loads one day at a time
 FRAME_HOURS <- 3
 FRAME_TRIG  <- 0.5
 FRAME_DIR   <- file.path(ARCHIVE_DIR, "frames")

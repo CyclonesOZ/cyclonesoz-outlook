@@ -25,6 +25,23 @@
   #modeToggle button.active{background:var(--accent);color:#fff;}
   #modeToggle button:hover:not(.active){background:#f2f4f6;}
 
+  #viewToggle{display:flex;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:3px;overflow:hidden;margin-bottom:11px;flex:none;}
+  #viewToggle button{flex:1;background:var(--panel);border:none;padding:7px 0;font:700 11px inherit;color:var(--text);cursor:pointer;font-family:inherit;}
+  #viewToggle button.active{background:var(--accent);color:#fff;}
+  #viewToggle button:hover:not(.active):not(:disabled){background:#f2f4f6;}
+  #viewToggle button:disabled{opacity:.4;cursor:not-allowed;}
+  #hourbar{display:flex;align-items:center;gap:9px;padding:0 11px;width:100%;box-sizing:border-box;}
+  #hourbar .stepbtn{flex:none;border:1px solid var(--border);background:var(--panel);border-radius:3px;
+    width:23px;height:23px;cursor:pointer;font:700 13px/1 inherit;color:var(--text);}
+  #hourbar .stepbtn:hover{border-color:var(--accent);}
+  #hourbar input[type=range]{flex:1;min-width:60px;accent-color:var(--accent);cursor:pointer;}
+  #hourbar .tlabel{flex:none;white-space:nowrap;min-width:238px;text-align:right;line-height:1.25;}
+  #hourbar .tlabel b{display:block;font-weight:700;font-size:13px;color:var(--text);}
+  #hourbar .tlabel small{display:block;font-weight:700;font-size:9.5px;color:var(--accent);letter-spacing:.02em;}
+  #hourbar .tlabel small i{font-style:normal;font-weight:400;color:var(--muted);}
+  #hourbar select{flex:none;font:700 10.5px inherit;color:var(--text);background:var(--panel);
+    border:1px solid var(--border);border-radius:2px;padding:4px 5px;cursor:pointer;}
+  @media (max-width:640px){ #hourbar .tlabel{min-width:0;font-size:9px;} #hourbar{gap:5px;padding:0 5px;} }
   #runPicker{display:none;align-items:center;gap:7px;margin-bottom:9px;flex:none;}
   #runPicker.show{display:flex;}
   #runPicker label{color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;font-size:9px;flex:none;}
@@ -114,6 +131,7 @@
   <div id="topbar">
     <div class="title"><span class="eyebrow">Automated Severe Weather</span>CyclonesOZ<small>8-day severe storm outlook</small></div>
     <div id="modeToggle"><button class="modeBtn active" data-mode="dual">Dual plane</button><button class="modeBtn" data-mode="quad">Quad plane</button></div>
+    <div id="viewToggle"><button class="viewBtn active" data-view="daily">Daily</button><button class="viewBtn" data-view="hourly">3-hourly</button></div>
     <div id="runPicker"><label for="runSelect">Run</label><select id="runSelect"></select></div>
     <div id="runBanner"></div>
     <div id="about"><b>How this runs:</b> every day the outlook takes 32 sounding snapshots of the atmosphere at a 0.25&deg; scale and analyses instability, winds and other severe-weather parameters to judge whether the environment is conducive to storm activity &mdash; and if so, how severe that activity may be. By comparing the set-up against historical observations and data, it can also identify where specific hazards such as hail and damaging winds may occur within any thunderstorm activity.</div>
@@ -315,6 +333,20 @@
     sync();
   }
 
+  // ---- 3-hourly frame view (14 Sep 2026) ----
+  // The daily product stays the official one. This is a second view over docs/archive/frames/,
+  // 8 frames per day for days 1-4, loaded on demand one day-file at a time. Times in the files are
+  // UTC; the three offsets below are Brisbane, Darwin and Perth, none of which observe daylight
+  // saving, so AEST/ACST/AWST are fixed year-round and need no timezone database.
+  var viewMode='daily', frameIdx=0, FRAME_META=null, FRAMES={}, frameRecs=[], TZ='AEST';
+  var TZS={AEST:10, ACST:9.5, AWST:8};
+  function framesAvailable(){ return !!(FRAME_META && FRAME_META.times && FRAME_META.times.length); }
+  function frameDay(idx){ return Math.floor(idx/8); }            // 0-based day index of a frame
+  // the record the map should draw for grid point i, in whichever view is active
+  function recAt(i){ return viewMode==='hourly' ? (frameRecs[i]||null) : (results[i]?results[i][selDay]:null); }
+  // cache key for the current view, so daily and frame fields never collide in the caches
+  function viewKey(){ return viewMode==='hourly' ? ('f'+frameIdx) : ('d'+selDay); }
+
   var GRID=[],results=[],TROP=[],DAYS=[],selDay=0,LAND=null,DISTRICTS=null,minLat,maxLat,minLon,maxLon,nx,ny;
   var featureCache={};
 
@@ -457,19 +489,19 @@
   }
   // kernel-weight denominator for a day: depends only on which points have data that day, not on
   // the hazard or tier, so one array is shared by every tier field of that day
-  function dayDen(dayIdx,sig,rad){
-    var key=dayIdx+'|'+sig;
+  function dayDen(sig,rad){
+    var key=viewKey()+'|'+sig;
     if(denCache[key]) return denCache[key];
     var den=new Float64Array(nx*ny);
-    for(var i=0;i<GRID.length;i++){ if(results[i]&&results[i][dayIdx]) splat(GRID[i][0],GRID[i][1],sig,rad,den,null,null); }
+    for(var i=0;i<GRID.length;i++){ if(recAt(i)) splat(GRID[i][0],GRID[i][1],sig,rad,den,null,null); }
     denCache[key]=den;
     return den;
   }
   // the tier field described above: proportion (0..1) of nearby points with getter(r) >= t
-  function tierField(dayIdx,getter,t,sig,rad){
-    var den=dayDen(dayIdx,sig,rad), num=new Float64Array(nx*ny), one=[1];
+  function tierField(getter,t,sig,rad){
+    var den=dayDen(sig,rad), num=new Float64Array(nx*ny), one=[1];
     for(var i=0;i<GRID.length;i++){
-      var r=results[i]?results[i][dayIdx]:null; if(!r) continue;
+      var r=recAt(i); if(!r) continue;
       if(getter(r)>=t) splat(GRID[i][0],GRID[i][1],sig,rad,null,[num],one);
     }
     var F=new Float64Array(nx*ny);
@@ -516,6 +548,38 @@
   // smaller than the ~0.3 deg^2 disc even a lone supported pair of points produces) is noise
   // from the geometry pipeline, not signal. A polygon whose outer ring is a sliver is dropped
   // whole; sliver holes are dropped from otherwise-kept polygons.
+  // An area must be supported by at least this many grid points at its own tier, or it is not
+  // drawn (14 Sep 2026). The kernel proportion is num/den over points THAT HAVE DATA, and a
+  // coastal point has far fewer neighbours than an inland one -- there is no grid offshore -- so
+  // its denominator is small and a single qualifying point there can clear the tier threshold on
+  // its own. That is what put a lone Marginal island next to Geraldton: one point at 28.9S 115.4E
+  // lifted to MRGL by the damaging-wind rule, with no qualifying neighbour anywhere near it.
+  // Counting the supporting points directly sidesteps the denominator quirk entirely and is the
+  // same thing a forecaster does by eye: one model point is not an outlook area.
+  var MIN_TIER_POINTS=2;
+  function dropIsolated(feat,qpts,minPts){
+    if(!feat) return null;
+    try{
+      var g=feat.geometry;
+      var polys=(g.type==='Polygon'?[g.coordinates]:g.coordinates).filter(function(poly){
+        var ring=poly[0], minx=1e9,maxx=-1e9,miny=1e9,maxy=-1e9;
+        for(var i=0;i<ring.length;i++){
+          var p=ring[i];
+          if(p[0]<minx)minx=p[0]; if(p[0]>maxx)maxx=p[0];
+          if(p[1]<miny)miny=p[1]; if(p[1]>maxy)maxy=p[1];
+        }
+        var tp=turf.polygon(poly), n=0;
+        for(var k=0;k<qpts.length;k++){
+          var q=qpts[k];
+          if(q[0]<minx||q[0]>maxx||q[1]<miny||q[1]>maxy) continue;   // cheap bbox reject first
+          if(turf.booleanPointInPolygon(turf.point(q),tp)){ n++; if(n>=minPts) return true; }
+        }
+        return false;
+      });
+      if(!polys.length) return null;
+      return {type:'Feature',properties:feat.properties||{},geometry:{type:'MultiPolygon',coordinates:polys}};
+    }catch(e){ return feat; }
+  }
   var SLIVER_MIN_AREA=0.02;
   function dropSlivers(feat){
     try{
@@ -650,12 +714,12 @@
   // compute clipped+smoothed contour bands for a day + hazard (expensive: per-tier kernel fields, d3
   // contours, turf clip/simplify, Chaikin smoothing) -- cached, and independent of any particular
   // Leaflet map so the same bands can be drawn on whichever plane(s) currently show that hazard.
-  function buildDayFeatures(dayIdx,hz){
-    var key=hz+'|'+dayIdx;
+  function buildDayFeatures(hz){
+    var key=hz+'|'+viewKey();
     if(featureCache[key]) return featureCache[key];
     var spec;
     if(hz==='cat'){
-      var ext=dayIdx>=4;                   // days 5-8 use coarse scale
+      var ext=(viewMode==='hourly'?frameDay(frameIdx):selDay)>=4;   // days 5-8 use the coarse scale
       spec=ext?COARSE.map(function(s){return {t:s.t,color:s.color};}):FINE_TH.map(function(s){return {t:s.t,color:FINE[s.c].color};});
     }else{
       var hs=HAZ_SPECS[hz];
@@ -663,7 +727,13 @@
     }
     var out=[];
     spec.forEach(function(sp,ti){
-      var F=tierField(dayIdx,HAZ_GET[hz],sp.t,KSIG,KRAD);
+      // the grid points that actually qualify at this tier, as [lon,lat] for turf
+      var qpts=[];
+      for(var qi=0;qi<GRID.length;qi++){
+        var qr=recAt(qi);
+        if(qr && HAZ_GET[hz](qr)>=sp.t) qpts.push([GRID[qi][1],GRID[qi][0]]);
+      }
+      var F=tierField(HAZ_GET[hz],sp.t,KSIG,KRAD);
       if(ti===0) F=closeField(F,CLOSE_R);
       var contours=d3.contours().size([nx,ny]).thresholds([TIER_T[Math.min(ti,TIER_T.length-1)]])(F);
       contours.forEach(function(geo){
@@ -684,6 +754,8 @@
         clipped=trySimplify(clipped);
         clipped=trySmooth(clipped,5);
         clipped=dropSlivers(clipped);
+        clipped=dropIsolated(clipped,qpts,MIN_TIER_POINTS);
+        if(!clipped) return;
         // the outermost tier carries the heavy outline that defines the shape; inner tiers get a
         // slightly lighter one so the nesting reads as bands rather than a pile of equal borders
         out.push({geo:clipped,style:{color:darker(sp.color,0.42),weight:ti===0?2.6:2.0,opacity:0.95,lineJoin:'round',fillColor:rgb(sp.color),fillOpacity:0.72}});
@@ -694,14 +766,16 @@
   }
   // cheap: builds a fresh Leaflet layerGroup from cached feature data for one specific map instance.
   // Streamlines go in first so they sit under the hazard bands.
-  function renderOnMap(m,dayIdx,hz){
+  function renderOnMap(m,hz){
     var group=L.layerGroup();
     if(hz==='cat'){
-      buildStreamlines(dayIdx).forEach(function(line){
+      // streamlines stay a whole-day field: mid-level flow barely moves inside one 3-hour window,
+      // and keeping them out of the frame files is what holds those files to ~200KB each
+      buildStreamlines(viewMode==='hourly'?frameDay(frameIdx):selDay).forEach(function(line){
         L.polyline(line,{interactive:false,color:'#26323f',weight:0.9,opacity:0.14,smoothFactor:1.2}).addTo(group);
       });
     }
-    buildDayFeatures(dayIdx,hz).forEach(function(f){ L.geoJSON(f.geo,{interactive:false,style:f.style}).addTo(group); });
+    buildDayFeatures(hz).forEach(function(f){ L.geoJSON(f.geo,{interactive:false,style:f.style}).addTo(group); });
     group.addTo(m);
     return group;
   }
@@ -729,8 +803,11 @@
   // data for a past date (a promotional/demo run) rather than a run that was ever the live one.
   var runFullHazards=false, runHistorical=false, runCoverage=1;
   function placeholderReason(dayIdx, hz){
+    // fire danger is a whole-day index (the worst hour's FFDI), so it has no 3-hourly equivalent
+    if (viewMode==='hourly' && hz==='fire') return 'Fire danger is a whole-day index — switch to the Daily view for it.';
     if (!isLiveRun && !runFullHazards && hz!=='cat') return 'Historical runs only show Category Outlook — switch this pane to Category Outlook, or return to Today (live).';
-    if (extendedRange(dayIdx, hz)) return 'Extended range (days 5–8) shows Category only';
+    var effDay=(viewMode==='hourly')?frameDay(frameIdx):dayIdx;
+    if (extendedRange(effDay, hz)) return 'Extended range (days 5–8) shows Category only';
     return null;
   }
 
@@ -849,7 +926,7 @@
   }
   function syncExtNote(){
     var el=document.getElementById('extNote');
-    if(el) el.classList.toggle('show', selDay>=4);
+    if(el) el.classList.toggle('show', viewMode==='daily' && selDay>=4);
   }
 
   function renderPlane(i){
@@ -864,7 +941,7 @@
       if(placeholder){ placeholder.textContent=reason; placeholder.classList.add('show'); }
     }else{
       if(placeholder) placeholder.classList.remove('show');
-      planeLayers[i]=renderOnMap(m,selDay,hz);
+      planeLayers[i]=renderOnMap(m,hz);
     }
     var legendEl=document.getElementById('planeLegend-'+i);
     if(legendEl) legendEl.innerHTML=legendRows(hz);
@@ -957,6 +1034,16 @@
     return '<div class="cat" style="color:'+col2+'">'+(r.cat===0?'No storms':(c.abbr?c.abbr+' · ':'')+c.name)+tag+'</div>'+
       'CAPE '+Math.round(r.cape)+' J/kg · Shear '+Math.round(r.shear)+' kt<div class="sm">SCP '+r.scp+' · SHIP '+r.ship+' · '+rainLine+'</div>'+note;
   }
+  // frames carry a lean field set (no SCP/CIN/pregate), and their rain is a 3-hour total rather
+  // than a daily one, so they get their own tooltip rather than reusing infoHtml()
+  function frameInfoHtml(r){
+    var c=FINE[r.cat]||FINE[1], col=r.cat===0?'#5c6c7d':rgb(c.color), rv=r.rain||0;
+    return '<div class="cat" style="color:'+col+'">'+(r.cat===0?'No storms':(c.abbr?c.abbr+' \u00b7 ':'')+c.name)+'</div>'
+      +'CAPE '+Math.round(r.cape)+' J/kg &middot; Shear '+Math.round(r.shear)+' kt'
+      +'<div class="sm">SHIP '+r.ship+' &middot; Rain '+(rv<2?rv.toFixed(1):Math.round(rv))+'mm this window</div>'
+      +'<div class="sm">'+frameLabel(frameIdx)+'</div>';
+  }
+
   // single shared tooltip, positioned near the cursor (clamped to viewport) rather than pinned to
   // one fixed corner, since there's no longer a single "main" map -- it can be triggered from
   // whichever plane the user is currently over.
@@ -979,14 +1066,127 @@
       if(y+130>window.innerHeight) y=ce.clientY-140;
       box.style.left=Math.max(4,x)+'px'; box.style.top=Math.max(4,y)+'px';
       box.classList.add('show');
-      if(best<0||bd>3||!results[best]||!results[best][selDay]){ box.innerHTML='<span class="hint">No data here.</span>'; return; }
-      box.innerHTML=infoHtml(results[best][selDay], TROP[best]);
+      var rec=recAt(best);
+      if(best<0||bd>3||!rec){ box.innerHTML='<span class="hint">No data here.</span>'; return; }
+      box.innerHTML=(viewMode==='hourly')?frameInfoHtml(rec):infoHtml(rec, TROP[best]);
     });
     planeMaps[i].on('mouseout', function(){ box.classList.remove('show'); });
   }
 
-  function buildDayButtons(){
-    var wrap=document.getElementById('days');wrap.innerHTML='';
+  // ---- frame data ----
+  function loadFrameIndex(){
+    return fetch('./archive/frames/index.json?_='+Date.now())
+      .then(function(r){ return r.ok?r.json():null; })
+      .then(function(j){ FRAME_META=j; return j; })
+      .catch(function(){ FRAME_META=null; return null; });
+  }
+  function ensureFrameDay(d){                       // d is 1-based, matching the file name
+    if(FRAMES[d]) return Promise.resolve(FRAMES[d]);
+    return fetch('./archive/frames/d'+d+'.json?_='+Date.now())
+      .then(function(r){ if(!r.ok) throw new Error('no frames for day '+d); return r.json(); })
+      .then(function(j){ FRAMES[d]=j; return j; });
+  }
+  // turn one frame's compact numeric arrays back into records shaped like the daily ones, in GRID
+  // order, so every field/contour/tooltip path downstream works unchanged. Matched on lat/lon
+  // rather than array position, so a point missing from either file can never shift the rest.
+  function applyFrame(idx){
+    var d=frameDay(idx)+1, slot=idx%8;
+    return ensureFrameDay(d).then(function(j){
+      var cols=j.cols, byKey={};
+      j.points.forEach(function(p){ byKey[p.lat.toFixed(2)+'|'+p.lon.toFixed(2)]=p.f[slot]; });
+      frameRecs=GRID.map(function(g){
+        var v=byKey[g[0].toFixed(2)+'|'+g[1].toFixed(2)];
+        if(!v) return null;
+        var o={}; for(var c=0;c<cols.length;c++) o[cols[c]]=v[c];
+        return o;
+      });
+    });
+  }
+  // fixed-offset local time: shift the UTC instant, then read it with the UTC getters
+  function frameLabel(idx){
+    if(!framesAvailable()) return '';
+    var off=TZS[TZ]*3600000, hrs=(FRAME_META.frame_hours||3)*3600000;
+    var a=new Date(new Date(FRAME_META.times[idx]+'Z').getTime()+off), b=new Date(a.getTime()+hrs);
+    function hm(d){
+      var h=d.getUTCHours(), mi=d.getUTCMinutes(), ap=h<12?'am':'pm', hh=h%12; if(hh===0) hh=12;
+      return hh+(mi?(':'+(mi<10?'0':'')+mi):'')+ap;
+    }
+    return a.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short',timeZone:'UTC'})
+           +' &middot; '+hm(a)+'\u2013'+hm(b)+' '+TZ;
+  }
+  function buildHourBar(wrap){
+    var n=FRAME_META.times.length;
+    wrap.innerHTML='<div id="hourbar">'
+      +'<button class="stepbtn" id="frPrev" title="Previous frame">&#8249;</button>'
+      +'<input type="range" id="frRange" min="0" max="'+(n-1)+'" value="'+frameIdx+'" step="1">'
+      +'<button class="stepbtn" id="frNext" title="Next frame">&#8250;</button>'
+      +'<div class="tlabel" id="frLabel"></div>'
+      +'<select id="frTz"><option value="AEST">AEST</option><option value="ACST">ACST</option><option value="AWST">AWST</option></select>'
+      +'</div>';
+    var range=document.getElementById('frRange'), tz=document.getElementById('frTz');
+    tz.value=TZ;
+    range.addEventListener('input', function(){ showFrame(parseInt(range.value,10)); });
+    tz.addEventListener('change', function(){ TZ=tz.value; syncFrameLabel(); });
+    document.getElementById('frPrev').onclick=function(){ showFrame(Math.max(0,frameIdx-1)); };
+    document.getElementById('frNext').onclick=function(){ showFrame(Math.min(n-1,frameIdx+1)); };
+    syncFrameLabel();
+  }
+  // how far the frame sits from right now, which is the thing you actually want when reading a
+  // time slider -- "in 9 h" is easier to act on than converting a clock time in your head
+  function relLabel(idx){
+    var t0=new Date(FRAME_META.times[idx]+'Z').getTime();
+    var span=(FRAME_META.frame_hours||3)*3600000, now=Date.now();
+    if(now>=t0 && now<t0+span) return 'happening now';
+    var dh=Math.round((t0-now)/3600000);
+    // hours stay useful out to two days; past that the 8-day range needs days to stay readable
+    if(dh>0) return dh<48 ? ('in '+dh+' h') : ('in '+Math.round(dh/24)+' days');
+    return Math.abs(dh)+' h ago';
+  }
+  function syncFrameLabel(){
+    var el=document.getElementById('frLabel'); if(!el||!framesAvailable()) return;
+    el.innerHTML='<b>'+frameLabel(frameIdx)+'</b><small>'+relLabel(frameIdx)
+      +' <i>&middot; frame '+(frameIdx+1)+' of '+FRAME_META.times.length+', '+(FRAME_META.frame_hours||3)+'-hour window</i></small>';
+    var range=document.getElementById('frRange'); if(range) range.value=frameIdx;
+  }
+  // Dragging the slider fires an input event per step, so several frame loads can be in flight at
+  // once and a day-file fetch can resolve after a later one. The sequence token means only the
+  // newest request is allowed to paint, otherwise a quick drag can leave the map on a frame the
+  // slider has already moved past.
+  var frameSeq=0;
+  function showFrame(idx){
+    frameIdx=idx;
+    var seq=++frameSeq;
+    syncFrameLabel();
+    applyFrame(idx).then(function(){
+      if(seq!==frameSeq) return;
+      for(var i=0;i<visibleCount();i++) renderPlane(i);
+    }).catch(function(){});
+  }
+  function setView(mode){
+    if(viewMode===mode) return;
+    if(mode==='hourly' && !(framesAvailable() && isLiveRun)) return;
+    viewMode=mode;
+    [].forEach.call(document.querySelectorAll('.viewBtn'),function(b){ b.classList.toggle('active', b.dataset.view===mode); });
+    buildDayStrip();
+    syncExtNote();
+    if(mode==='hourly'){ showFrame(frameIdx); }
+    else { for(var i=0;i<visibleCount();i++) renderPlane(i); }
+  }
+  // hourly needs frame files, which only the live run has
+  function syncViewToggle(){
+    var btn=document.querySelector('.viewBtn[data-view="hourly"]'); if(!btn) return;
+    var ok=framesAvailable() && isLiveRun;
+    btn.disabled=!ok;
+    btn.title=ok?'':'3-hourly frames are only available for the live run';
+    if(!ok && viewMode==='hourly') setView('daily');
+  }
+  function buildDayStrip(){
+    var wrap=document.getElementById('days'); wrap.innerHTML='';
+    if(viewMode==='hourly' && framesAvailable()) buildHourBar(wrap); else buildDayButtons(wrap);
+  }
+
+  function buildDayButtons(wrapArg){
+    var wrap=wrapArg||document.getElementById('days');wrap.innerHTML='';
     DAYS.forEach(function(lbl,i){
       var b=document.createElement('button');b.className='dbtn'+(i>=4?' ext':'')+(i===selDay?' active':'');
       b.innerHTML='Day '+(i+1)+'<small>'+lbl+'</small>';
@@ -995,6 +1195,9 @@
     });
   }
   function bindControls(){
+    [].forEach.call(document.querySelectorAll('.viewBtn'),function(b){
+      b.addEventListener('click',function(){ setView(b.dataset.view); });
+    });
     [].forEach.call(document.querySelectorAll('.modeBtn'),function(b){
       b.addEventListener('click',function(){ setMode(b.dataset.mode); });
     });
@@ -1016,7 +1219,7 @@
       GRID=[]; results=[]; TROP=[];
       DAYS=o.days||['Day 1','Day 2','Day 3','Day 4','Day 5','Day 6','Day 7','Day 8'];
       o.points.forEach(function(p){GRID.push([p.lat,p.lon]);results.push(p.d);TROP.push(!!p.tropical);});
-      featureCache={}; denCache={}; streamCache={};
+      featureCache={}; denCache={}; streamCache={}; FRAMES={}; frameRecs=[];
       runFullHazards=!!o.full_hazards; runHistorical=!!o.historical; runCoverage=(o.coverage!=null)?o.coverage:1;
       document.getElementById('updatedtxt').textContent='Updated '+(o.run_date?new Date(o.run_date).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'—');
       return o;
@@ -1062,7 +1265,9 @@
         document.getElementById('load').style.display='flex';
         loadRunData(url).then(function(){
           isLiveRun=isLive;
-          buildDayButtons();
+          if(!isLive) viewMode='daily';
+          syncViewToggle();
+          buildDayStrip();
           refreshAll(false);
           syncRunBanner(isLive, sel.selectedOptions[0].textContent);
           document.getElementById('load').style.display='none';
@@ -1072,7 +1277,7 @@
           sel.value='live';
           loadRunData('./outlook.json?_='+Date.now()).then(function(){
             isLiveRun=true;
-            buildDayButtons(); refreshAll(false); syncRunBanner(true,'');
+            syncViewToggle(); buildDayStrip(); refreshAll(false); syncRunBanner(true,'');
             document.getElementById('load').style.display='none';
           });
         });
@@ -1088,8 +1293,11 @@
     bounds();
     return loadRunData('./outlook.json?_='+Date.now());
   }).then(function(){
-    buildDayButtons();
+    return loadFrameIndex();
+  }).then(function(){
+    buildDayStrip();
     bindControls();
+    syncViewToggle();
     initPlanes();
     refreshAll(true);
     loadArchiveIndex();
