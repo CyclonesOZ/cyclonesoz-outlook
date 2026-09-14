@@ -112,6 +112,17 @@ cat(sprintf("Open-Meteo: %s, %d pressure levels, %d variables/request (~%.1f API
 
 nz <- function(x){ if (is.null(x) || is.na(x)) 0 else x }
 
+# Grid spacing, read from the grid itself rather than hard-coded, so the neighbour rule keeps
+# meaning "the 8 surrounding points" if the lattice ever changes again. 1.22 * spacing is the old
+# fixed 1.0 deg expressed against the 0.82 deg grid it was written for.
+GRID_STEP <- local({
+  d <- diff(sort(unique(round(GRID[,1], 2)))); d <- d[d > 0]
+  if (!length(d)) 0.82 else as.numeric(names(sort(table(round(d, 2)), decreasing=TRUE))[1])
+})
+NB_RADIUS <- 1.22 * GRID_STEP
+cat(sprintf("Grid: %d points, %.2f deg spacing (~%.0f km), neighbour radius %.2f deg\n",
+            nrow(GRID), GRID_STEP, GRID_STEP*111, NB_RADIUS))
+
 dewpoint <- function(T, RH){
   RH[is.na(RH)] <- 1; RH[RH < 1] <- 1
   a <- 17.625; b <- 243.04
@@ -983,7 +994,7 @@ apply_neighbour_trigger <- function(raw_results){
   for (a in seq_along(ok)){
     k <- ok[a]; res <- raw_results[[k]]
     if (isTRUE(res$tropical)) next   # tropical coastal zone: no conditional un-gating at all
-    nb <- ok[abs(lat - lat[a]) <= 1.0 & abs(lon - lon[a]) <= 1.0 & ok != k]
+    nb <- ok[abs(lat - lat[a]) <= NB_RADIUS & abs(lon - lon[a]) <= NB_RADIUS & ok != k]
     if (length(nb) == 0) next
     for (j in seq_along(res$d)){
       dd <- res$d[[j]]

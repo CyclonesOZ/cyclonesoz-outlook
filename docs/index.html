@@ -131,7 +131,7 @@
   <div id="topbar">
     <div class="title"><span class="eyebrow">Automated Severe Weather</span>CyclonesOZ<small>8-day severe storm outlook</small></div>
     <div id="modeToggle"><button class="modeBtn active" data-mode="dual">Dual plane</button><button class="modeBtn" data-mode="quad">Quad plane</button></div>
-    <div id="viewToggle"><button class="viewBtn active" data-view="daily">Daily</button><button class="viewBtn" data-view="hourly">3-hourly</button></div>
+    <div id="viewToggle"><button class="viewBtn" data-view="daily">Daily</button><button class="viewBtn active" data-view="hourly">3-hourly</button></div>
     <div id="runPicker"><label for="runSelect">Run</label><select id="runSelect"></select></div>
     <div id="runBanner"></div>
     <div id="about"><b>How this runs:</b> every day the outlook takes 32 sounding snapshots of the atmosphere at a 0.25&deg; scale and analyses instability, winds and other severe-weather parameters to judge whether the environment is conducive to storm activity &mdash; and if so, how severe that activity may be. By comparing the set-up against historical observations and data, it can also identify where specific hazards such as hail and damaging winds may occur within any thunderstorm activity.</div>
@@ -338,7 +338,7 @@
   // 8 frames per day for days 1-4, loaded on demand one day-file at a time. Times in the files are
   // UTC; the three offsets below are Brisbane, Darwin and Perth, none of which observe daylight
   // saving, so AEST/ACST/AWST are fixed year-round and need no timezone database.
-  var viewMode='daily', frameIdx=0, FRAME_META=null, FRAMES={}, frameRecs=[], TZ='AEST';
+  var viewMode='hourly', frameIdx=0, FRAME_META=null, FRAMES={}, frameRecs=[], TZ='AEST';
   var TZS={AEST:10, ACST:9.5, AWST:8};
   function framesAvailable(){ return !!(FRAME_META && FRAME_META.times && FRAME_META.times.length); }
   function frameDay(idx){ return Math.floor(idx/8); }            // 0-based day index of a frame
@@ -422,9 +422,19 @@
   // cells per point) instead of looping over every point for every cell -- ~200x cheaper than the
   // old IDW loop, which is what makes the extra per-tier fields (and the wind field below)
   // affordable. The kernel is truncated at KRAD, where it is already below 0.004.
-  var HOLE_MIN_AREA=0.6;        // deg^2; interior holes smaller than this (~one 0.82 deg cell) are filled, see buildDayFeatures
+  // ---- everything below is expressed RELATIVE TO THE GRID SPACING (14 Sep 2026) ----
+  // These were hand-tuned against the original 0.82 deg lattice, so every one of them silently
+  // encoded that spacing: a kernel width, a closing radius and two area floors all mean "about one
+  // grid cell". Moving to 0.72 deg would have quietly changed what each one does -- a wider
+  // effective smoothing, larger holes surviving, isolated points reappearing. tuneToGrid() below
+  // re-derives them from whatever grid the loaded run actually used, so the map looks the same at
+  // any spacing and a future change needs no retuning. The ratios are exactly the old values
+  // divided by 0.82. TIER_T and MIN_TIER_POINTS are deliberately NOT scaled: a proportion and a
+  // point count are already dimensionless.
+  var GRID_STEP=0.82;
+  var HOLE_MIN_AREA=0.6;        // deg^2; interior holes smaller than ~one grid cell are filled, see buildDayFeatures
   function ringArea(ring){ var a=0; for(var i=0,n=ring.length-1;i<n;i++){ a+=ring[i][0]*ring[i+1][1]-ring[i+1][0]*ring[i][1]; } return a/2; }
-  var KSIG=0.60, KRAD=2.0;      // degrees; hazard tiers (see the retune note below)
+  var KSIG=0.60, KRAD=2.0;      // degrees; hazard tiers (see the retune note below and tuneToGrid)
   // Retuned 7 Sep 2026 after the first live look at the 0.42 deg version. KSIG=0.42 with every
   // tier contoured at 0.5 kept the strict "every point is inside its own tier" property, but the
   // result hugged the lattice: outlines bulged around individual points, a single MDT point
@@ -464,7 +474,7 @@
   // (A first attempt used a broader-kernel proportion field instead; that fails for exactly the
   // small clusters that need joining, because a normalised proportion is DILUTED by a broader
   // kernel -- more zero neighbours enter the average -- so it never bridged anything.)
-  var CLOSE_R=8;
+  var CLOSE_R=8;                // in 0.1 deg mesh cells, i.e. ~one grid spacing
   var WSIG=0.60, WRAD=2.0;      // degrees; 500hPa wind field -- context only, so a broader, smoother kernel
   var denCache={}, streamCache={};
 
@@ -581,6 +591,21 @@
     }catch(e){ return feat; }
   }
   var SLIVER_MIN_AREA=0.02;
+  // modal spacing of the loaded grid, then everything that means "about one cell" rescaled to it
+  function tuneToGrid(){
+    var seen={}, i;
+    for(i=0;i<GRID.length;i++) seen[GRID[i][0].toFixed(2)]=1;
+    var rows=Object.keys(seen).map(Number).sort(function(a,b){return a-b;}), diffs={}, best=0.82, bc=0;
+    for(i=1;i<rows.length;i++){ var d=Math.round((rows[i]-rows[i-1])*100)/100; if(d>0) diffs[d]=(diffs[d]||0)+1; }
+    for(var k in diffs) if(diffs[k]>bc){ bc=diffs[k]; best=parseFloat(k); }
+    GRID_STEP=best;
+    var f=GRID_STEP/0.82;
+    KSIG=0.60*f; KRAD=2.0*f;
+    WSIG=0.60*f; WRAD=2.0*f;
+    CLOSE_R=Math.max(3, Math.round(8*f));
+    HOLE_MIN_AREA=0.6*f*f;
+    SLIVER_MIN_AREA=0.02*f*f;
+  }
   function dropSlivers(feat){
     try{
       var g=feat.geometry;
@@ -1219,6 +1244,7 @@
       GRID=[]; results=[]; TROP=[];
       DAYS=o.days||['Day 1','Day 2','Day 3','Day 4','Day 5','Day 6','Day 7','Day 8'];
       o.points.forEach(function(p){GRID.push([p.lat,p.lon]);results.push(p.d);TROP.push(!!p.tropical);});
+      tuneToGrid();
       featureCache={}; denCache={}; streamCache={}; FRAMES={}; frameRecs=[];
       runFullHazards=!!o.full_hazards; runHistorical=!!o.historical; runCoverage=(o.coverage!=null)?o.coverage:1;
       document.getElementById('updatedtxt').textContent='Updated '+(o.run_date?new Date(o.run_date).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'—');
@@ -1295,9 +1321,13 @@
   }).then(function(){
     return loadFrameIndex();
   }).then(function(){
+    // the default view is 3-hourly, so have frame 0 in hand before the first paint rather than
+    // rendering an empty map and filling it in a moment later
+    syncViewToggle();
+    return (viewMode==='hourly' && framesAvailable()) ? applyFrame(frameIdx).catch(function(){}) : null;
+  }).then(function(){
     buildDayStrip();
     bindControls();
-    syncViewToggle();
     initPlanes();
     refreshAll(true);
     loadArchiveIndex();
