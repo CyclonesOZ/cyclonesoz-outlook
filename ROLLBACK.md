@@ -15,6 +15,11 @@ had never shipped. The daily `docs/outlook.json` schema is unchanged by all of t
 | Default map zoom | `var FIT_ZOOM_OUT=1;` in `docs/index.html` | `0` | Back to the strict cover fit that crops to the panel. |
 | Default pane layout | `var planeMode='dual';` in `docs/index.html` | `'quad'` | Also set `class="mode-dual"` back to `mode-quad` on `#planes` and move the `active` class on the two `.modeBtn` buttons. |
 | Default view | `var viewMode='hourly';` in `docs/index.html` | `'daily'` | Opens on the 8-day daily panels instead of the 3-hourly slider. Also move the `active` class on the two `.viewBtn` buttons. |
+| Lead-scaled rain trigger | `LEAD_TRIG <- c(2,2,2,3,3,6,8,8)` | `c(2,2,2,2,2,2,2,2)` | Back to a flat 2mm gate at every lead. Storm-day frequency bias returns to ~2.3x at days 6-8. |
+| Day-2 severe deflation | `LEAD_SEV_K <- c(1.0,0.875,...)` | all `1.0` | Removes the only lead adjustment not backed by observations. |
+| Severity ceiling by lead | `MAX_CAT_BY_LEAD <- c(4,4,4,3,3,2,2,2)` | `c(4,4,4,4,4,4,4,4)` | Lets Moderate and High be drawn out to day 8 again. |
+| Temperature-scaled TSTM floor | `tstm_floor()` | `return(150)` as the first line | Back to a flat 150 J/kg floor everywhere. |
+| Observational verification | the `if (is.null(HIST_DATE))` block at the end of `build_outlook.R` | delete it | Stops scoring runs against gauge data. Costs nothing and touches no forecast value; there is no reason to turn it off except to silence its log. |
 | Grid resolution | `data/grid.json` | `git checkout pre-grid-072 -- data/grid.json` | Back to 1032 points at 0.82 deg. Nothing else needs touching: the viewer measures the spacing of whatever grid it loads and rescales its own smoothing constants. Cost falls from ~83% to ~63% of the monthly API budget. |
 
 After switching frames off, the stale files under `docs/archive/frames/` can be deleted; nothing
@@ -58,7 +63,9 @@ These are the numbers most likely to need tuning rather than reverting. All live
 | Marginal floor | `cape >= 1000 & shr_kt >= 25` | Plus an SCP route at 2.5, plus large hail or damaging winds |
 | Moderate via SHIP | 2.0 / 1.5 / 1.2 | By shear band: under 35 kt, 35-50 kt, over 50 kt |
 | High | CAPE 4000, SHIP 2.5, SCP 9, rain 10 mm | All four required |
-| Day rain gate | `trig = 2` mm | Trace bar is 0.1x it, tropical floor 1.5x it |
+| Day rain gate | `LEAD_TRIG`, 2-8 mm by lead | Trace bar is 0.1x it, tropical floor 1.5x it, frame gate 0.25x it. Calibrated against gauge observations, 18 Sep 2026 |
+| TSTM floor | 200 J/kg at -20C aloft, 500 at -8C | `tstm_floor()`, linear between; 350 when the 500hPa level is missing |
+| Severity ceiling | High to day 3, Moderate to day 5, Marginal to day 8 | `MAX_CAT_BY_LEAD` |
 | Frame rain gate | `FRAME_TRIG <- 0.5` mm per 3 h | Frames only |
 | Tropical coastal zone | Carnarvon to Rockhampton line, 200 km inland | Needs 3 mm for Marginal and above |
 | ECMWF candidate cap | `MAX_ECMWF_CANDIDATES <- 3000` | Second-opinion checks per run |
@@ -76,3 +83,50 @@ cp docs/archive/YYYY-MM-DD.json docs/outlook.json
 git commit -am "Republish YYYY-MM-DD outlook"
 git push
 ```
+
+
+## 5. Verification (added 18 Sep 2026)
+
+`pipeline/verify.py` scores the run archive against NOAA's CPC rain-gauge analysis. It is the
+only part of this project that measures the forecast against something other than itself.
+
+```bash
+python3 pipeline/verify.py              # score every date that is now observable
+python3 pipeline/verify.py --backfill   # refetch everything and re-score from scratch
+```
+
+It runs automatically at the end of every live build, writes `docs/archive/skill.json`, and
+caches each day's observations under `docs/archive/obs/`. Pure standard library, no API key,
+no Open-Meteo credits. It cannot fail the build.
+
+**What it can check:** storm-day occurrence, which is exactly what the TSTM category and the
+rain trigger assert. **What it cannot check:** hail, wind or tornado. A rain gauge cannot tell
+Marginal from Moderate, so no number it produces is a severe-weather skill score.
+
+The observation cache grows by about 68 KB a day and is never pruned, deliberately: the run
+archive rolls over at 14 days, but the observations are the long-term record and are what any
+future recalibration will be measured against. Prune only if the repo becomes unwieldy.
+
+### First scores (12 days, September 2026)
+
+| Day | POD | FAR | CSI | Frequency bias |
+|---|---|---|---|---|
+| 1 | 0.47 | 0.60 | 0.28 | 1.17 |
+| 2 | 0.42 | 0.63 | 0.24 | 1.15 |
+| 3 | 0.35 | 0.68 | 0.20 | 1.07 |
+| 4 | 0.37 | 0.69 | 0.20 | 1.19 |
+| 5 | 0.29 | 0.75 | 0.16 | 1.15 |
+| 6 | 0.21 | 0.89 | 0.08 | 1.94 |
+| 7 | 0.25 | 0.89 | 0.08 | 2.35 |
+| 8 | 0.28 | 0.86 | 0.10 | 1.98 |
+
+Measured before the lead-scaled trigger shipped, so days 6-8 are what that change targets.
+Twelve days in a dry September is a thin sample and the long-lead rows rest on ~110 observed
+events each. Re-check once a wet season has run through.
+
+**The finding that mattered.** Comparing the forecast against our own day-1 output said the
+long-lead storm area was too SMALL, and the indicated fix was to lower the rain trigger at
+range. The gauge data says the opposite: day 1 was itself over-forecasting by 1.17, so
+"smaller than day 1" still meant considerably bigger than reality. The trigger ladder rises
+with lead for that reason. Any future calibration should go through `verify.py` rather than
+through a forecast-to-forecast comparison.

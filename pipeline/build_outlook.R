@@ -57,6 +57,55 @@ LEVELS <- if (nzchar(OM_KEY)) LEVELS_FULL else LEVELS_BASE
 FDAYS  <- 8                                     # forecast days
 TOPN   <- 6                                     # average the N highest-severity hours
 
+# --- LEAD-TIME CALIBRATION, 18 Sep 2026 -------------------------------------------------
+# The first calibration in this project made against real observations rather than against our
+# own output. pipeline/verify.py scores every archived run over NOAA's CPC gauge analysis; on
+# the first 12 September 2026 days the storm-day frequency bias under a flat 2mm trigger was
+#     day 1-5: 1.11 1.09 1.04 1.13 1.20     day 6-8: 2.28 2.71 2.47
+# i.e. at range we painted two to three times as many storm days as actually happened. Raising
+# the trigger with lead returns every lead to ~1.0, and at days 7-8 it also RAISES skill
+# (CSI 0.076 -> 0.087 and 0.095 -> 0.135) because the removed area was almost entirely false.
+#
+# Note this is the OPPOSITE of what a forecast-vs-forecast comparison suggested. Measured
+# against our own day-1 output the long-lead storm area looked too SMALL, so the indicated fix
+# was to lower the trigger at range. Day 1 was itself over-forecasting by 1.11, so "smaller
+# than day 1" still meant bigger than reality. Only the gauge data separated the two.
+LEAD_TRIG <- c(2, 2, 2, 2.5, 2.5, 6, 8, 8)      # rain trigger (mm) by lead, day 1 first
+# 2.5 rather than 3.0 at days 4-5: both score identically on the 12-day sample (bias 0.90 vs
+# 0.88), so the gentler rung is preferred -- it removes less real area if the next regime is
+# wetter than the September one this was fitted on.
+
+# Severe (MRGL+) composites are deflated slightly at day 2, where MRGL+ point-days ran ~25%
+# above the day-1 analysis of the same dates. UNVERIFIED against observations: a rain gauge
+# cannot tell MRGL from MDT, so this rests on forecast-vs-forecast evidence and is deliberately
+# a single number to back out. Set to 1.0 to disable.
+LEAD_SEV_K <- c(1.0, 0.875, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+# Severity ceiling by lead. At days 6-8 the storm-day CSI is ~0.08 -- barely distinguishable
+# from chance -- so a confident MDT/HIGH call there asserts far more than the model supports.
+MAX_CAT_BY_LEAD <- c(4, 4, 4, 3, 3, 2, 2, 2)    # day 1-3 may reach HIGH, 4-5 MDT, 6-8 MRGL
+
+lead_of <- function(lead) max(1L, min(8L, as.integer(lead) + 1L))   # 0-based lead -> 1-based index
+
+# TSTM floor scales with mid-level temperature instead of being a flat 150 J/kg (Josh,
+# 18 Sep 2026: "cold season storms can develop with CAPE values over 200, warm season storms
+# with CAPE values over 500"). The calendar is the wrong switch for this -- what actually makes
+# a modest CAPE productive is cold, steep mid-levels, which is why a cold-season 200 J/kg day
+# works and a tropical 300 J/kg day under a warm 500hPa does not. A month-based rule would also
+# be wrong year-round in the tropics and ambiguous at the shoulder.
+#
+# Caught on the 17 Sep run: 24 points along the QLD coast were drawn TSTM for 24 Sep, including
+# one near Cairns with a 500hPa temperature of -5.1 C and an 850-500 lapse rate of 4.8 C/km --
+# a warm, stable mid-troposphere in which no amount of low-level CAPE produces a storm. Under
+# this floor that point needs 500 J/kg and has 190, so it drops, while Rockhampton (-14.7 C,
+# 7.4 C/km, 480 J/kg) needs 332 and is kept.
+tstm_floor <- function(t500){
+  if (is.na(t500)) return(350)                  # midpoint when the level is missing
+  if (t500 <= -20) return(200)
+  if (t500 >= -8)  return(500)
+  200 + 300 * (t500 + 20) / 12                  # linear between the two anchors
+}
+
 # Day 1's anchor date. The job runs at 18Z (02:00 AWST/04:00 AEST) specifically so it's
 # ready right after Australian local midnight -- but 18Z is still the SAME UTC calendar
 # day, so anchoring "Day 1" to raw UTC "today" (via forecast_days) labelled every run with
@@ -436,10 +485,14 @@ tropical_coastal <- function(lat, lon){
 # together and the daily numbers stay exactly what they were (0.1*2 = 0.2mm, 1.5*2 = 3mm).
 # allow_conditional=FALSE switches off the trace/neighbour downgrade path for frames.
 categorise_vals <- function(cape, shr, scp, stp, ship, cin, rain_mm, strict=FALSE,
-                            trig=2, allow_conditional=TRUE){
+                            trig=2, allow_conditional=TRUE, t500=NA, sev_k=1){
   shr_kt <- shr * 1.94384
   c <- 0
-  if (cape >= 150) c <- 1                                                                   # TSTM
+  if (cape >= tstm_floor(t500)) c <- 1                                                      # TSTM
+  # sev_k deflates only the SEVERE composites, never the TSTM floor above -- the storm-day
+  # frequency bias is already near 1 at every lead we deflate, so the general storm area must
+  # not move. Defaults to 1 (no change) for every caller that does not pass a lead.
+  scpS <- scp * sev_k; stpS <- stp * sev_k; shipS <- ship * sev_k; capeS <- cape * sev_k
   # MRGL floor RAISED 13 Sep 2026 (Josh: "1000 J/kg and 25kts shear"), from CAPE 450 / 18kt.
   # 450 J/kg with 18kt is an ordinary shower environment, and it was admitting essentially every
   # storm day as a severe risk: on the 12 Sep run all 132 MRGL point-days qualified through that
@@ -450,7 +503,7 @@ categorise_vals <- function(cape, shr, scp, stp, ship, cin, rain_mm, strict=FALS
   # aloft). SCP survives at 2.5, which is a genuine supercell environment and is what keeps
   # high-shear / moderate-CAPE days (e.g. CAPE 600 with 50kt and SCP 3.3) from being under-called.
   # Large hail and damaging winds are the other way in -- see the upgrade in day_topN().
-  if ((cape >= 1000 & shr_kt >= 25) | scp >= 2.5) c <- max(c, 2)  # MRGL
+  if ((capeS >= 1000 & shr_kt >= 25) | scpS >= 2.5) c <- max(c, 2)  # MRGL
   # MDT via the SCP route now also needs some STP or SHIP backing (the same 0.9 "sig" bar the
   # hatching uses) -- 7 Sep 2026, after a lone point at 24.0S 128.5E hit MDT on SCP 3.7 (vs the
   # 3.6 bar) with STP -0.6 and SHIP 0.7 on a day that was plainly not a 3-of-4 day. SCP alone is a
@@ -461,13 +514,13 @@ categorise_vals <- function(cape, shr, scp, stp, ship, cin, rain_mm, strict=FALS
   # the same hail composite means more in a 55kt environment than a 25kt one. Replaces both the
   # flat 1.8 bar and the interim "SHIP >= 0.9 is SIG" floor from earlier the same day.
   ship_mdt <- if (shr_kt < 35) 2.0 else if (shr_kt <= 50) 1.5 else 1.2
-  if ((scp >= 3.6 & cape >= 900 & (stp >= 0.9 | ship >= 0.9)) | stp >= 1.8 | ship >= ship_mdt) c <- max(c, 3)   # MDT
+  if ((scpS >= 3.6 & capeS >= 900 & (stpS >= 0.9 | shipS >= 0.9)) | stpS >= 1.8 | shipS >= ship_mdt) c <- max(c, 3)   # MDT
   # HIGH (Josh, 9 Sep 2026): exceptionally potent only -- CAPE >= 4000, SHIP >= 2.5, SCP >= 9
   # ("huge") and 10mm+ rain, ALL required. The old (SCP>=9 & CAPE>=900) | STP>=4.5 routes are
   # gone: HIGH is meant to be the rare outbreak signal, not something one composite can reach on
   # its own. A tornado-composite day without that hail/instability backing still lands at MDT
   # via the SIG floor.
-  if (cape >= 4000 & ship >= 2.5 & scp >= 9 & nz(rain_mm) >= 10) c <- max(c, 4)   # HIGH
+  if (capeS >= 4000 & shipS >= 2.5 & scpS >= 9 & nz(rain_mm) >= 10) c <- max(c, 4)   # HIGH
 
   capped  <- nz(cin) <= -75      # stout cap even on the best hour of the day
   no_trig <- nz(rain_mm) < trig   # the model's own precip forecast shows essentially no rain
@@ -491,7 +544,7 @@ categorise_vals <- function(cape, shr, scp, stp, ship, cin, rain_mm, strict=FALS
   # time, consistent with the 7 Sep MDT calibration (SCP is an environment composite, not a
   # hazard one; SCP-only support caps at MRGL). Heavy-rain tier 3 remains SIG.
   # SHIP's SIG bar is the same shear-dependent MDT bar above, so "SIG is at least MDT" stays true.
-  sig <- stp >= 0.9 | ship >= ship_mdt | rc >= 3
+  sig <- stpS >= 0.9 | shipS >= ship_mdt | rc >= 3
 
   pregate <- c
   if (capped & pregate >= 3) pregate <- pregate - 1
@@ -625,7 +678,13 @@ day_groups <- function(times){
 # WHOLE day (not just the top-N severity hours) since those hours are picked by an instability
 # score, not a precip score -- the day's actual rain chance/total can peak at an hour that
 # score didn't select.
-day_topN <- function(h, idxs, elev, lat, strict=FALSE, want_frames=FALSE){
+day_topN <- function(h, idxs, elev, lat, strict=FALSE, want_frames=FALSE, lead=0){
+  # lead is 0-based (0 = today). Everything lead-dependent is resolved once, here, so the
+  # rest of the function reads the same as it did before.
+  li      <- lead_of(lead)
+  trig_d  <- LEAD_TRIG[li]
+  sev_k   <- LEAD_SEV_K[li]
+  cat_cap <- MAX_CAT_BY_LEAD[li]
   rows <- list()
   for (i in idxs){
     prof <- tryCatch(build_profile(h, i, elev), error=function(e) NULL)
@@ -704,12 +763,16 @@ day_topN <- function(h, idxs, elev, lat, strict=FALSE, want_frames=FALSE){
       frzf <- suppressWarnings(min(sapply(rr, function(r) r$frz),  na.rm=TRUE)); if (!is.finite(frzf)) frzf <- NA
       t5f  <- suppressWarnings(min(sapply(rr, function(r) r$t500), na.rm=TRUE)); if (!is.finite(t5f))  t5f  <- NA
       pk   <- rr[[which.max(sapply(rr, function(r) r$ship))]]
+      # the frame trigger tracks the day's trigger by the same ratio it always had (FRAME_TRIG
+      # was 0.5 against a 2mm day), so frames stay consistent with the daily panel at every lead.
       cvf  <- categorise_vals(mf("cape"), mf("shr"), mf("scp"), mf("stp"), mf("ship"), mf("cin"),
-                              rain_f, strict, trig=FRAME_TRIG, allow_conditional=FALSE)
+                              rain_f, strict, trig=FRAME_TRIG * trig_d / 2, allow_conditional=FALSE,
+                              t500=t5f, sev_k=sev_k)
       hf <- if (cvf$cat >= 1) hail_tier(pk$ship, pk$cape, frzf, t5f) else 0L
       wf <- wind_tier(mf("dcape"), mfna("dd700"), mf("lr03"), mf("dcp"), mf("cape"), mf("shr"), cvf$cat)
       if (cvf$cat == 1 && (hf >= 2 || wf >= 1)) cvf$cat <- 2L    # same hazard upgrade as the daily product
       if (cvf$cat < 2) { wf <- 0L; hf <- min(hf, 1L) }
+      cvf$cat <- min(cvf$cat, cat_cap)
       list(t=substr(h[["time"]][ii[1]], 1, 16),
            v=unname(c(cvf$cat, tprob_floor(thunder_prob(mf("tprob"), mf("cape"), rain_f), cvf$cat),
                       hf, wf, flood_f, round(mf("cape")), round(mf("shr")*1.94384),
@@ -718,7 +781,7 @@ day_topN <- function(h, idxs, elev, lat, strict=FALSE, want_frames=FALSE){
   }
 
   if (length(rows) == 0){
-    rc <- rain_cat(rain_day)
+    rc <- min(rain_cat(rain_day), cat_cap)
     # no successful soundings this day -- no instability-based hour selection to lean on, so fall
     # back to the day's mean precip-probability (still whole-day, but mean rather than max keeps a
     # single spurious overnight-drizzle hour from dominating the fallback the way max did before).
@@ -753,7 +816,8 @@ day_topN <- function(h, idxs, elev, lat, strict=FALSE, want_frames=FALSE){
   # not capturing these often highly localized supercell environments, a harder problem than a
   # threshold or averaging tweak.
   peak_ship_hr <- top[[which.max(sapply(top, function(r) r$ship))]]
-  cv <- categorise_vals(m("cape"), m("shr"), m("scp"), m("stp"), m("ship"), m("cin"), rain_day, strict)
+  cv <- categorise_vals(m("cape"), m("shr"), m("scp"), m("stp"), m("ship"), m("cin"), rain_day, strict,
+                        trig=trig_d, t500=t500_day, sev_k=sev_k)
   # thunderstorm chance: Open-Meteo's own ensemble-based precipitation_probability (%), averaged
   # over the SAME top-N instability-ranked hours as cape/shear/ship, not the whole day -- a whole-day
   # max picks up unrelated overnight drizzle (Open-Meteo's ensemble can be very confident about light,
@@ -776,6 +840,10 @@ day_topN <- function(h, idxs, elev, lat, strict=FALSE, want_frames=FALSE){
   # are not confident storms form, and on the first run of this change 8 such points were painting
   # a Damaging tier on the wind pane under a TSTM category -- the same cross-pane contradiction
   # the thunder-chance floor fixed in September.
+  # Severity ceiling for this lead, applied AFTER the hazard upgrade so a day held down by the
+  # ceiling cannot still publish a hazard tier its category denies (the same cross-pane
+  # contradiction the conditional-day guard above fixes).
+  if (cv$cat > cat_cap){ cv$cat <- cat_cap; cv$lead_capped <- TRUE }
   if (cv$cat < 2) { wind_d <- 0L; hail_d <- min(hail_d, 1L) }
   c(cv, list(tprob=tprob_floor(thunder_prob(m("tprob"), m("cape"), rain_day), cv$cat),
              # hail gated on the category (7 Sep 2026), the same way wind_tier() already is: no
@@ -818,7 +886,7 @@ process_point <- function(k){
     gp <- day_groups(h$time)
     trop <- tropical_coastal(lat, lon)
     dres <- lapply(seq_along(gp$idx), function(j)
-                     day_topN(h, gp$idx[[j]], elev, lat, trop, want_frames = (ENABLE_FRAMES && j <= FRAME_DAYS)))
+                     day_topN(h, gp$idx[[j]], elev, lat, trop, want_frames = (ENABLE_FRAMES && j <= FRAME_DAYS), lead = j - 1L))
     if (!nzchar(OM_KEY)) Sys.sleep(0.15)   # courtesy pacing for the free endpoint; needless on a paid key
     list(lat=lat, lon=lon, d=dres, days=gp$days, tropical=trop)
   }, error=function(e) NULL)
@@ -904,7 +972,7 @@ apply_ecmwf_second_opinion <- function(raw_results){
     cat(sprintf("ECMWF second-opinion: %d candidates exceeds the %d cap, truncating.\n", length(cand), MAX_ECMWF_CANDIDATES))
     cand <- cand[seq_len(MAX_ECMWF_CANDIDATES)]
   }
-  cat(sprintf("ECMWF second-opinion: %d candidates flagged (pregate>=1, GFS rain<2mm)\n", length(cand)))
+  cat(sprintf("ECMWF second-opinion: %d candidates flagged (pregate>=1, GFS rain below the lead trigger)\n", length(cand)))
 
   by_date <- split(cand, sapply(cand, function(c) c$date))
   n_checked <- 0; n_ungated <- 0
@@ -921,19 +989,24 @@ apply_ecmwf_second_opinion <- function(raw_results){
         dd <- raw_results[[c_$k]]$d[[c_$j]]
         dd$rain_ecmwf <- round(ecmwf_rain[i], 1)
         strict <- isTRUE(raw_results[[c_$k]]$tropical)
-        if (ecmwf_rain[i] >= (if (strict) 3 else 2)){
+        # This pass un-gates days the rain trigger zeroed, so its own bars must ride the same
+        # lead ladder -- left at a flat 2mm it would hand straight back the long-lead area the
+        # ladder was added to remove. The tropical (1.5x) and trace (0.1x) ratios are unchanged.
+        tg   <- LEAD_TRIG[lead_of(c_$j - 1L)]
+        ecap <- MAX_CAT_BY_LEAD[lead_of(c_$j - 1L)]
+        if (ecmwf_rain[i] >= (if (strict) 1.5 * tg else tg)){
           dd$cat <- dd$pregate
           dd$conditional <- FALSE
           dd$tprob <- tprob_floor(dd$tprob, dd$cat)   # keep the thunder pane consistent with the restored category
           dd$ecmwf_ungated <- TRUE
           n_ungated <- n_ungated + 1
-        } else if (strict & ecmwf_rain[i] >= 2 & nz(dd$cat) == 0){
+        } else if (strict & ecmwf_rain[i] >= tg & nz(dd$cat) == 0){
           # tropical coastal zone with 2-3mm in ECMWF: general storm chance only, no severe tier
           dd$cat <- 1L
           dd$tprob <- tprob_floor(dd$tprob, dd$cat)
           dd$ecmwf_ungated <- TRUE
           n_ungated <- n_ungated + 1
-        } else if (!strict & ecmwf_rain[i] >= 0.2 & nz(dd$pregate) >= 2 & nz(dd$cat) == 0){
+        } else if (!strict & ecmwf_rain[i] >= 0.1 * tg & nz(dd$pregate) >= 2 & nz(dd$cat) == 0){
           # ECMWF trace only: conditional, one category below the environment -- see categorise_vals()
           dd$cat <- max(1L, min(2L, as.integer(nz(dd$pregate)) - 1L))
           dd$conditional <- TRUE
@@ -941,6 +1014,7 @@ apply_ecmwf_second_opinion <- function(raw_results){
           dd$ecmwf_ungated <- TRUE
           n_ungated <- n_ungated + 1
         }
+        dd$cat <- min(nz(dd$cat), ecap)      # the lead ceiling outranks any un-gating
         raw_results[[c_$k]]$d[[c_$j]] <- dd
       }
     }
@@ -1016,7 +1090,8 @@ apply_neighbour_trigger <- function(raw_results){
         x <- nd[[j]]; !is.null(x) && (nz(x$rain) >= 0.2 || nz(x$rain_ecmwf) >= 0.2)
       }))
       if (wet){
-        dd$cat <- 2L; dd$conditional <- TRUE; dd$neighbour_trigger <- TRUE
+        dd$cat <- min(2L, MAX_CAT_BY_LEAD[lead_of(j - 1L)])   # ceiling outranks the lift
+        dd$conditional <- TRUE; dd$neighbour_trigger <- TRUE
         dd$tprob <- tprob_floor(dd$tprob, dd$cat)
         raw_results[[k]]$d[[j]] <- dd
         n_lifted <- n_lifted + 1
@@ -1159,3 +1234,21 @@ if (length(stale) > 0) file.remove(file.path(ARCHIVE_DIR, stale))
 write_json(sort(keep), file.path(ARCHIVE_DIR, "index.json"))  # NOT auto_unbox: must stay an
 # array even when only one date exists yet, since the viewer always expects to parse a list
 cat(sprintf("Archived run for %s (%d dates kept, %d pruned)\n", START_DATE, length(keep), length(stale)))
+
+# --- observational verification ---------------------------------------------------------
+# Scores the run archive against NOAA's CPC rain-gauge analysis (see pipeline/verify.py for why
+# that source and what it can and cannot check). Invoked from here rather than as its own
+# workflow step purely so it needs no change to .github/workflows -- the commit step already
+# picks up everything under docs/archive, which is where both the observation cache and
+# skill.json land.
+#
+# Wrapped so it can never fail the build: verification is a diagnostic, and a bad day at NOAA's
+# OPeNDAP server must not cost us an outlook. Skipped on historical reconstructions, which would
+# otherwise re-score the whole archive against a date they have nothing to say about.
+if (is.null(HIST_DATE)) {
+  vres <- tryCatch(system2("python3", c("pipeline/verify.py"), stdout=TRUE, stderr=TRUE),
+                   error=function(e) paste("verification could not start:", conditionMessage(e)))
+  cat(paste(vres, collapse="\n"), "\n")
+  st <- attr(vres, "status")
+  if (!is.null(st) && st != 0) cat(sprintf("Verification exited %s -- outlook is unaffected.\n", st))
+}
