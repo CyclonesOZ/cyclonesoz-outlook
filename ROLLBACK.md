@@ -135,3 +135,36 @@ range. The gauge data says the opposite: day 1 was itself over-forecasting by 1.
 "smaller than day 1" still meant considerably bigger than reality. The trigger ladder rises
 with lead for that reason. Any future calibration should go through `verify.py` rather than
 through a forecast-to-forecast comparison.
+
+## 6. Checking a change without spending a run
+
+A parse error costs a whole nightly outlook (it killed run 34800693670 after 1 minute) and a
+manual re-run costs ~28,000 API calls, about 2.8% of the monthly quota. Both are avoidable: R
+can be installed locally with no admin rights and no Xcode, and the two checks below catch
+syntax errors and undefined variables without touching Open-Meteo.
+
+```bash
+curl -sL https://micro.mamba.pm/api/micromamba/osx-arm64/latest | tar -xj bin/micromamba
+export MAMBA_ROOT_PREFIX=$PWD/mamba
+./bin/micromamba create -y -p $PWD/renv -c conda-forge r-base r-codetools
+```
+
+**Does it parse:**
+
+```bash
+./renv/bin/Rscript -e 'parse("pipeline/build_outlook.R"); cat("OK\n")'
+```
+
+**Are all variables bound** -- load every function definition into an environment and run
+`codetools::checkUsage` over it. Expect findings only for globals built by `if/else` or
+`Sys.getenv` (`OM_HOST`, `OM_AUTH`, `LEVELS`, `START_DATE`, `END_DATE`, `OM_KEY`,
+`ENABLE_FRAMES`, `GRID`, `NB_RADIUS`, `coast_xy`); anything else is a real bug.
+
+The individual scoring functions can also be exercised directly this way -- `tstm_floor()`,
+`lead_of()` and `categorise_vals()` are pure and need no sounding data, so a change to any of
+them can be tested against known cases in seconds. `thunder` itself will NOT install without a
+C toolchain, so `day_topN()` and anything downstream of a real sounding still needs CI.
+
+Better still, add the parse check as a workflow step ahead of the build, so it fails in seconds
+rather than after R setup. That needs the `workflow` OAuth scope, so it has to be done from the
+GitHub web editor.
