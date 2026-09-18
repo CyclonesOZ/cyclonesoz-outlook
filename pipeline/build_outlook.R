@@ -70,10 +70,18 @@ TOPN   <- 6                                     # average the N highest-severity
 # against our own day-1 output the long-lead storm area looked too SMALL, so the indicated fix
 # was to lower the trigger at range. Day 1 was itself over-forecasting by 1.11, so "smaller
 # than day 1" still meant bigger than reality. Only the gauge data separated the two.
-LEAD_TRIG <- c(2, 2, 2, 2.5, 2.5, 6, 8, 8)      # rain trigger (mm) by lead, day 1 first
-# 2.5 rather than 3.0 at days 4-5: both score identically on the 12-day sample (bias 0.90 vs
-# 0.88), so the gentler rung is preferred -- it removes less real area if the next regime is
-# wetter than the September one this was fitted on.
+LEAD_TRIG <- c(2, 2, 2, 2, 2.5, 5, 8, 8)        # rain trigger (mm) by lead, day 1 first
+# Rungs picked on CSI as well as bias, not bias alone. Scored over the 12 gauge-verified days
+# this ladder is the only candidate that beats the old flat 2mm on BOTH: mean CSI 0.179 vs
+# 0.177, and mean |bias-1| 0.114 vs 0.628.
+#   day 4 left at 2mm  -- lifting it traded 7% of the day's skill for a bias move of 1.13->0.90,
+#                         which is no closer to 1. Not worth it.
+#   day 6 at 5 not 6   -- 6mm scored bias 1.07 but halved CSI (0.078->0.043) and made FAR
+#                         slightly WORSE, i.e. it was cutting blind. 5mm keeps bias at 1.22,
+#                         in line with day 7, and recovers most of the skill.
+# Day 6 is weak whatever we do: CSI there falls monotonically as the trigger rises, so no rung
+# buys both honesty and skill. At 0.05 it is barely distinguishable from chance -- a limit of
+# the model at that range, not of this calibration.
 
 # Severe (MRGL+) composites are deflated slightly at day 2, where MRGL+ point-days ran ~25%
 # above the day-1 analysis of the same dates. UNVERIFIED against observations: a rain gauge

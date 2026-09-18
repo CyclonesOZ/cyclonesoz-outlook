@@ -15,7 +15,7 @@ had never shipped. The daily `docs/outlook.json` schema is unchanged by all of t
 | Default map zoom | `var FIT_ZOOM_OUT=1;` in `docs/index.html` | `0` | Back to the strict cover fit that crops to the panel. |
 | Default pane layout | `var planeMode='dual';` in `docs/index.html` | `'quad'` | Also set `class="mode-dual"` back to `mode-quad` on `#planes` and move the `active` class on the two `.modeBtn` buttons. |
 | Default view | `var viewMode='hourly';` in `docs/index.html` | `'daily'` | Opens on the 8-day daily panels instead of the 3-hourly slider. Also move the `active` class on the two `.viewBtn` buttons. |
-| Lead-scaled rain trigger | `LEAD_TRIG <- c(2,2,2,3,3,6,8,8)` | `c(2,2,2,2,2,2,2,2)` | Back to a flat 2mm gate at every lead. Storm-day frequency bias returns to ~2.3x at days 6-8. |
+| Lead-scaled rain trigger | `LEAD_TRIG <- c(2,2,2,2,2.5,5,8,8)` | `c(2,2,2,2,2,2,2,2)` | Back to a flat 2mm gate at every lead. Storm-day frequency bias returns to ~2.3x at days 6-8. |
 | Day-2 severe deflation | `LEAD_SEV_K <- c(1.0,0.875,...)` | all `1.0` | Removes the only lead adjustment not backed by observations. |
 | Severity ceiling by lead | `MAX_CAT_BY_LEAD <- c(4,4,4,3,3,2,2,2)` | `c(4,4,4,4,4,4,4,4)` | Lets Moderate and High be drawn out to day 8 again. |
 | Temperature-scaled TSTM floor | `tstm_floor()` | `return(150)` as the first line | Back to a flat 150 J/kg floor everywhere. |
@@ -63,7 +63,7 @@ These are the numbers most likely to need tuning rather than reverting. All live
 | Marginal floor | `cape >= 1000 & shr_kt >= 25` | Plus an SCP route at 2.5, plus large hail or damaging winds |
 | Moderate via SHIP | 2.0 / 1.5 / 1.2 | By shear band: under 35 kt, 35-50 kt, over 50 kt |
 | High | CAPE 4000, SHIP 2.5, SCP 9, rain 10 mm | All four required |
-| Day rain gate | `LEAD_TRIG`, 2-8 mm by lead | Trace bar is 0.1x it, tropical floor 1.5x it, frame gate 0.25x it. Calibrated against gauge observations, 18 Sep 2026 |
+| Day rain gate | `LEAD_TRIG <- c(2,2,2,2,2.5,5,8,8)` mm | Trace bar is 0.1x it, tropical floor 1.5x it, frame gate 0.25x it. Calibrated against gauge observations, 18 Sep 2026 |
 | TSTM floor | 200 J/kg at -20C aloft, 500 at -8C | `tstm_floor()`, linear between; 350 when the 500hPa level is missing |
 | Severity ceiling | High to day 3, Moderate to day 5, Marginal to day 8 | `MAX_CAT_BY_LEAD` |
 | Frame rain gate | `FRAME_TRIG <- 0.5` mm per 3 h | Frames only |
@@ -121,6 +121,11 @@ future recalibration will be measured against. Prune only if the repo becomes un
 | 8 | 0.28 | 0.86 | 0.10 | 1.98 |
 
 Measured before the lead-scaled trigger shipped, so days 6-8 are what that change targets.
+Re-scored after it, over the same 12 days: mean CSI 0.177 -> 0.179 and mean |bias-1| 0.628 ->
+0.114. Days 1-3 are untouched by construction, days 7-8 improve on POD, FAR and CSI together,
+and day 6 is the one rung where no trigger buys both honesty and skill -- its CSI falls
+monotonically as the trigger rises, so 5mm is a deliberate compromise at bias 1.22. Day 6 skill
+is ~0.05 either way, which is a limit of the model at that range rather than of the calibration.
 Twelve days in a dry September is a thin sample and the long-lead rows rest on ~110 observed
 events each. Re-check once a wet season has run through.
 
