@@ -1,5 +1,5 @@
 {
- "generated": "2026-09-21T21:54:35Z",
+ "generated": "2026-09-22T21:13:17Z",
  "source": "NOAA CPC Global Unified Gauge-Based Analysis of Daily Precipitation (0.5 deg)",
  "verifies": "storm-day occurrence only (rainfall). NOT severe intensity -- a gauge cannot distinguish MRGL from MDT.",
  "thresholds_mm": {
@@ -7,7 +7,6 @@
   "convective": 10.0
  },
  "dates_verified": [
-  "2026-09-08",
   "2026-09-09",
   "2026-09-10",
   "2026-09-11",
@@ -17,62 +16,63 @@
   "2026-09-15",
   "2026-09-16",
   "2026-09-17",
-  "2026-09-18"
+  "2026-09-18",
+  "2026-09-19"
  ],
  "by_lead": [
   {
    "lead": 0,
    "runs": 11,
-   "points": 12589,
+   "points": 13005,
    "no_gauge": 0,
    "wet": {
-    "hit": 167,
-    "miss": 254,
-    "fa": 477,
-    "cn": 11691,
-    "pod": 0.397,
-    "far": 0.741,
-    "csi": 0.186,
-    "bias": 1.53
+    "hit": 94,
+    "miss": 182,
+    "fa": 469,
+    "cn": 12260,
+    "pod": 0.341,
+    "far": 0.833,
+    "csi": 0.126,
+    "bias": 2.04
    },
    "conv": {
     "hit": 3,
-    "miss": 2,
-    "fa": 641,
-    "cn": 11943,
-    "pod": 0.6,
+    "miss": 1,
+    "fa": 560,
+    "cn": 12441,
+    "pod": 0.75,
     "far": 0.995,
     "csi": 0.005,
-    "bias": 128.8
+    "bias": 140.75
    },
-   "sev_fc": 162,
+   "sev_fc": 129,
    "sev_obs_conv": 0,
    "sev_conv_rate": 0.0
   },
   {
    "lead": 1,
    "runs": 10,
-   "points": 11247,
+   "points": 11663,
    "no_gauge": 0,
    "wet": {
-    "hit": 73,
-    "miss": 169,
-    "fa": 454,
-    "cn": 10551,
-    "pod": 0.302,
-    "far": 0.861,
-    "csi": 0.105,
-    "bias": 2.178
+    "hit": 69,
+    "miss": 163,
+    "fa": 432,
+    "cn": 10999,
+    "pod": 0.297,
+    "far": 0.862,
+    "csi": 0.104,
+    "bias": 2.159
    },
    "conv": {
     "hit": 1,
     "miss": 3,
-    "fa": 526,
-    "cn": 10717,
+    "fa": 500,
+    "cn": 11159,
     "pod": 0.25,
     "far": 0.998,
     "csi": 0.002,
-    "bias": 131.75
+    "bias": 125.25
    },
    "sev_fc": 171,
    "sev_obs_conv": 0,
@@ -81,174 +81,174 @@
   {
    "lead": 2,
    "runs": 9,
-   "points": 9905,
+   "points": 10321,
    "no_gauge": 0,
    "wet": {
     "hit": 60,
-    "miss": 141,
-    "fa": 337,
-    "cn": 9367,
-    "pod": 0.299,
-    "far": 0.849,
-    "csi": 0.112,
-    "bias": 1.975
+    "miss": 154,
+    "fa": 270,
+    "cn": 9837,
+    "pod": 0.28,
+    "far": 0.818,
+    "csi": 0.124,
+    "bias": 1.542
    },
    "conv": {
     "hit": 3,
     "miss": 1,
-    "fa": 394,
-    "cn": 9507,
+    "fa": 327,
+    "cn": 9990,
     "pod": 0.75,
-    "far": 0.992,
-    "csi": 0.008,
-    "bias": 99.25
+    "far": 0.991,
+    "csi": 0.009,
+    "bias": 82.5
    },
-   "sev_fc": 137,
+   "sev_fc": 117,
    "sev_obs_conv": 0,
    "sev_conv_rate": 0.0
   },
   {
    "lead": 3,
    "runs": 8,
-   "points": 8563,
+   "points": 8979,
    "no_gauge": 0,
    "wet": {
-    "hit": 53,
-    "miss": 142,
-    "fa": 299,
-    "cn": 8069,
-    "pod": 0.272,
-    "far": 0.849,
-    "csi": 0.107,
-    "bias": 1.805
+    "hit": 51,
+    "miss": 118,
+    "fa": 293,
+    "cn": 8517,
+    "pod": 0.302,
+    "far": 0.852,
+    "csi": 0.11,
+    "bias": 2.036
    },
    "conv": {
     "hit": 2,
-    "miss": 2,
-    "fa": 350,
-    "cn": 8209,
-    "pod": 0.5,
+    "miss": 1,
+    "fa": 342,
+    "cn": 8634,
+    "pod": 0.667,
     "far": 0.994,
     "csi": 0.006,
-    "bias": 88.0
+    "bias": 114.667
    },
-   "sev_fc": 199,
+   "sev_fc": 198,
    "sev_obs_conv": 0,
    "sev_conv_rate": 0.0
   },
   {
    "lead": 4,
    "runs": 7,
-   "points": 7221,
+   "points": 7637,
    "no_gauge": 0,
    "wet": {
     "hit": 55,
-    "miss": 94,
-    "fa": 263,
-    "cn": 6809,
-    "pod": 0.369,
-    "far": 0.827,
-    "csi": 0.133,
-    "bias": 2.134
+    "miss": 99,
+    "fa": 254,
+    "cn": 7229,
+    "pod": 0.357,
+    "far": 0.822,
+    "csi": 0.135,
+    "bias": 2.006
    },
    "conv": {
     "hit": 3,
     "miss": 1,
-    "fa": 315,
-    "cn": 6902,
+    "fa": 306,
+    "cn": 7327,
     "pod": 0.75,
-    "far": 0.991,
-    "csi": 0.009,
-    "bias": 79.5
+    "far": 0.99,
+    "csi": 0.01,
+    "bias": 77.25
    },
-   "sev_fc": 188,
+   "sev_fc": 187,
    "sev_obs_conv": 0,
    "sev_conv_rate": 0.0
   },
   {
    "lead": 5,
    "runs": 6,
-   "points": 5879,
+   "points": 6295,
    "no_gauge": 0,
    "wet": {
-    "hit": 49,
-    "miss": 69,
-    "fa": 252,
-    "cn": 5509,
-    "pod": 0.415,
-    "far": 0.837,
-    "csi": 0.132,
-    "bias": 2.551
+    "hit": 44,
+    "miss": 70,
+    "fa": 198,
+    "cn": 5983,
+    "pod": 0.386,
+    "far": 0.818,
+    "csi": 0.141,
+    "bias": 2.123
    },
    "conv": {
     "hit": 2,
     "miss": 1,
-    "fa": 299,
-    "cn": 5577,
+    "fa": 240,
+    "cn": 6052,
     "pod": 0.667,
-    "far": 0.993,
-    "csi": 0.007,
-    "bias": 100.333
+    "far": 0.992,
+    "csi": 0.008,
+    "bias": 80.667
    },
-   "sev_fc": 190,
+   "sev_fc": 142,
    "sev_obs_conv": 0,
    "sev_conv_rate": 0.0
   },
   {
    "lead": 6,
    "runs": 5,
-   "points": 4874,
+   "points": 4953,
    "no_gauge": 0,
    "wet": {
-    "hit": 37,
+    "hit": 25,
     "miss": 58,
-    "fa": 204,
-    "cn": 4575,
-    "pod": 0.389,
-    "far": 0.846,
-    "csi": 0.124,
-    "bias": 2.537
+    "fa": 99,
+    "cn": 4771,
+    "pod": 0.301,
+    "far": 0.798,
+    "csi": 0.137,
+    "bias": 1.494
    },
    "conv": {
     "hit": 1,
     "miss": 2,
-    "fa": 240,
-    "cn": 4631,
+    "fa": 123,
+    "cn": 4827,
     "pod": 0.333,
-    "far": 0.996,
-    "csi": 0.004,
-    "bias": 80.333
+    "far": 0.992,
+    "csi": 0.008,
+    "bias": 41.333
    },
-   "sev_fc": 127,
+   "sev_fc": 52,
    "sev_obs_conv": 0,
    "sev_conv_rate": 0.0
   },
   {
    "lead": 7,
    "runs": 4,
-   "points": 3860,
+   "points": 3948,
    "no_gauge": 0,
    "wet": {
-    "hit": 36,
-    "miss": 39,
-    "fa": 113,
-    "cn": 3672,
-    "pod": 0.48,
-    "far": 0.758,
-    "csi": 0.191,
-    "bias": 1.987
+    "hit": 25,
+    "miss": 44,
+    "fa": 48,
+    "cn": 3831,
+    "pod": 0.362,
+    "far": 0.658,
+    "csi": 0.214,
+    "bias": 1.058
    },
    "conv": {
     "hit": 2,
     "miss": 1,
-    "fa": 147,
-    "cn": 3710,
+    "fa": 71,
+    "cn": 3874,
     "pod": 0.667,
-    "far": 0.987,
-    "csi": 0.013,
-    "bias": 49.667
+    "far": 0.973,
+    "csi": 0.027,
+    "bias": 24.333
    },
-   "sev_fc": 75,
+   "sev_fc": 14,
    "sev_obs_conv": 0,
    "sev_conv_rate": 0.0
   }
