@@ -247,11 +247,29 @@ rain_cat <- function(mm){
 # benchmark at that level; either cold signal (low freezing level OR cold 500hPa) is now enough
 # to trigger cold_aloft, so a day that's cold aloft in EITHER sense gets caught, not just the
 # freezing-level case alone -- this pipeline previously only ever looked at freezing level.
+# REBUILT 24 Sep 2026 (Josh: "the hail risks were wildly overestimated"). The 23 Sep run
+# published 34 points at Very large (6cm+) whose DAILY MEAN SHIP was 0.40-1.80, median 0.80,
+# against 0 that raw SHIP alone would have given. Two amplifiers were compounding:
+#
+#   1. The cold-aloft promotion fired almost everywhere. CAPE >= 300 with 500hPa <= -20C is
+#      routine over southern Australia in September, so nearly every hail point was promoted a
+#      full tier, and a promotion could reach tier 3 -- i.e. 6cm+ hail asserted off SHIP ~1.
+#      It is now CAPE >= 500 with a 3000m freezing level or -25C aloft, and it can only lift
+#      Small to Large. Very large hail must be earned on SHIP alone.
+#   2. hail_tier() is fed the single PEAK-SHIP hour while everything else uses the top-6-hour
+#      mean, so the number behind a hail tier is always higher than the SHIP shown in the
+#      tooltip. That stays -- giant hail genuinely is a 1-2 hour window (see day_topN) -- but
+#      it means the bars must be set against peak-hour SHIP, which is what the bands below do.
+#
+# Bands are Josh's, 24 Sep 2026: 0.5-1.5 small, 1.5-3 large, 3+ very large. These sit well
+# above where our SHIP usually reaches (peak-hour p99.9 is 1.0, max 2.3 across the archive),
+# and that is deliberate: 6cm+ hail should be close to dormant outside a genuinely extreme
+# summer day. A top tier that fires 34 times in a quiet September is the bug, not the fix.
 hail_tier <- function(ship, cape, frz_lvl_m, t500){
-  base <- if (ship >= 2) 3 else if (ship >= 1) 2 else if (ship >= 0.5 & cape >= 300) 1 else 0
-  cold_aloft <- cape >= 300 & ((!is.na(frz_lvl_m) & frz_lvl_m < 3400) | (!is.na(t500) & t500 <= -20))
+  base <- if (ship >= 3) 3 else if (ship >= 1.5) 2 else if (ship >= 0.5 & cape >= 300) 1 else 0
+  cold_aloft <- cape >= 500 & ((!is.na(frz_lvl_m) & frz_lvl_m < 3000) | (!is.na(t500) & t500 <= -25))
   warm_aloft <- !is.na(frz_lvl_m) & frz_lvl_m > 4900
-  if (cold_aloft & base >= 1 & base < 3) base <- base + 1
+  if (cold_aloft & base == 1) base <- 2L          # Small -> Large only; never creates Very large
   if (warm_aloft & base >= 1) base <- base - 1
   base
 }
@@ -511,7 +529,11 @@ categorise_vals <- function(cape, shr, scp, stp, ship, cin, rain_mm, strict=FALS
   # aloft). SCP survives at 2.5, which is a genuine supercell environment and is what keeps
   # high-shear / moderate-CAPE days (e.g. CAPE 600 with 50kt and SCP 3.3) from being under-called.
   # Large hail and damaging winds are the other way in -- see the upgrade in day_topN().
-  if ((capeS >= 1000 & shr_kt >= 25) | scpS >= 2.5) c <- max(c, 2)  # MRGL
+  # MRGL: the CAPE/shear floor is unchanged (Josh, 13 Sep). The SCP route moves 2.5 -> 3.0,
+  # 24 Sep 2026: "supercells would automatically present a baseline marginal risk, so an SCP
+  # greater than 3 should highlight marginal". SCP is the one composite of the three that our
+  # data reaches properly (p99 3.8, max 14.7 across the archive), so it carries the ladder.
+  if ((capeS >= 1000 & shr_kt >= 25) | scpS > 3) c <- max(c, 2)  # MRGL
   # MDT via the SCP route now also needs some STP or SHIP backing (the same 0.9 "sig" bar the
   # hatching uses) -- 7 Sep 2026, after a lone point at 24.0S 128.5E hit MDT on SCP 3.7 (vs the
   # 3.6 bar) with STP -0.6 and SHIP 0.7 on a day that was plainly not a 3-of-4 day. SCP alone is a
@@ -521,14 +543,33 @@ categorise_vals <- function(cape, shr, scp, stp, ship, cin, rain_mm, strict=FALS
   # 1.2 above 50kt. Strong deep-layer shear organises the updraft that a given SHIP implies, so
   # the same hail composite means more in a 55kt environment than a 25kt one. Replaces both the
   # flat 1.8 bar and the interim "SHIP >= 0.9 is SIG" floor from earlier the same day.
-  ship_mdt <- if (shr_kt < 35) 2.0 else if (shr_kt <= 50) 1.5 else 1.2
-  if ((scpS >= 3.6 & capeS >= 900 & (stpS >= 0.9 | shipS >= 0.9)) | stpS >= 1.8 | shipS >= ship_mdt) c <- max(c, 3)   # MDT
+  # MDT and HIGH REBUILT 24 Sep 2026 (Josh: "poor for MDT"). The old shear-banded SHIP bar and
+  # the SCP 3.6 + supporting-composite route are both gone, replaced by an explicit ladder:
+  #
+  #   MDT   SCP >= 6                                    a clearly supercellular environment
+  #         STP >= 2                                    "STP 2+ automatically moderate"
+  #         CAPE >= 1500 AND (SHIP >= 2 OR SCP >= 6)     instability WITH organisation
+  #         CAPE >= 3000 in an already-severe environment
+  #   HIGH  SCP >= 8
+  #         STP >= 5
+  #         SCP >= 6 AND SHIP >= 3                       both at the same location
+  #
+  # STP below 2 is now ignored entirely ("anything below 2, ignore"), where it previously
+  # contributed from 0.9. CAPE >= 1500 does NOT reach MDT on its own -- it needs SHIP or SCP
+  # alongside it. On the archive the standalone reading gave 1,654 MDT point-days against 201
+  # for this one, and 1,234 of those 1,654 were high CAPE with no organisation behind it at
+  # all: pulse-storm air, not a moderate risk.
+  sev_env <- (capeS >= 1000 & shr_kt >= 25) | scpS > 3        # already a severe environment
+  mdt <- scpS >= 6 | stpS >= 2 |
+         (capeS >= 1500 & (shipS >= 2 | scpS >= 6)) |
+         (capeS >= 3000 & sev_env)
+  if (mdt) c <- max(c, 3)                                                                   # MDT
   # HIGH (Josh, 9 Sep 2026): exceptionally potent only -- CAPE >= 4000, SHIP >= 2.5, SCP >= 9
   # ("huge") and 10mm+ rain, ALL required. The old (SCP>=9 & CAPE>=900) | STP>=4.5 routes are
   # gone: HIGH is meant to be the rare outbreak signal, not something one composite can reach on
   # its own. A tornado-composite day without that hail/instability backing still lands at MDT
   # via the SIG floor.
-  if (capeS >= 4000 & shipS >= 2.5 & scpS >= 9 & nz(rain_mm) >= 10) c <- max(c, 4)   # HIGH
+  if (scpS >= 8 | stpS >= 5 | (scpS >= 6 & shipS >= 3)) c <- max(c, 4)                      # HIGH
 
   capped  <- nz(cin) <= -75      # stout cap even on the best hour of the day
   no_trig <- nz(rain_mm) < trig   # the model's own precip forecast shows essentially no rain
@@ -552,7 +593,10 @@ categorise_vals <- function(cape, shr, scp, stp, ship, cin, rain_mm, strict=FALS
   # time, consistent with the 7 Sep MDT calibration (SCP is an environment composite, not a
   # hazard one; SCP-only support caps at MRGL). Heavy-rain tier 3 remains SIG.
   # SHIP's SIG bar is the same shear-dependent MDT bar above, so "SIG is at least MDT" stays true.
-  sig <- stpS >= 0.9 | shipS >= ship_mdt | rc >= 3
+  # SIG (the hatched significant-severe marker, and the "anything SIG is at least MDT" floor)
+  # follows the new bars: large hail, a real tornado composite, or extreme rain. STP's old 0.9
+  # contribution is gone with the rest of sub-2 STP.
+  sig <- stpS >= 2 | shipS >= 1.5 | rc >= 3
 
   pregate <- c
   if (capped & pregate >= 3) pregate <- pregate - 1
@@ -882,7 +926,7 @@ suppressMessages(library(parallel))
 # sounding maths. Only safe now that the key removed rate limiting -- on the free endpoint extra
 # concurrency just bought extra 429s. If Open-Meteo ever starts refusing concurrent connections it
 # will show up as a jump in first-pass failures; dial this back here.
-NCORES <- 10
+NCORES <- 20
 cat(sprintf("Processing %d grid points (%d days, avg of top %d hours) across %d workers...\n", nrow(GRID), FDAYS, TOPN, NCORES))
 
 process_point <- function(k){
@@ -1053,7 +1097,12 @@ if (length(failed_idx) > 0) cat(sprintf("First pass: %d/%d failed. Retrying fail
 # Pausing first lets the window reset, and a second round catches what the first still lost.
 # Still bounded, not a loop: at most 2 rounds x (pause + retry), ~6-8 extra minutes worst case,
 # so a genuinely dead Open-Meteo day still fails fast rather than running for hours.
-RETRY_ROUNDS <- 2; RETRY_PAUSE_S <- 120
+# PAUSE SHORTENED ON A KEYED RUN, 24 Sep 2026. The 120s above is a rate-limit window, and the
+# paid endpoint has no per-minute limit -- the same reason the courtesy Sys.sleep() in the main
+# loop is already skipped when keyed. It was costing a flat two minutes on most runs to retry
+# one to three points out of 1342 (23 Sep: 3 points, 2m03s of pause). A short backoff is still
+# worth keeping for transient network errors, which do settle; the two-minute quota wait is not.
+RETRY_ROUNDS <- 2; RETRY_PAUSE_S <- if (nzchar(OM_KEY)) 10 else 120
 for (round in seq_len(RETRY_ROUNDS)) {
   if (length(failed_idx) == 0) break
   cat(sprintf("Retry round %d: pausing %ds for the rate-limit window, then retrying %d points...\n", round, RETRY_PAUSE_S, length(failed_idx)))

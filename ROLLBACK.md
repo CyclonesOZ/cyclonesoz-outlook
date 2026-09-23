@@ -60,9 +60,10 @@ These are the numbers most likely to need tuning rather than reverting. All live
 
 | Setting | Current | Meaning |
 |---|---|---|
-| Marginal floor | `cape >= 1000 & shr_kt >= 25` | Plus an SCP route at 2.5, plus large hail or damaging winds |
-| Moderate via SHIP | 2.0 / 1.5 / 1.2 | By shear band: under 35 kt, 35-50 kt, over 50 kt |
-| High | CAPE 4000, SHIP 2.5, SCP 9, rain 10 mm | All four required |
+| Marginal floor | `cape >= 1000 & shr_kt >= 25` | Plus an SCP route at >3 (supercell baseline), plus large hail or damaging winds |
+| Moderate | SCP 6, STP 2, CAPE 1500 + (SHIP 2 or SCP 6), CAPE 3000 in a severe env | Any one route. STP below 2 is ignored entirely |
+| High | SCP 8, or STP 5, or SCP 6 + SHIP 3 | Any one route. Lead ceiling still limits High to days 1-3 |
+| Hail bands | SHIP 0.5 / 1.5 / 3 | Small / Large / Very large. Cold-aloft promotion can only lift Small to Large |
 | Day rain gate | `LEAD_TRIG <- c(2,2,2,2,2.5,5,8,8)` mm | Trace bar is 0.1x it, tropical floor 1.5x it, frame gate 0.25x it. Calibrated against gauge observations, 18 Sep 2026 |
 | TSTM floor | 200 J/kg at -20C aloft, 500 at -8C | `tstm_floor()`, linear between; 350 when the 500hPa level is missing |
 | Severity ceiling | High to day 3, Moderate to day 5, Marginal to day 8 | `MAX_CAT_BY_LEAD` |
@@ -168,3 +169,34 @@ C toolchain, so `day_topN()` and anything downstream of a real sounding still ne
 Better still, add the parse check as a workflow step ahead of the build, so it fails in seconds
 rather than after R setup. That needs the `workflow` OAuth scope, so it has to be done from the
 GitHub web editor.
+
+
+## 7. Hail and severity recalibration, 24 Sep 2026
+
+Josh, on the 23 Sep run: *"great for TSTM, good for MRGNL, poor for MDT and the hail risks
+were wildly overestimated."*
+
+The hail over-forecast was not a threshold problem. That run published **34 points at Very
+large (6cm+)** whose daily mean SHIP was 0.40-1.80 (median 0.80), against **zero** that raw
+SHIP would have given. Two amplifiers compounded:
+
+1. **The cold-aloft promotion fired nearly everywhere.** It needed only CAPE >= 300 with a
+   500hPa temperature at or below -20C, which over southern Australia in September is the
+   normal state of the atmosphere. It also allowed promotion all the way to tier 3, so 6cm+
+   hail was being asserted off a SHIP near 1. Now CAPE >= 500 with a 3000m freezing level or
+   -25C aloft, and it can only lift Small to Large.
+2. **hail_tier() is fed the single peak-SHIP hour** while every other field is the top-6-hour
+   mean, so the number behind a hail tier is always higher than the SHIP in the tooltip. That
+   is deliberate and stays, but it means the bands must be read against peak-hour SHIP.
+
+A worked case: peak SHIP 1.1 with CAPE 800 under -22C aloft published **Very large** before
+this change and publishes **Small** after it.
+
+On the top tiers being rare: SHIP 3 and STP 5 are above anything in the current archive
+(peak-hour SHIP p99.9 is 1.0, max 2.3). That is intended. A tier meaning 6cm+ hail should be
+close to dormant outside an extreme summer day -- 34 of them in a quiet September was the bug.
+Do not lower these bars because they look unused; check them again after a wet season.
+
+Watch on the first runs: **High now has reachable routes for the first time** (SCP 8 fired 130
+times across the archive, against 0 for the old four-condition rule). The lead ceiling holds it
+to days 1-3, but if High appears more than occasionally, SCP 8 is the dial to turn.
