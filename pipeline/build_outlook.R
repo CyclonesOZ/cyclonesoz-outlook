@@ -267,10 +267,20 @@ rain_cat <- function(mm){
 # summer day. A top tier that fires 34 times in a quiet September is the bug, not the fix.
 hail_tier <- function(ship, cape, frz_lvl_m, t500){
   base <- if (ship >= 3) 3 else if (ship >= 1.5) 2 else if (ship >= 0.5 & cape >= 300) 1 else 0
-  cold_aloft <- cape >= 500 & ((!is.na(frz_lvl_m) & frz_lvl_m < 3000) | (!is.na(t500) & t500 <= -25))
+  # COLD-ALOFT PROMOTION REMOVED 25 Sep 2026. Even after being tightened to CAPE 500 with a
+  # 3000m freezing level, it was INVERTING the hail field. On the 27 Sep panel the SW corner of
+  # WA drew Large hail on SHIP 0.30 and SCP 1.3, while the Goldfields drew only Small on SHIP
+  # 1.00 and SCP 9.5 -- a textbook supercell environment rated below a cold front. The whole
+  # difference was the freezing level: 2740m on the coast against 3320m inland.
+  #
+  # The physics it came from is real (Raupach et al. 2023: melting-level height is what naive
+  # instability-shear proxies miss over Australia, and they OVERESTIMATE hail without it). But
+  # it was applied as a full tier promotion with no requirement that a hail-producing updraft
+  # exist at all, so a maritime cold front with 780 J/kg outranked a supercell. A low freezing
+  # level means less melting of whatever hail forms; it is not itself a reason to expect hail.
+  # If it returns it should MODULATE the SHIP bars, not add a tier on top of them.
   warm_aloft <- !is.na(frz_lvl_m) & frz_lvl_m > 4900
-  if (cold_aloft & base == 1) base <- 2L          # Small -> Large only; never creates Very large
-  if (warm_aloft & base >= 1) base <- base - 1
+  if (warm_aloft & base >= 1) base <- base - 1    # kept: a very high freezing level melts hail out
   base
 }
 

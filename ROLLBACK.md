@@ -63,7 +63,7 @@ These are the numbers most likely to need tuning rather than reverting. All live
 | Marginal floor | `cape >= 1000 & shr_kt >= 25` | Plus an SCP route at >3 (supercell baseline), plus large hail or damaging winds |
 | Moderate | SCP 6, STP 2, CAPE 1500 + (SHIP 2 or SCP 6), CAPE 3000 in a severe env | Any one route. STP below 2 is ignored entirely |
 | High | SCP 8, or STP 5, or SCP 6 + SHIP 3 | Any one route. Lead ceiling still limits High to days 1-3 |
-| Hail bands | SHIP 0.5 / 1.5 / 3 | Small / Large / Very large. Cold-aloft promotion can only lift Small to Large |
+| Hail bands | SHIP 0.5 / 1.5 / 3 | Small / Large / Very large, on SHIP alone. No cold-aloft promotion; the warm-aloft demotion above 4900 m is kept |
 | Day rain gate | `LEAD_TRIG <- c(2,2,2,2,2.5,5,8,8)` mm | Trace bar is 0.1x it, tropical floor 1.5x it, frame gate 0.25x it. Calibrated against gauge observations, 18 Sep 2026 |
 | TSTM floor | 200 J/kg at -20C aloft, 500 at -8C | `tstm_floor()`, linear between; 350 when the 500hPa level is missing |
 | Severity ceiling | High to day 3, Moderate to day 5, Marginal to day 8 | `MAX_CAT_BY_LEAD` |
@@ -200,3 +200,30 @@ Do not lower these bars because they look unused; check them again after a wet s
 Watch on the first runs: **High now has reachable routes for the first time** (SCP 8 fired 130
 times across the archive, against 0 for the old four-condition rule). The lead ceiling holds it
 to days 1-3, but if High appears more than occasionally, SCP 8 is the dial to turn.
+
+
+## 8. Cold-aloft promotion removed, 25 Sep 2026
+
+Tightening it was not enough. On the 27 Sep panel it was **inverting the hail field**: the SW
+corner of WA drew Large hail on SHIP 0.30 with SCP 1.3, while the Goldfields drew only Small on
+SHIP 1.00 with SCP 9.5. A textbook supercell environment rated below a cold front.
+
+The entire difference was the freezing level, checked against Open-Meteo directly:
+
+| | Freezing level | CAPE | SCP | Promotion fired | Map showed |
+|---|---|---|---|---|---|
+| SW corner | 2740 m | 780 | 1.3 | yes | Large |
+| Goldfields | 3320 m | 1100 | 9.5 | no | Small |
+
+The physics behind it is sound -- Raupach et al. 2023 found melting-level height is exactly what
+naive instability-shear proxies miss over Australia, and that they overestimate hail without it.
+The error was applying it as a full tier promotion with no requirement that a hail-producing
+updraft exist. A maritime cold front with 780 J/kg outranked a supercell.
+
+A low freezing level means less melting of whatever hail forms. It is not itself a reason to
+expect hail. **If this returns, it should modulate the SHIP bars rather than add a tier on top
+of them** -- for instance requiring a lower SHIP for Large when the freezing level is low,
+instead of promoting whatever tier SHIP already produced.
+
+The warm-aloft demotion (freezing level above 4900 m) is kept. That one only ever reduces a
+tier, and a 5 km freezing level genuinely does melt hail out before it reaches the ground.
