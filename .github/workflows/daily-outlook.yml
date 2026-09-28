@@ -1,17 +1,50 @@
 name: Daily storm outlook
 
-# Runs once a day at 18:00 UTC (02:00 AWST / 04:00 AEST) so the outlook is fresh and
-# waiting by the time Australia wakes up, and can be run manually from the Actions tab.
+# Runs once a day at 17:17 UTC (03:17 AEST / 01:17 AWST), with a backup slot at 17:47, so the
+# outlook is fresh and waiting by the time Australia wakes up. Can be run manually from the Actions tab.
 on:
   schedule:
-    - cron: "0 18 * * *"
+    # MOVED OFF THE HOUR, 29 Sep 2026. "0 18" (on the hour, GitHub's busiest moment) was starting
+    # 2h14m-3h38m late every night from 20-27 Sep, and on 28 Sep was never delivered at all. Odd
+    # minutes are picked up far faster. Two slots: 17:17 UTC (03:17 AEST / 01:17 AWST), and a
+    # backup at 17:47 that stands down via the gate job below if the first one already published.
+    - cron: "17 17 * * *"
+    - cron: "47 17 * * *"
   workflow_dispatch: {}
+
+# One run at a time: a late-delivered schedule waits for a run in progress instead of overlapping
+# it, and then finds a fresh outlook and skips.
+concurrency:
+  group: daily-outlook
+  cancel-in-progress: false
 
 permissions:
   contents: write   # allow the job to commit the new outlook.json
 
 jobs:
+  gate:
+    # A SCHEDULED run skips itself when an outlook under 8 hours old is already published: that
+    # covers the backup slot after a successful first slot, and a schedule GitHub delivers hours
+    # late after a manual run. Manual and watchdog runs (workflow_dispatch) always build. Reads the
+    # live outlook from origin/main at run time, not from the event's commit, which can be stale.
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.fresh.outputs.skip }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: fresh
+        run: |
+          git fetch -q --depth=1 origin main
+          AGE_H=$(git show FETCH_HEAD:docs/outlook.json | python3 -c "import json,sys,datetime as d; t=d.datetime.fromisoformat(json.load(sys.stdin)['run_date'].replace('Z','+00:00')); print(int((d.datetime.now(d.timezone.utc)-t).total_seconds()//3600))")
+          echo "Live outlook is ${AGE_H}h old; triggered by ${{ github.event_name }}."
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "$AGE_H" -lt 8 ]; then
+            echo "A fresh outlook is already published -- skipping this scheduled run."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
+    needs: gate
+    if: needs.gate.outputs.skip != 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Check out repo
