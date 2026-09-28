@@ -598,7 +598,12 @@ categorise_vals <- function(cape, shr, scp, stp, ship, cin, rain_mm, strict=FALS
   # gone: HIGH is meant to be the rare outbreak signal, not something one composite can reach on
   # its own. A tornado-composite day without that hail/instability backing still lands at MDT
   # via the SIG floor.
-  if (scpS >= 8 | stpS >= 5 | (scpS >= 6 & shipS >= 3)) c <- max(c, 4)                      # HIGH
+  # HIGH GUARDRAIL, 29 Sep 2026 (Josh): SCP >= 8 alone is a supercell ENVIRONMENT, not a hazard.
+  # The 28 Sep run drew a lone High in central Victoria on SCP exactly 8.0 with STP 0.1 and SHIP
+  # 0.9 -- no tornado signal and only Small hail -- while the Moderate beside it carried Large hail
+  # and Destructive wind. SCP now reaches High only with Large-hail potential (SHIP >= 1.5) or a
+  # real tornado composite (STP >= 2) behind it; without that it stays at Moderate via SCP >= 6.
+  if ((scpS >= 8 & (shipS >= 1.5 | stpS >= 2)) | stpS >= 5 | (scpS >= 6 & shipS >= 3)) c <- max(c, 4)   # HIGH
 
   capped  <- nz(cin) <= -75      # stout cap even on the best hour of the day
   no_trig <- nz(rain_mm) < trig   # the model's own precip forecast shows essentially no rain

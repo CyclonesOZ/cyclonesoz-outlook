@@ -62,7 +62,7 @@ These are the numbers most likely to need tuning rather than reverting. All live
 |---|---|---|
 | Marginal floor | `cape >= 1000 & shr_kt >= 25` | Plus an SCP route at >3 (supercell baseline), plus large hail or damaging winds |
 | Moderate | SCP 6, STP 2, CAPE 1500 + (SHIP 2 or SCP 6), CAPE 3000 in a severe env | Any one route. STP below 2 is ignored entirely |
-| High | SCP 8, or STP 5, or SCP 6 + SHIP 3 | Any one route. Lead ceiling still limits High to days 1-3 |
+| High | SCP 8 with SHIP 1.5 or STP 2 behind it; or STP 5; or SCP 6 + SHIP 3 | Any one route. SCP alone stays Moderate. Lead ceiling still limits High to days 1-3 |
 | Hail bands | SHIP 0.5 / 1.5 / 3 | Small / Large / Very large, on SHIP alone. No cold-aloft promotion; the warm-aloft demotion above 4900 m is kept |
 | Hazard within category | hail <= category, wind Damaging max below Moderate | Re-applied after the conditional cap and lead ceiling, daily and frames |
 | Day rain gate | `LEAD_TRIG`, flat 2 mm at every lead | Trace bar is 0.1x it, tropical floor 1.5x it, frame gate 0.25x it. Calibrated against gauge observations, 18 Sep 2026 |
