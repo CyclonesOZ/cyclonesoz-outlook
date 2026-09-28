@@ -37,8 +37,8 @@ jobs:
           AGE_HOURS=$(( (NOW_EPOCH - RUN_EPOCH) / 3600 ))
           echo "Live outlook.json run_date=$RUN_DATE ($AGE_HOURS hours old)"
 
-          if [ "$AGE_HOURS" -lt 20 ]; then
-            echo "Fresh enough (published within the last 20h) -- nothing to do."
+          if [ "$AGE_HOURS" -lt 12 ]; then
+            echo "Fresh enough (published within the last 12h) -- nothing to do."
             exit 0
           fi
 
@@ -48,5 +48,5 @@ jobs:
             exit 0
           fi
 
-          echo "Outlook is stale (>20h old) and nothing is running -- triggering one retry."
+          echo "Outlook is stale (>12h old) and nothing is running -- triggering one retry."
           gh workflow run daily-outlook.yml --repo "$REPO"
