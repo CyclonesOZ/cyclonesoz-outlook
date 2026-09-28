@@ -15,7 +15,7 @@ had never shipped. The daily `docs/outlook.json` schema is unchanged by all of t
 | Default map zoom | `var FIT_ZOOM_OUT=1;` in `docs/index.html` | `0` | Back to the strict cover fit that crops to the panel. |
 | Default pane layout | `var planeMode='dual';` in `docs/index.html` | `'quad'` | Also set `class="mode-dual"` back to `mode-quad` on `#planes` and move the `active` class on the two `.modeBtn` buttons. |
 | Default view | `var viewMode='hourly';` in `docs/index.html` | `'daily'` | Opens on the 8-day daily panels instead of the 3-hourly slider. Also move the `active` class on the two `.viewBtn` buttons. |
-| Lead-scaled rain trigger | `LEAD_TRIG <- c(2,2,2,2,2.5,2.8,3.2,3.5)` | `c(2,2,2,2,2,2,2,2)` | Back to a flat 2mm gate at every lead. Storm-day frequency bias returns to ~2.3x at days 6-8. |
+| Rain trigger | `LEAD_TRIG <- c(2,2,2,2,2,2,2,2)` | (current setting) | Flat 2 mm at every lead. Raising later entries damps storm area at range, but every ladder tried scored below flat on the 55-run record (section 9). |
 | Day-2 severe deflation | `LEAD_SEV_K <- c(1.0,0.875,...)` | all `1.0` | Removes the only lead adjustment not backed by observations. |
 | Severity ceiling by lead | `MAX_CAT_BY_LEAD <- c(4,4,4,3,3,2,2,2)` | `c(4,4,4,4,4,4,4,4)` | Lets Moderate and High be drawn out to day 8 again. |
 | Temperature-scaled TSTM floor | `tstm_floor()` | `return(150)` as the first line | Back to a flat 150 J/kg floor everywhere. |
@@ -65,7 +65,7 @@ These are the numbers most likely to need tuning rather than reverting. All live
 | High | SCP 8, or STP 5, or SCP 6 + SHIP 3 | Any one route. Lead ceiling still limits High to days 1-3 |
 | Hail bands | SHIP 0.5 / 1.5 / 3 | Small / Large / Very large, on SHIP alone. No cold-aloft promotion; the warm-aloft demotion above 4900 m is kept |
 | Hazard within category | hail <= category, wind Damaging max below Moderate | Re-applied after the conditional cap and lead ceiling, daily and frames |
-| Day rain gate | `LEAD_TRIG <- c(2,2,2,2,2.5,2.8,3.2,3.5)` mm | Trace bar is 0.1x it, tropical floor 1.5x it, frame gate 0.25x it. Calibrated against gauge observations, 18 Sep 2026 |
+| Day rain gate | `LEAD_TRIG`, flat 2 mm at every lead | Trace bar is 0.1x it, tropical floor 1.5x it, frame gate 0.25x it. Calibrated against gauge observations, 18 Sep 2026 |
 | TSTM floor | 200 J/kg at -20C aloft, 500 at -8C | `tstm_floor()`, linear between; 350 when the 500hPa level is missing |
 | Severity ceiling | High to day 3, Moderate to day 5, Marginal to day 8 | `MAX_CAT_BY_LEAD` |
 | Frame rain gate | `FRAME_TRIG <- 0.5` mm per 3 h | Frames only |
@@ -249,3 +249,8 @@ to use it. Lesson: do not calibrate on fewer than a month of verification days.
 it put DCAPE ~21% low and changed the published wind tier on 3.3% of active point-days, every
 one an under-call. `accuracy=2` removes most of that for ~1 ms per sounding. Revert by setting
 `accuracy=1` in `day_topN()`.
+
+**Later the same day: flat 2 mm.** Swept one trigger for every lead over the whole record. Skill
+was flat from 1.5 to 2.0 mm (differences of 0.001-0.004 CSI on 28 September days), so 2.0 won on
+keeping the 3 mm coastal-tropics floor (1.5x the trigger) and on being the long-standing value.
+Kept as one number rather than eight, on purpose.

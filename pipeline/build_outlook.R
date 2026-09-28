@@ -72,7 +72,20 @@ TOPN   <- 6                                     # average the N highest-severity
 # against our own day-1 output the long-lead storm area looked too SMALL, so the indicated fix
 # was to lower the trigger at range. Day 1 was itself over-forecasting by 1.11, so "smaller
 # than day 1" still meant bigger than reality. Only the gauge data separated the two.
-LEAD_TRIG <- c(2, 2, 2, 2, 2.5, 2.8, 3.2, 3.5)  # rain trigger (mm) by lead, day 1 first
+LEAD_TRIG <- c(2, 2, 2, 2, 2, 2, 2, 2)          # rain trigger (mm) by lead, day 1 first
+# FLAT 2mm, 28 Sep 2026 (Josh: "the skill needs to match the accuracy"). Swept one trigger for
+# every lead across the whole record; on the 28 September verification days, bias / CSI:
+#                 1.5mm         1.75mm        2.0mm
+#   days 1-4   1.02 / 0.246  0.96 / 0.247  0.92 / 0.246
+#   days 5-8   0.94 / 0.170  0.91 / 0.167  0.87 / 0.166
+# Skill is flat from 1.5 to 2.0 -- differences of 0.001-0.004 are noise on 28 days -- so 2.0 wins
+# on the other grounds: the tropical floor is 1.5x the trigger, and anything below 2 would drop it
+# under the 3mm Josh set for the coastal tropics; and it is the long-standing value. August
+# favours 1mm, but that is gauges counting frontal rain as storms, so it is not a guide.
+# Deliberately ONE number, not one per lead: per-lead tuning on a short record is exactly how the
+# 12-day ladder below went wrong. Re-sweep once GridSat verification exists.
+# Superseded, same day: Josh's gentler ladder c(2,2,2,2,2.5,2.8,3.2,3.5), which the note below
+# scored -- a big recovery on the steep one, but below flat 2mm at every lead from day 5.
 # RE-SET 28 Sep 2026 (Josh: "2.5 to day 5 and 3.5 to day 8"), replacing c(2,2,2,2,2.5,5,8,8).
 # That steeper ladder was fitted on 12 September days that turned out to be one unusually dry
 # week. Re-scored on all 55 runs recovered from git history (28 September verification days), it
@@ -93,8 +106,10 @@ LEAD_TRIG <- c(2, 2, 2, 2, 2.5, 2.8, 3.2, 3.5)  # rain trigger (mm) by lead, day
 # a single number to back out. Set to 1.0 to disable.
 LEAD_SEV_K <- c(1.0, 0.875, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
 
-# Severity ceiling by lead. At days 6-8 the storm-day CSI is ~0.08 -- barely distinguishable
-# from chance -- so a confident MDT/HIGH call there asserts far more than the model supports.
+# Severity ceiling by lead. Storm-day skill roughly halves by the end of the week -- CSI 0.29-0.30
+# at days 1-4 against 0.17-0.21 at days 6-8 across 55 runs (the ~0.08 quoted here originally came
+# from the 12-day sample and was too pessimistic) -- so a confident MDT/HIGH call at range still
+# asserts more than the model supports. Gauges cannot verify severity, so this stays judgement.
 MAX_CAT_BY_LEAD <- c(4, 4, 4, 3, 3, 2, 2, 2)    # day 1-3 may reach HIGH, 4-5 MDT, 6-8 MRGL
 
 lead_of <- function(lead) max(1L, min(8L, as.integer(lead) + 1L))   # 0-based lead -> 1-based index
