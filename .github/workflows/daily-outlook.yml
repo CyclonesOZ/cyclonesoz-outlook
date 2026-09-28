@@ -1,15 +1,19 @@
 name: Daily storm outlook
 
-# Runs once a day at 17:17 UTC (03:17 AEST / 01:17 AWST), with a backup slot at 17:47, so the
-# outlook is fresh and waiting by the time Australia wakes up. Can be run manually from the Actions tab.
+# Runs once a day at 19:52 UTC (03:52 AWST / 05:52 AEST), with a backup slot at 20:22, so the
+# outlook is published around 4am Perth time. Can be run manually from the Actions tab.
 on:
   schedule:
     # MOVED OFF THE HOUR, 29 Sep 2026. "0 18" (on the hour, GitHub's busiest moment) was starting
     # 2h14m-3h38m late every night from 20-27 Sep, and on 28 Sep was never delivered at all. Odd
-    # minutes are picked up far faster. Two slots: 17:17 UTC (03:17 AEST / 01:17 AWST), and a
-    # backup at 17:47 that stands down via the gate job below if the first one already published.
-    - cron: "17 17 * * *"
-    - cron: "47 17 * * *"
+    # minutes are picked up far faster.
+    # TIMED FOR FRESH 12Z DATA, same day (Josh: "4am AWST"). Open-Meteo publishes each model run
+    # ~7-8 h after it starts: the 12Z runs land at ~19:06 UTC (GFS) and ~19:45 UTC (ECMWF). A run
+    # before then builds from the 06Z cycle, and ECMWF's 06Z run only reaches day 3.75, so days 4-8
+    # would come from a run 17 h old. 19:52 is the first slot after both. The backup at 20:22
+    # stands down via the gate job below if the first one already published.
+    - cron: "52 19 * * *"
+    - cron: "22 20 * * *"
   workflow_dispatch: {}
 
 # One run at a time: a late-delivered schedule waits for a run in progress instead of overlapping
