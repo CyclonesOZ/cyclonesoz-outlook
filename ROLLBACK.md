@@ -64,6 +64,7 @@ These are the numbers most likely to need tuning rather than reverting. All live
 | Moderate | SCP 6, STP 2, CAPE 1500 + (SHIP 2 or SCP 6), CAPE 3000 in a severe env | Any one route. STP below 2 is ignored entirely |
 | High | SCP 8, or STP 5, or SCP 6 + SHIP 3 | Any one route. Lead ceiling still limits High to days 1-3 |
 | Hail bands | SHIP 0.5 / 1.5 / 3 | Small / Large / Very large, on SHIP alone. No cold-aloft promotion; the warm-aloft demotion above 4900 m is kept |
+| Hazard within category | hail <= category, wind Damaging max below Moderate | Re-applied after the conditional cap and lead ceiling, daily and frames |
 | Day rain gate | `LEAD_TRIG <- c(2,2,2,2,2.5,5,8,8)` mm | Trace bar is 0.1x it, tropical floor 1.5x it, frame gate 0.25x it. Calibrated against gauge observations, 18 Sep 2026 |
 | TSTM floor | 200 J/kg at -20C aloft, 500 at -8C | `tstm_floor()`, linear between; 350 when the 500hPa level is missing |
 | Severity ceiling | High to day 3, Moderate to day 5, Marginal to day 8 | `MAX_CAT_BY_LEAD` |
@@ -166,9 +167,10 @@ The individual scoring functions can also be exercised directly this way -- `tst
 them can be tested against known cases in seconds. `thunder` itself will NOT install without a
 C toolchain, so `day_topN()` and anything downstream of a real sounding still needs CI.
 
-Better still, add the parse check as a workflow step ahead of the build, so it fails in seconds
-rather than after R setup. That needs the `workflow` OAuth scope, so it has to be done from the
-GitHub web editor.
+The workflow now runs the same parse check as its own step ("Check pipeline parses"), ahead of
+the package install, since 28 Sep 2026. It matters more than it looks: `Rscript` runs a file one
+top-level expression at a time, so without it a syntax error anywhere after the main fetch would
+only surface after ~10 minutes and ~28,000 API calls, with nothing published.
 
 
 ## 7. Hail and severity recalibration, 24 Sep 2026
