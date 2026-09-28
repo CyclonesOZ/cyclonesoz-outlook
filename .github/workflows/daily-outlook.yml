@@ -23,6 +23,14 @@ jobs:
           r-version: "release"
           use-public-rspm: true   # install precompiled Ubuntu binaries (fast, reliable)
 
+      - name: Check pipeline parses
+        # Rscript runs a file one top-level expression at a time, so a syntax error only
+        # surfaces when execution reaches it: anything after the main fetch (the ECMWF pass,
+        # retries, writing the outlook, verification) would fail only after ~10 minutes and
+        # ~28,000 API calls, with nothing published. Parsing the whole file first catches it
+        # in seconds, with the line number. Base R only, so it runs before the package install.
+        run: Rscript -e 'invisible(parse("pipeline/build_outlook.R")); cat("pipeline/build_outlook.R parses\n")'
+
       - name: System libraries
         run: sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev libssl-dev libxml2-dev
 
