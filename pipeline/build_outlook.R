@@ -58,6 +58,8 @@ FDAYS  <- 8                                     # forecast days
 TOPN   <- 6                                     # average the N highest-severity hours
 
 # --- LEAD-TIME CALIBRATION, 18 Sep 2026 -------------------------------------------------
+# !! SUPERSEDED 28 Sep 2026: the 12-day finding below did not hold on 55 runs -- see the RE-SET
+# !! note under LEAD_TRIG. Kept for the record of how the ladder came about.
 # The first calibration in this project made against real observations rather than against our
 # own output. pipeline/verify.py scores every archived run over NOAA's CPC gauge analysis; on
 # the first 12 September 2026 days the storm-day frequency bias under a flat 2mm trigger was
@@ -70,18 +72,20 @@ TOPN   <- 6                                     # average the N highest-severity
 # against our own day-1 output the long-lead storm area looked too SMALL, so the indicated fix
 # was to lower the trigger at range. Day 1 was itself over-forecasting by 1.11, so "smaller
 # than day 1" still meant bigger than reality. Only the gauge data separated the two.
-LEAD_TRIG <- c(2, 2, 2, 2, 2.5, 5, 8, 8)        # rain trigger (mm) by lead, day 1 first
-# Rungs picked on CSI as well as bias, not bias alone. Scored over the 12 gauge-verified days
-# this ladder is the only candidate that beats the old flat 2mm on BOTH: mean CSI 0.179 vs
-# 0.177, and mean |bias-1| 0.114 vs 0.628.
-#   day 4 left at 2mm  -- lifting it traded 7% of the day's skill for a bias move of 1.13->0.90,
-#                         which is no closer to 1. Not worth it.
-#   day 6 at 5 not 6   -- 6mm scored bias 1.07 but halved CSI (0.078->0.043) and made FAR
-#                         slightly WORSE, i.e. it was cutting blind. 5mm keeps bias at 1.22,
-#                         in line with day 7, and recovers most of the skill.
-# Day 6 is weak whatever we do: CSI there falls monotonically as the trigger rises, so no rung
-# buys both honesty and skill. At 0.05 it is barely distinguishable from chance -- a limit of
-# the model at that range, not of this calibration.
+LEAD_TRIG <- c(2, 2, 2, 2, 2.5, 2.8, 3.2, 3.5)  # rain trigger (mm) by lead, day 1 first
+# RE-SET 28 Sep 2026 (Josh: "2.5 to day 5 and 3.5 to day 8"), replacing c(2,2,2,2,2.5,5,8,8).
+# That steeper ladder was fitted on 12 September days that turned out to be one unusually dry
+# week. Re-scored on all 55 runs recovered from git history (28 September verification days), it
+# drew only a quarter to a half of the observed storm days at days 6-8 and cut skill there (day 7
+# CSI 0.126 -> 0.071), in both halves of the month. Scores on those 28 days, bias / CSI:
+#                      day 5         day 6         day 7         day 8
+#   flat 2mm        0.88 / 0.225  0.88 / 0.194  0.86 / 0.126  0.89 / 0.124
+#   this ladder     0.72 / 0.213  0.67 / 0.180  0.56 / 0.109  0.55 / 0.114
+#   old steep one   0.72 / 0.213  0.44 / 0.153  0.25 / 0.071  0.26 / 0.086
+# Flat 2mm scores best at every lead on that record; this gentler ladder is Josh's call, keeping
+# some damping at range. Setting all eight to 2 is the data-preferred alternative.
+# Caveat on all of it: rain gauges verify storm OCCURRENCE, and count frontal rain as a storm
+# day, so August scores are depressed either way. Satellite cloud tops (GridSat) are the fix.
 
 # Severe (MRGL+) composites are deflated slightly at day 2, where MRGL+ point-days ran ~25%
 # above the day-1 analysis of the same dates. UNVERIFIED against observations: a rain gauge
@@ -752,7 +756,14 @@ day_topN <- function(h, idxs, elev, lat, strict=FALSE, want_frames=FALSE, lead=0
     prof <- tryCatch(build_profile(h, i, elev), error=function(e) NULL)
     if (is.null(prof)) next
     par <- tryCatch(
-      sounding_compute(prof$pressure, prof$altitude, prof$temp, prof$dpt, prof$wd, prof$ws, accuracy=1),
+      # accuracy 1 -> 2, 28 Sep 2026. Measured on an M4 Max against accuracy=3 over 192 real
+      # 37-level soundings: at accuracy=1 DCAPE was off by ~21% on average and effective shear
+      # shifted noticeably; accuracy=2 cut both errors by ~75%. Run through day_topN() on 30
+      # active points x 8 days, accuracy=1 changed the category on 2.9% of point-days and the
+      # wind tier on 3.3% -- every wind difference an UNDER-call, from the low DCAPE. accuracy=2
+      # takes hail differences from 3.3% to 0.4%. Cost: 1.1 ms/sounding vs 0.4, a few minutes on
+      # the cloud runner. accuracy=3 (33 ms) is only practical on local hardware.
+      sounding_compute(prof$pressure, prof$altitude, prof$temp, prof$dpt, prof$wd, prof$ws, accuracy=2),
       error=function(e) NULL)
     if (is.null(par)) next
     rows[[length(rows)+1]] <- list(

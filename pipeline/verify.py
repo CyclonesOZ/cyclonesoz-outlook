@@ -69,6 +69,13 @@ ROOT       = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ARCHIVE    = os.path.join(ROOT, "docs", "archive")
 OBS_DIR    = os.path.join(ARCHIVE, "obs")
 SKILL_PATH = os.path.join(ARCHIVE, "skill.json")
+# Every (run, lead) ever scored, kept permanently. The run archive rolls over at 14 days; without
+# this, each night's scores would cover only the runs still in the archive and quietly discard
+# everything older. Seeded 28 Sep 2026 with the 55 runs recovered from git history (4 Aug on).
+LEDGER_PATH = os.path.join(ARCHIVE, "skill_ledger.json")
+
+# Below this many observed >=CONV_MM events the convective table is too thin to mean anything.
+MIN_CONV_EVENTS = 200
 
 OPENDAP = ("https://psl.noaa.gov/thredds/dodsC/Datasets/cpc_global_precip/"
            "precip.%d.nc.ascii?precip[%d:1:%d][%d:1:%d][%d:1:%d]")
@@ -199,47 +206,61 @@ def parse_day_label(label, run_date):
     return None
 
 
-def score(runs, obs_by_date):
-    """Contingency tables per lead, plus the raw counts needed to recompute anything later."""
-    per_lead = {}
+def score_entries(runs, obs_by_date):
+    """One contingency record per (run, lead), keyed "YYYY-MM-DD|lead" -- the unit the ledger stores."""
+    entries = {}
     for run_key, run in sorted(runs.items()):
         try:
             run_date = dt.date(*[int(x) for x in run_key.split("-")])
         except ValueError:
             continue
-        days = run.get("days") or []
-        for lead, label in enumerate(days):
+        for lead, label in enumerate(run.get("days") or []):
             valid = parse_day_label(label, run_date)
             if valid is None or valid not in obs_by_date:
                 continue
             obs = obs_by_date[valid]
-            b = per_lead.setdefault(lead, {
-                "lead": lead, "runs": 0, "points": 0, "no_gauge": 0,
-                "wet": {"hit": 0, "miss": 0, "fa": 0, "cn": 0},
-                "conv": {"hit": 0, "miss": 0, "fa": 0, "cn": 0},
-                "sev_fc": 0, "sev_obs_conv": 0,
-            })
-            b["runs"] += 1
+            e = {"run": run_key, "lead": lead, "valid": valid.isoformat(),
+                 "points": 0, "no_gauge": 0,
+                 "wet": {"hit": 0, "miss": 0, "fa": 0, "cn": 0},
+                 "conv": {"hit": 0, "miss": 0, "fa": 0, "cn": 0},
+                 "sev_fc": 0, "sev_obs_conv": 0}
             for p in run.get("points", []):
                 d = p.get("d", [])
                 if lead >= len(d):
                     continue
-                rec = d[lead] or {}
-                cat = rec.get("cat") or 0
+                cat = (d[lead] or {}).get("cat") or 0
                 mm = nearest(obs, p["lat"], p["lon"])
-                b["points"] += 1
+                e["points"] += 1
                 if mm is None:
-                    b["no_gauge"] += 1
+                    e["no_gauge"] += 1
                     continue
                 for key, thr in (("wet", WET_MM), ("conv", CONV_MM)):
                     o = mm >= thr
                     f = cat >= 1
-                    t = b[key]
-                    t["hit" if (f and o) else "fa" if f else "miss" if o else "cn"] += 1
+                    e[key]["hit" if (f and o) else "fa" if f else "miss" if o else "cn"] += 1
                 if cat >= 2:
-                    b["sev_fc"] += 1
+                    e["sev_fc"] += 1
                     if mm >= CONV_MM:
-                        b["sev_obs_conv"] += 1
+                        e["sev_obs_conv"] += 1
+            entries["%s|%d" % (run_key, lead)] = e
+    return entries
+
+
+def aggregate(entries):
+    """Sum ledger entries by lead and derive the skill scores."""
+    per_lead = {}
+    for e in entries.values():
+        b = per_lead.setdefault(e["lead"], {
+            "lead": e["lead"], "runs": 0, "points": 0, "no_gauge": 0,
+            "wet": {"hit": 0, "miss": 0, "fa": 0, "cn": 0},
+            "conv": {"hit": 0, "miss": 0, "fa": 0, "cn": 0},
+            "sev_fc": 0, "sev_obs_conv": 0})
+        b["runs"] += 1
+        for k in ("points", "no_gauge", "sev_fc", "sev_obs_conv"):
+            b[k] += e[k]
+        for key in ("wet", "conv"):
+            for c in ("hit", "miss", "fa", "cn"):
+                b[key][c] += e[key][c]
     for b in per_lead.values():
         for key in ("wet", "conv"):
             t = b[key]
@@ -312,22 +333,39 @@ def main():
         log("No observations available yet -- nothing scored.")
         return 0
 
-    rows = score(runs, obs_by_date)
+    ledger = {}
+    if os.path.exists(LEDGER_PATH):
+        try:
+            with open(LEDGER_PATH) as f:
+                ledger = json.load(f)
+        except Exception as e:
+            log("  ledger unreadable (%s) -- starting a fresh one" % e)
+    fresh = score_entries(runs, obs_by_date)
+    added = sum(1 for k in fresh if k not in ledger)
+    ledger.update(fresh)                       # rescored entries replace their old versions
+    with open(LEDGER_PATH, "w") as f:
+        json.dump(ledger, f, separators=(",", ":"), sort_keys=True)
+    rows = aggregate(ledger)
+    run_keys = sorted({e["run"] for e in ledger.values()})
+    valid_dates = sorted({e["valid"] for e in ledger.values()})
     out = {
         "generated": dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
         "source": "NOAA CPC Global Unified Gauge-Based Analysis of Daily Precipitation (0.5 deg)",
         "verifies": "storm-day occurrence only (rainfall). NOT severe intensity -- a gauge "
                     "cannot distinguish MRGL from MDT.",
         "thresholds_mm": {"wet": WET_MM, "convective": CONV_MM},
-        "dates_verified": sorted(d.isoformat() for d in obs_by_date),
+        "runs_scored": len(run_keys),
+        "run_span": [run_keys[0], run_keys[-1]] if run_keys else None,
+        "dates_verified": valid_dates,
         "by_lead": rows,
     }
     with open(SKILL_PATH, "w") as f:
         json.dump(out, f, indent=1)
 
     log("")
-    log("Storm-day skill vs CPC gauge analysis -- %d dates, %d newly fetched"
-        % (len(obs_by_date), fetched))
+    log("Storm-day skill vs CPC gauge analysis -- %d runs (%s .. %s) over %d dates; "
+        "%d obs days newly fetched, %d run-days newly scored"
+        % (len(run_keys), run_keys[0], run_keys[-1], len(valid_dates), fetched, added))
     log("Scored on the >=%.0fmm threshold: did measurable rain fall where we drew a storm." % WET_MM)
     log("bias 1.0 = we drew exactly as many storm-days as occurred. Above 1.0 is over-forecasting.")
     log("")
@@ -340,13 +378,24 @@ def main():
         log("%-5d %8d %7s %7s %7s %7s %12.2f%%" %
             (r["lead"] + 1, r["points"], w["pod"], w["far"], w["csi"], w["bias"], base))
 
-    # The 10mm table is kept in skill.json but not printed: through a dry September its base
-    # rate sits near 0.02%, which makes every derived score meaningless. It becomes readable
-    # once a wet season supplies enough events, and is the closer proxy for "a storm" when it does.
+    # The >=10mm table is a HEAVY-RAIN test, far stricter than anything the TSTM category claims:
+    # a general storm chance is not a promise of 10mm averaged over a 0.5-degree cell. Its bias is
+    # expected to sit well above 1 (it ran ~7-12 on the Aug-Sep 2026 record) and should be read for
+    # its trend, not its level. Printed only once there are enough events to be more than noise.
     conv_events = sum(r["conv"]["hit"] + r["conv"]["miss"] for r in rows)
     log("")
-    log("(>=%.0fmm convective threshold: only %d observed events so far -- too few to score. "
-        "It will become usable over the wet season.)" % (CONV_MM, conv_events))
+    if conv_events >= MIN_CONV_EVENTS:
+        log("Heavy-rain check, >=%.0fmm (%d observed events). Much stricter than a storm chance --"
+            % (CONV_MM, conv_events))
+        log("bias well above 1 is expected here; watch the trend, not the level.")
+        log("%-5s %8s %7s %7s %7s %7s" % ("day", "points", "POD", "FAR", "CSI", "bias"))
+        for r in rows:
+            c = r["conv"]
+            log("%-5d %8d %7s %7s %7s %7s" %
+                (r["lead"] + 1, r["points"], c["pod"], c["far"], c["csi"], c["bias"]))
+    else:
+        log("(>=%.0fmm convective threshold: %d observed events so far, fewer than the %d needed "
+            "to score it meaningfully.)" % (CONV_MM, conv_events, MIN_CONV_EVENTS))
     log("")
     log("NOT VERIFIED HERE: hail size, wind gusts, tornadoes. A rain gauge cannot separate")
     log("MRGL from MDT, so nothing above is a severe-weather skill score.")
