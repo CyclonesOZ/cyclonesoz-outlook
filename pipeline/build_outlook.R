@@ -835,6 +835,8 @@ day_topN <- function(h, idxs, elev, lat, strict=FALSE, want_frames=FALSE, lead=0
       if (cvf$cat == 1 && (hf >= 2 || wf >= 1)) cvf$cat <- 2L    # same hazard upgrade as the daily product
       if (cvf$cat < 2) { wf <- 0L; hf <- min(hf, 1L) }
       cvf$cat <- min(cvf$cat, cat_cap)
+      hf <- min(hf, max(0L, as.integer(cvf$cat)))   # same hazard-within-category rule as the daily product
+      if (cvf$cat < 3) wf <- min(wf, 1L)
       list(t=substr(h[["time"]][ii[1]], 1, 16),
            v=unname(c(cvf$cat, tprob_floor(thunder_prob(mf("tprob"), mf("cape"), rain_f), cvf$cat),
                       hf, wf, flood_f, round(mf("cape")), round(mf("shr")*1.94384),
@@ -907,6 +909,17 @@ day_topN <- function(h, idxs, elev, lat, strict=FALSE, want_frames=FALSE, lead=0
   # contradiction the conditional-day guard above fixes).
   if (cv$cat > cat_cap){ cv$cat <- cat_cap; cv$lead_capped <- TRUE }
   if (cv$cat < 2) { wind_d <- 0L; hail_d <- min(hail_d, 1L) }
+  # A HAZARD TIER MAY NOT ASSERT MORE THAN ITS CATEGORY (Josh, 28 Sep 2026). Hail and wind are
+  # computed before the conditional cap and the lead ceiling have had their say, so a day held at
+  # Marginal by either could still publish the hazard of the day it would otherwise have been.
+  # The 24 Sep run drew Very large hail (6cm+) under a Marginal at two points, both conditional
+  # days whose environment reached MDT on a trace of rain. Now:
+  #   hail  TSTM -> Small at most, MRGL -> Large at most, MDT and above -> any
+  #   wind  below MDT -> Damaging at most ("125+ still needs the moderate gate", 13 Sep) --
+  #         the rule wind_tier() already applies, re-applied here because the lead ceiling can
+  #         lower the category after wind_tier() has run.
+  hail_d <- min(hail_d, max(0L, as.integer(cv$cat)))
+  if (cv$cat < 3) wind_d <- min(wind_d, 1L)
   c(cv, list(tprob=tprob_floor(thunder_prob(m("tprob"), m("cape"), rain_day), cv$cat),
              # hail gated on the category (7 Sep 2026), the same way wind_tier() already is: no
              # storms means no hail. Before this, a marginal peak-hour SHIP (0.5-0.6) in a hot,
