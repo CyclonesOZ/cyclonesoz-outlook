@@ -827,6 +827,7 @@
   // carrying it can show all planes; historical marks a reconstruction built from archived model
   // data for a past date (a promotional/demo run) rather than a run that was ever the live one.
   var runFullHazards=false, runHistorical=false, runCoverage=1;
+  var runSecondLabel='ECMWF';   // model behind the second-opinion rain figure, from the loaded file
   function placeholderReason(dayIdx, hz){
     // fire danger is a whole-day index (the worst hour's FFDI), so it has no 3-hourly equivalent
     if (viewMode==='hourly' && hz==='fire') return 'Fire danger is a whole-day index — switch to the Daily view for it.';
@@ -1049,7 +1050,9 @@
     // disagreed and the category shown already reflects that (ecmwf_ungated).
     // rain shows one decimal under 2mm so a trace (the conditional-MRGL trigger) reads as 0.3mm, not 0mm
     var rv=r.rain||0, rainLine='Rain '+(rv<2?rv.toFixed(1):Math.round(rv))+'mm';
-    if(r.rain_ecmwf!=null) rainLine+=' · ECMWF '+r.rain_ecmwf+'mm'+(r.ecmwf_ungated&&!r.conditional?' (confirmed)':'');
+    // second_opinion names the model behind rain_ecmwf: ECMWF on runs before 29 Sep 2026 (whose primary
+    // was the Open-Meteo blend), GFS since the primary became ECMWF. Older files lack the field.
+    if(r.rain_ecmwf!=null) rainLine+=' · '+runSecondLabel+' '+r.rain_ecmwf+'mm'+(r.ecmwf_ungated&&!r.conditional?' (confirmed)':'');
     // conditional: environment supports MRGL+ but the trigger is uncertain (only a trace of rain in
     // either model, or rain at a neighbouring point) -- capped at MRGL by the pipeline
     var tag=r.conditional?' (conditional)':(r.hatch&&r.cat>=2?' (sig)':'');
@@ -1246,7 +1249,7 @@
       o.points.forEach(function(p){GRID.push([p.lat,p.lon]);results.push(p.d);TROP.push(!!p.tropical);});
       tuneToGrid();
       featureCache={}; denCache={}; streamCache={}; FRAMES={}; frameRecs=[];
-      runFullHazards=!!o.full_hazards; runHistorical=!!o.historical; runCoverage=(o.coverage!=null)?o.coverage:1;
+      runFullHazards=!!o.full_hazards; runHistorical=!!o.historical; runSecondLabel=o.second_opinion||'ECMWF'; runCoverage=(o.coverage!=null)?o.coverage:1;
       document.getElementById('updatedtxt').textContent='Updated '+(o.run_date?new Date(o.run_date).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'—');
       return o;
     });

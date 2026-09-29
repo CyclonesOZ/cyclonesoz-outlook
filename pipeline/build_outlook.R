@@ -53,7 +53,37 @@ OM_KEY <- Sys.getenv("OPENMETEO_KEY", "")
 LEVELS_BASE <- c(1000,975,950,925,900,850,800,700,600,500,400,300,250,200,150,100)
 LEVELS_FULL <- c(1000,975,950,925,900,875,850,825,800,775,750,725,700,675,650,625,600,575,550,525,
                  500,475,450,425,400,375,350,325,300,275,250,225,200,175,150,125,100)
-LEVELS <- if (nzchar(OM_KEY)) LEVELS_FULL else LEVELS_BASE
+# PRIMARY MODEL PINNED TO ECMWF IFS 0.25, 29 Sep 2026 (Josh). Until now no model was named, so
+# Open-Meteo served its "best match" blend: ICON upper air (days 1-7) under a surface that matched no
+# single model. Stitching one model's surface under another's profile manufactured instability --
+# on 2 Oct over northern NSW the blend had CAPE ~800-900 J/kg where ICON, GFS and ECMWF each had
+# 77-290 -- and it could change without notice. Validated on all 55 archived runs (Aug-Sep 2026),
+# rebuilt on ECMWF and on GFS from the raw archives and scored against gauges and satellite storm
+# tops: the blend was weakest on both storm-like yardsticks and over-drew most (3.6-5.4x the observed
+# area); GFS and ECMWF were close on storm occurrence, but GFS reached CAPE >= 1000 on only 0.13% of
+# September point-days against ECMWF's 1.04% -- too rarely for the Marginal floor (CAPE 1000 with
+# 25 kt) to ever fire. ECMWF carries a realistic severe tail without the blend's inflation.
+# Open-Meteo's ECMWF has 12 pressure levels in our range; losing the other 25 changed 0.8% of
+# categories on a 240 point-day test. Requesting only those 12 cuts API use to ~7 calls per point.
+# MODEL <- "" restores the blend (and its 37 levels); nothing else needs changing.
+MODEL <- "ecmwf_ifs025"
+LEVELS_ECMWF <- c(1000,925,850,700,600,500,400,300,250,200,150,100)
+LEVELS <- if (MODEL == "ecmwf_ifs025") LEVELS_ECMWF else if (nzchar(OM_KEY)) LEVELS_FULL else LEVELS_BASE
+# The rain second opinion must come from a DIFFERENT model than the primary, or it can never disagree.
+SECOND_MODEL <- if (MODEL == "ecmwf_ifs025") "gfs_seamless" else "ecmwf_ifs025"
+SECOND_LABEL <- if (SECOND_MODEL == "gfs_seamless") "GFS" else "ECMWF"
+# With ECMWF as the primary, the second opinion is RECORDED (its rain shows in the tooltip) but may
+# not change the category. Tested 29 Sep 2026 on 62 points over SE QLD / northern NSW: GFS un-gated
+# 24 point-days, every one ECMWF-unstable-but-dry (0-1.2 mm) meeting GFS coastal showers (1.5-18 mm)
+# -- a storm call neither model makes on its own, and the same model-stitching fault as the blend.
+# It also was not part of the validated configuration: the 55-run ECMWF rebuild had no such pass.
+# Set TRUE to let it un-gate again.
+SECOND_OPINION_UNGATES <- MODEL != "ecmwf_ifs025"
+# ECMWF via Open-Meteo has no freezing level (derived from the sounding in finish_hourly()) and gives
+# soil moisture as its 0-7 cm layer rather than 0-1 cm.
+SFC_VARS <- c("temperature_2m","dew_point_2m","relative_humidity_2m","surface_pressure","wind_speed_10m",
+              "wind_direction_10m","precipitation","precipitation_probability",
+              if (MODEL == "ecmwf_ifs025") "soil_moisture_0_to_7cm" else c("freezing_level_height","soil_moisture_0_to_1cm"))
 FDAYS  <- 8                                     # forecast days
 TOPN   <- 6                                     # average the N highest-severity hours
 
@@ -181,10 +211,11 @@ OM_HOST <- if (!is.null(HIST_DATE)) {
              "https://api.open-meteo.com"
            }
 OM_AUTH <- if (nzchar(OM_KEY) && is.null(HIST_DATE)) paste0("&apikey=", OM_KEY) else ""
-if (!is.null(HIST_DATE)) LEVELS <- LEVELS_BASE
-cat(sprintf("Open-Meteo: %s, %d pressure levels, %d variables/request (~%.1f API calls per point)\n",
+if (!is.null(HIST_DATE) && !nzchar(MODEL)) LEVELS <- LEVELS_BASE
+cat(sprintf("Open-Meteo: %s, model %s, %d pressure levels, %d variables/request (~%.1f API calls per point)\n",
             if (nzchar(OM_AUTH)) "keyed customer endpoint" else "free endpoint (no OPENMETEO_KEY set)",
-            length(LEVELS), length(LEVELS)*5 + 10, max(1, (length(LEVELS)*5 + 10)/10)))
+            if (nzchar(MODEL)) MODEL else "best-match blend",
+            length(LEVELS), length(LEVELS)*5 + length(SFC_VARS), max(1, (length(LEVELS)*5 + length(SFC_VARS))/10)))
 
 nz <- function(x){ if (is.null(x) || is.na(x)) 0 else x }
 
@@ -673,7 +704,7 @@ om_url <- function(lat, lon){
     paste0("wind_speed_",LEVELS,"hPa"),
     paste0("wind_direction_",LEVELS,"hPa"),
     paste0("geopotential_height_",LEVELS,"hPa")), collapse=",")
-  sfc <- "temperature_2m,dew_point_2m,relative_humidity_2m,surface_pressure,wind_speed_10m,wind_direction_10m,precipitation,precipitation_probability,freezing_level_height,soil_moisture_0_to_1cm"
+  sfc <- paste(SFC_VARS, collapse=",")
   # timezone=UTC (not auto): with per-point local time, "Day 1" boundaries fell at a
   # different UTC instant in WA (UTC+8) vs the east coast (UTC+10/11), so the same day
   # label covered different absolute windows depending where a grid point sat. Forcing
@@ -682,8 +713,37 @@ om_url <- function(lat, lon){
   # start_date/end_date (not forecast_days) pin that boundary to START_DATE/END_DATE (see
   # above) instead of letting Open-Meteo default to raw UTC "today".
   sprintf(paste0(OM_HOST, "/v1/forecast?latitude=%.3f&longitude=%.3f",
-    "&hourly=%s,%s&start_date=%s&end_date=%s&timezone=UTC&wind_speed_unit=kn&cell_selection=nearest", OM_AUTH),
+    "&hourly=%s,%s&start_date=%s&end_date=%s&timezone=UTC&wind_speed_unit=kn&cell_selection=nearest",
+    if (nzchar(MODEL)) paste0("&models=", MODEL) else "", OM_AUTH),
     lat, lon, sfc, lv, START_DATE, END_DATE)
+}
+
+# Fill the fields a pinned model does not supply, from the model's own data, so everything downstream
+# reads the same names it always has.
+#   freezing_level_height: the height where temperature first crosses 0 C rising from the ground,
+#     interpolated between the 2 m temperature at the point's elevation and the pressure levels above
+#     it. Feeds hail_tier()'s warm-aloft demotion.
+#   soil_moisture_0_to_1cm: ECMWF's 0-7 cm layer stands in; FFDI only needs a surface dryness signal.
+finish_hourly <- function(h, elev){
+  if (is.null(h$soil_moisture_0_to_1cm) && !is.null(h$soil_moisture_0_to_7cm)) h$soil_moisture_0_to_1cm <- h$soil_moisture_0_to_7cm
+  if (is.null(h$freezing_level_height) || all(is.na(h$freezing_level_height))) {
+    e0 <- if (is.null(elev) || is.na(elev)) 0 else elev
+    zL <- sapply(LEVELS, function(L) h[[paste0("geopotential_height_", L, "hPa")]])
+    tL <- sapply(LEVELS, function(L) h[[paste0("temperature_", L, "hPa")]])
+    if (is.null(dim(zL))) { zL <- matrix(zL, nrow=1); tL <- matrix(tL, nrow=1) }
+    h$freezing_level_height <- vapply(seq_along(h$time), function(i){
+      z <- c(e0, zL[i, ]); t <- c(h$temperature_2m[i], tL[i, ])
+      keep <- !is.na(z) & !is.na(t) & c(TRUE, zL[i, ] > e0)
+      z <- z[keep]; t <- t[keep]
+      if (length(z) < 2) return(NA_real_)
+      o <- order(z); z <- z[o]; t <- t[o]
+      if (t[1] <= 0) return(z[1])
+      k <- which(t <= 0)[1]
+      if (is.na(k)) return(NA_real_)
+      z[k-1] + (z[k] - z[k-1]) * t[k-1] / (t[k-1] - t[k])
+    }, numeric(1))
+  }
+  h
 }
 
 fetch_point <- function(lat, lon){
@@ -699,7 +759,7 @@ fetch_point <- function(lat, lon){
       raw <- paste(readLines(om_url(lat,lon), warn=FALSE), collapse="")
       fromJSON(raw)
     }, error=function(e) NULL)
-    if (!is.null(r) && !is.null(r$hourly)) return(r)
+    if (!is.null(r) && !is.null(r$hourly)) { r$hourly <- finish_hourly(r$hourly, r$elevation); return(r) }
     Sys.sleep(1.2*a)
   }
   NULL
@@ -1040,7 +1100,7 @@ ECMWF_BATCH_SIZE <- 100        # conservative per-request chunk size
 ecmwf_rain_batch <- function(lats, lons, date_str){
   n <- length(lats)
   url <- sprintf(
-    paste0(OM_HOST, "/v1/forecast?latitude=%s&longitude=%s&hourly=precipitation&models=ecmwf_ifs025&start_date=%s&end_date=%s&timezone=UTC", OM_AUTH),
+    paste0(OM_HOST, "/v1/forecast?latitude=%s&longitude=%s&hourly=precipitation&models=", SECOND_MODEL, "&start_date=%s&end_date=%s&timezone=UTC", OM_AUTH),
     paste(sprintf("%.3f", lats), collapse=","),
     paste(sprintf("%.3f", lons), collapse=","),
     date_str, date_str)
@@ -1075,10 +1135,10 @@ apply_ecmwf_second_opinion <- function(raw_results){
   }
   if (length(cand) == 0) return(raw_results)
   if (length(cand) > MAX_ECMWF_CANDIDATES){
-    cat(sprintf("ECMWF second-opinion: %d candidates exceeds the %d cap, truncating.\n", length(cand), MAX_ECMWF_CANDIDATES))
+    cat(sprintf("Second opinion (%s): %d candidates exceeds the %d cap, truncating.\n", SECOND_LABEL, length(cand), MAX_ECMWF_CANDIDATES))
     cand <- cand[seq_len(MAX_ECMWF_CANDIDATES)]
   }
-  cat(sprintf("ECMWF second-opinion: %d candidates flagged (pregate>=1, GFS rain below the lead trigger)\n", length(cand)))
+  cat(sprintf("Second opinion (%s): %d candidates flagged (pregate>=1, primary-model rain below the trigger)\n", SECOND_LABEL, length(cand)))
 
   by_date <- split(cand, sapply(cand, function(c) c$date))
   n_checked <- 0; n_ungated <- 0
@@ -1100,7 +1160,9 @@ apply_ecmwf_second_opinion <- function(raw_results){
         # ladder was added to remove. The tropical (1.5x) and trace (0.1x) ratios are unchanged.
         tg   <- LEAD_TRIG[lead_of(c_$j - 1L)]
         ecap <- MAX_CAT_BY_LEAD[lead_of(c_$j - 1L)]
-        if (ecmwf_rain[i] >= (if (strict) 1.5 * tg else tg)){
+        if (!SECOND_OPINION_UNGATES) {
+          # diagnostic only -- the second model's rain is recorded above, the category is untouched
+        } else if (ecmwf_rain[i] >= (if (strict) 1.5 * tg else tg)){
           dd$cat <- dd$pregate
           dd$conditional <- FALSE
           dd$tprob <- tprob_floor(dd$tprob, dd$cat)   # keep the thunder pane consistent with the restored category
@@ -1125,7 +1187,8 @@ apply_ecmwf_second_opinion <- function(raw_results){
       }
     }
   }
-  cat(sprintf("ECMWF second-opinion: %d checked successfully, %d un-gated\n", n_checked, n_ungated))
+  cat(sprintf("Second opinion (%s): %d checked successfully, %d un-gated%s\n", SECOND_LABEL, n_checked, n_ungated,
+              if (SECOND_OPINION_UNGATES) "" else " (recorded for the tooltip only; not allowed to change the category)"))
   raw_results
 }
 
@@ -1230,7 +1293,7 @@ if (valid_after_ecmwf != valid_before_ecmwf) {
   cat(sprintf("WARNING: valid point count changed across apply_ecmwf_second_opinion(): %d -> %d\n",
               valid_before_ecmwf, valid_after_ecmwf))
 } else {
-  cat(sprintf("Valid points unchanged across ECMWF second-opinion pass: %d\n", valid_before_ecmwf))
+  cat(sprintf("Valid points unchanged across the second-opinion pass: %d\n", valid_before_ecmwf))
 }
 
 points <- vector("list", nrow(GRID)); day_labels <- NULL; ok <- 0
@@ -1256,6 +1319,8 @@ out <- list(run_date = if (is.null(HIST_DATE)) format(Sys.time(), "%Y-%m-%dT%H:%
                        else paste0(as.Date(START_DATE) - 1, "T18:00:00Z"),
             days = if (is.null(day_labels)) paste("Day", seq_len(FDAYS)) else day_labels,
             full_hazards = TRUE,
+            model = if (nzchar(MODEL)) MODEL else "best_match",
+            second_opinion = SECOND_LABEL,     # which model the rain_ecmwf/ecmwf_ungated fields came from
             historical = !is.null(HIST_DATE),
             coverage = round(ok / nrow(GRID), 3),   # fraction of grid points with data (viewer shows it when partial)
             points = points)
