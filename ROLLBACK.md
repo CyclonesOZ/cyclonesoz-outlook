@@ -10,7 +10,9 @@ had never shipped. The daily `docs/outlook.json` schema is unchanged by all of t
 
 | Feature | Line | Off value | Effect when off |
 |---|---|---|---|
-| Full 37-level soundings | presence of the `OPENMETEO_KEY` secret | remove the secret | Falls back to the free endpoint and the original 16 levels automatically. |
+| Primary model | `MODEL <- "ecmwf_ifs025"` | `MODEL <- ""` | Back to Open-Meteo's best-match blend (ICON upper air, mixed surface) and its 37 levels. API use roughly triples. |
+| Second opinion may change the category | `SECOND_OPINION_UNGATES <- MODEL != "ecmwf_ifs025"` | `TRUE` | Lets GFS rain un-gate ECMWF-dry days again. Tested: that recreates coastal-shower storm calls neither model makes. |
+| Full 37-level soundings | presence of the `OPENMETEO_KEY` secret | remove the secret | Only applies when `MODEL` is the blend; ECMWF always uses its 12 levels. |
 | 3-hourly frames (days 1-8) | `ENABLE_FRAMES <- TRUE` | `FALSE` | No frames computed, no `docs/archive/frames/` written. Run time and `outlook.json` identical to before 14 Sep. |
 | Default map zoom | `var FIT_ZOOM_OUT=1;` in `docs/index.html` | `0` | Back to the strict cover fit that crops to the panel. |
 | Default pane layout | `var planeMode='dual';` in `docs/index.html` | `'quad'` | Also set `class="mode-dual"` back to `mode-quad` on `#planes` and move the `active` class on the two `.modeBtn` buttons. |
@@ -254,3 +256,45 @@ one an under-call. `accuracy=2` removes most of that for ~1 ms per sounding. Rev
 was flat from 1.5 to 2.0 mm (differences of 0.001-0.004 CSI on 28 September days), so 2.0 won on
 keeping the 3 mm coastal-tropics floor (1.5x the trigger) and on being the long-standing value.
 Kept as one number rather than eight, on purpose.
+
+
+## 10. Primary model switched to ECMWF, 29 Sep 2026
+
+Until now the pipeline named no model, so Open-Meteo served its "best match" blend: ICON upper
+air (days 1-7) under a surface matching no single model. That stitching manufactured instability
+-- northern NSW, Fri 2 Oct: blend CAPE ~800-900 J/kg where ICON, GFS and ECMWF each had 77-290,
+drawn as Marginal. Josh's read: ICON has low skill over Australia; ECMWF is excellent, GFS good.
+
+**Validation before switching.** All 55 archived runs (4 Aug - 28 Sep) were rebuilt from raw
+archives on GFS (NOAA AWS) and on ECMWF (ECMWF open data, AWS), through the pipeline's own
+day_topN(), at each run's own points, and scored against gauges and satellite cloud tops:
+
+| Skill (CSI), current rules, days 1-4 / 5-8 | Gauge >=1 mm | Gauge >=5 mm | Aug gauge + sat <=230K |
+|---|---|---|---|
+| Blend | 0.246 / 0.166 | 0.102 / 0.075 | 0.139 / 0.120 |
+| GFS | 0.164 / 0.120 | 0.121 / 0.079 | 0.181 / 0.134 |
+| ECMWF | 0.199 / 0.128 | 0.099 / 0.074 | 0.172 / 0.133 |
+
+The blend wins only the loose rain yardstick (by painting more area) and is weakest on both
+storm-like ones, over-drawing 3.6-5.4x. GFS and ECMWF are close on storm occurrence, but GFS hit
+CAPE >= 1000 on 0.13% of September point-days against ECMWF's 1.04% -- too rarely for the
+Marginal floor ever to fire. ECMWF chosen for its realistic severe tail, Josh's experience of its
+skill, a third of the API calls, and an archive to train on.
+
+**What changed.** `models=ecmwf_ifs025`; only ECMWF's 12 levels requested (1000 925 850 700 600
+500 400 300 250 200 150 100 -- losing the other 25 changed 0.8% of categories on a 240 point-day
+test); ~6.9 API calls per point instead of 19.5, so ~10-11k per run, roughly a third of the
+monthly quota at one run a day. Freezing level derived from the sounding (finish_hourly()); soil
+moisture from ECMWF's 0-7 cm layer. The rain second opinion now comes from GFS, is recorded for
+the tooltip, and does not change the category (see the switch above for why). Each outlook file
+records `model` and `second_opinion`, and the viewer labels the tooltip from it, so archived runs
+keep their ECMWF label.
+
+**Expect smaller storm areas than the blend drew.** On a 62-point test over SE QLD / northern NSW:
+general storm 20 -> 17 point-days, Marginal 13 -> 6. On the storm-like yardsticks that is a
+correction. The thresholds were tuned on the blend's inflated CAPE; re-check them against the
+verification ledger after a few weeks of ECMWF runs.
+
+**Local testing note.** Running the pipeline on macOS can segfault inside mclapply workers when
+they open network connections (fork safety). Set `OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES`. The
+GitHub Linux runners are unaffected.
