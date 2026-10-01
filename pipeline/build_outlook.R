@@ -593,7 +593,15 @@ categorise_vals <- function(cape, shr, scp, stp, ship, cin, rain_mm, strict=FALS
   # 24 Sep 2026: "supercells would automatically present a baseline marginal risk, so an SCP
   # greater than 3 should highlight marginal". SCP is the one composite of the three that our
   # data reaches properly (p99 3.8, max 14.7 across the archive), so it carries the ladder.
-  if ((capeS >= 1000 & shr_kt >= 25) | scpS > 3) c <- max(c, 2)  # MRGL
+  # SHEAR-COMPENSATED ROUTE, 2 Oct 2026 (Josh: central NSW "should be a bit bigger"). The CAPE 1000
+  # floor was set on 13 Sep against the Open-Meteo blend, whose stitched surface inflated CAPE; on
+  # ECMWF (since 29 Sep) CAPE runs at roughly half the blend's, so the same 1000 became a much
+  # harder bar. Sat 3 Oct over central NSW showed it: a 33-45 kt sheared setup with CAPE mostly
+  # 800-950, so Marginal flickered point to point -- four general-storm points between the
+  # Marginals missed by 86-187 J/kg with 33-38 kt and 6-18 mm of rain. Strong deep-layer shear
+  # organises storms that slightly less CAPE would not otherwise support. Effect on the 2 Oct run:
+  # central NSW Saturday 8 -> 12 Marginal point-days, whole outlook 150 -> 162 (+8%).
+  if ((capeS >= 1000 & shr_kt >= 25) | (capeS >= 800 & shr_kt >= 30) | scpS > 3) c <- max(c, 2)  # MRGL
   # MDT via the SCP route now also needs some STP or SHIP backing (the same 0.9 "sig" bar the
   # hatching uses) -- 7 Sep 2026, after a lone point at 24.0S 128.5E hit MDT on SCP 3.7 (vs the
   # 3.6 bar) with STP -0.6 and SHIP 0.7 on a day that was plainly not a 3-of-4 day. SCP alone is a
@@ -619,7 +627,7 @@ categorise_vals <- function(cape, shr, scp, stp, ship, cin, rain_mm, strict=FALS
   # alongside it. On the archive the standalone reading gave 1,654 MDT point-days against 201
   # for this one, and 1,234 of those 1,654 were high CAPE with no organisation behind it at
   # all: pulse-storm air, not a moderate risk.
-  sev_env <- (capeS >= 1000 & shr_kt >= 25) | scpS > 3        # already a severe environment
+  sev_env <- (capeS >= 1000 & shr_kt >= 25) | (capeS >= 800 & shr_kt >= 30) | scpS > 3   # already a severe environment
   mdt <- scpS >= 6 | stpS >= 2 |
          (capeS >= 1500 & (shipS >= 2 | scpS >= 6)) |
          (capeS >= 3000 & sev_env)

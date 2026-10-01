@@ -62,7 +62,7 @@ These are the numbers most likely to need tuning rather than reverting. All live
 
 | Setting | Current | Meaning |
 |---|---|---|
-| Marginal floor | `cape >= 1000 & shr_kt >= 25` | Plus an SCP route at >3 (supercell baseline), plus large hail or damaging winds |
+| Marginal floor | `cape >= 1000 & shr_kt >= 25`, or `cape >= 800 & shr_kt >= 30` | The second (shear-compensated) route added 2 Oct 2026 after the ECMWF switch lowered CAPE. Plus an SCP route at >3 (supercell baseline), plus large hail or damaging winds |
 | Moderate | SCP 6, STP 2, CAPE 1500 + (SHIP 2 or SCP 6), CAPE 3000 in a severe env | Any one route. STP below 2 is ignored entirely |
 | High | SCP 8 with SHIP 1.5 or STP 2 behind it; or STP 5; or SCP 6 + SHIP 3 | Any one route. SCP alone stays Moderate. Lead ceiling still limits High to days 1-3 |
 | Hail bands | SHIP 0.5 / 1.5 / 3 | Small / Large / Very large, on SHIP alone. No cold-aloft promotion; the warm-aloft demotion above 4900 m is kept |
