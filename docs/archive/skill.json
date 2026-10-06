@@ -1,5 +1,5 @@
 {
- "generated": "2026-10-06T01:10:58Z",
+ "generated": "2026-10-06T20:06:19Z",
  "source": "NOAA CPC Global Unified Gauge-Based Analysis of Daily Precipitation (0.5 deg)",
  "verifies": "storm-day occurrence only (rainfall). NOT severe intensity -- a gauge cannot distinguish MRGL from MDT.",
  "thresholds_mm": {
@@ -92,13 +92,13 @@
    },
    "conv": {
     "hit": 485,
-    "miss": 234,
+    "miss": 235,
     "fa": 4161,
-    "cn": 57226,
-    "pod": 0.675,
+    "cn": 57225,
+    "pod": 0.674,
     "far": 0.896,
     "csi": 0.099,
-    "bias": 6.462
+    "bias": 6.453
    },
    "sev_fc": 1231,
    "sev_obs_conv": 152,
@@ -120,14 +120,14 @@
     "bias": 0.757
    },
    "conv": {
-    "hit": 457,
+    "hit": 458,
     "miss": 230,
-    "fa": 3964,
+    "fa": 3963,
     "cn": 56113,
-    "pod": 0.665,
-    "far": 0.897,
+    "pod": 0.666,
+    "far": 0.896,
     "csi": 0.098,
-    "bias": 6.435
+    "bias": 6.426
    },
    "sev_fc": 1162,
    "sev_obs_conv": 142,
@@ -149,14 +149,14 @@
     "bias": 0.779
    },
    "conv": {
-    "hit": 446,
+    "hit": 447,
     "miss": 136,
-    "fa": 3843,
+    "fa": 3842,
     "cn": 54997,
-    "pod": 0.766,
+    "pod": 0.767,
     "far": 0.896,
     "csi": 0.101,
-    "bias": 7.369
+    "bias": 7.357
    },
    "sev_fc": 1310,
    "sev_obs_conv": 172,
@@ -178,14 +178,14 @@
     "bias": 0.809
    },
    "conv": {
-    "hit": 402,
+    "hit": 403,
     "miss": 164,
-    "fa": 3937,
+    "fa": 3936,
     "cn": 53577,
-    "pod": 0.71,
+    "pod": 0.711,
     "far": 0.907,
     "csi": 0.089,
-    "bias": 7.666
+    "bias": 7.653
    },
    "sev_fc": 1419,
    "sev_obs_conv": 193,
@@ -208,13 +208,13 @@
    },
    "conv": {
     "hit": 328,
-    "miss": 174,
+    "miss": 175,
     "fa": 3452,
-    "cn": 51952,
-    "pod": 0.653,
+    "cn": 51951,
+    "pod": 0.652,
     "far": 0.913,
     "csi": 0.083,
-    "bias": 7.53
+    "bias": 7.515
    },
    "sev_fc": 1262,
    "sev_obs_conv": 130,
@@ -237,13 +237,13 @@
    },
    "conv": {
     "hit": 209,
-    "miss": 258,
+    "miss": 259,
     "fa": 3177,
-    "cn": 50920,
-    "pod": 0.448,
+    "cn": 50919,
+    "pod": 0.447,
     "far": 0.938,
     "csi": 0.057,
-    "bias": 7.251
+    "bias": 7.235
    },
    "sev_fc": 985,
    "sev_obs_conv": 45,
@@ -266,13 +266,13 @@
    },
    "conv": {
     "hit": 190,
-    "miss": 311,
+    "miss": 312,
     "fa": 2727,
-    "cn": 49994,
-    "pod": 0.379,
+    "cn": 49993,
+    "pod": 0.378,
     "far": 0.935,
     "csi": 0.059,
-    "bias": 5.822
+    "bias": 5.811
    },
    "sev_fc": 894,
    "sev_obs_conv": 69,
@@ -295,13 +295,13 @@
    },
    "conv": {
     "hit": 171,
-    "miss": 362,
+    "miss": 363,
     "fa": 3105,
-    "cn": 48242,
-    "pod": 0.321,
+    "cn": 48241,
+    "pod": 0.32,
     "far": 0.948,
     "csi": 0.047,
-    "bias": 6.146
+    "bias": 6.135
    },
    "sev_fc": 990,
    "sev_obs_conv": 63,
