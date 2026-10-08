@@ -298,3 +298,25 @@ verification ledger after a few weeks of ECMWF runs.
 **Local testing note.** Running the pipeline on macOS can segfault inside mclapply workers when
 they open network connections (fork safety). Set `OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES`. The
 GitHub Linux runners are unaffected.
+
+## 11. Run reliability: time limits, pinned runner, Mac retries, 8 Oct 2026
+
+**Why.** Two mornings lost to GitHub, not to the pipeline: on 5 Oct GitHub never assigned a
+machine ("job was not acquired by Runner"), and on 8 Oct a run hung in "Set up R" for over 4 hours,
+blocking the backup run queued behind it.
+
+**What changed.**
+- `daily-outlook.yml`: Set up R times out at 10 min, Install R packages at 15, the build job at 75,
+  the gate at 10. ECMWF builds have taken 16-33 min. A slow Open-Meteo day that runs past 75 min is
+  killed too; the Mac retry then rebuilds.
+- Both jobs pinned to `runs-on: ubuntu-24.04` (what ubuntu-latest was on 8 Oct). GitHub moves
+  ubuntu-latest to Ubuntu 26 from 19 Oct. Move up deliberately after a manual test run.
+- Mac trigger (`~/.cyclonesoz/trigger_outlook.sh`, LaunchAgent
+  `~/Library/LaunchAgents/au.com.cyclonesoz.outlook-trigger.plist`) now fires at 03:52, 04:30 and
+  05:30 Perth. Each one skips if the live outlook is under 8 h old or a run is queued or going.
+  Previous script: `~/.cyclonesoz/trigger_outlook.sh.bak-20261008`.
+
+**Undo.** Delete the `timeout-minutes` lines or set `runs-on: ubuntu-latest` (workflow edits go
+through the GitHub web editor; the local gh token has no `workflow` scope). For the Mac retries,
+remove the 04:30 and 05:30 entries from the plist, then
+`launchctl bootout gui/$(id -u) <plist>` and `launchctl bootstrap gui/$(id -u) <plist>`.
