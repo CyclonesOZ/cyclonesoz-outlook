@@ -31,7 +31,8 @@ jobs:
     # covers the backup slot after a successful first slot, and a schedule GitHub delivers hours
     # late after a manual run. Manual and watchdog runs (workflow_dispatch) always build. Reads the
     # live outlook from origin/main at run time, not from the event's commit, which can be stale.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     outputs:
       skip: ${{ steps.fresh.outputs.skip }}
     steps:
@@ -49,12 +50,21 @@ jobs:
   build:
     needs: gate
     if: needs.gate.outputs.skip != 'true'
-    runs-on: ubuntu-latest
+    # PINNED to ubuntu-24.04, 8 Oct 2026: GitHub moves ubuntu-latest to Ubuntu 26 from 19 Oct, and
+    # the R setup and package binaries are only proven on 24.04. Move up deliberately, not by surprise.
+    runs-on: ubuntu-24.04
+    # TIME LIMITS, 8 Oct 2026: on 8 Oct a run hung in "Set up R" for over 4 hours (it normally
+    # takes under a minute), blocking every run queued behind it. A hang now fails in minutes, and
+    # the Mac trigger's 04:30 and 05:30 Perth retries start a fresh run. 75 minutes covers the
+    # slowest ECMWF build so far (33 min) with room for a slow Open-Meteo day, and still ends a hung
+    # 03:52 run before the 05:30 retry.
+    timeout-minutes: 75
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
 
       - name: Set up R
+        timeout-minutes: 10
         uses: r-lib/actions/setup-r@v2
         with:
           r-version: "release"
@@ -72,6 +82,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev libssl-dev libxml2-dev
 
       - name: Install R packages
+        timeout-minutes: 15
         run: Rscript -e 'install.packages(c("thunder","jsonlite")); if (!requireNamespace("thunder", quietly=TRUE)) stop("thunder failed to install")'
 
       - name: Build outlook
@@ -80,7 +91,7 @@ jobs:
         run: Rscript pipeline/build_outlook.R
 
       - name: Commit result
-        # Build outlook can take anywhere from ~10 minutes to several hours depending on
+        # Build outlook takes ~10-35 minutes (capped by the job's time limit) depending on
         # Open-Meteo's response times, so main may have moved on by the time we're ready to
         # push (this has caused real same-day push failures). Rebase onto the latest main and
         # retry instead of assuming a clean fast-forward -- this job only ever touches
