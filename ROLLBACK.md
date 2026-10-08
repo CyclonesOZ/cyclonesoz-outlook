@@ -337,3 +337,9 @@ forecaster's category.
 **Switch.** `MANUAL_OUTLOOK <- FALSE` in `pipeline/build_outlook.R` (the state at stage 1): the
 published outlook is the raw run exactly as before. TRUE turns the nightly carry-forward on. If the
 carry-forward ever fails, the run publishes the raw outlook instead and says so in the log.
+
+**8 Oct 2026: live.** Josh's first edit (made in the edit room, all 8 days) was published to
+`docs/outlook.json`, and `MANUAL_OUTLOOK` was set TRUE so each night carries it forward. To go back
+to the raw model: set `MANUAL_OUTLOOK <- FALSE` (the next run publishes raw), or to restore the raw
+run immediately copy `docs/archive/raw/outlook.json` to `docs/outlook.json` and
+`docs/archive/raw/frames/*` to `docs/archive/frames/`.

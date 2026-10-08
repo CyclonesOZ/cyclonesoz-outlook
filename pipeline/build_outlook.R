@@ -46,7 +46,7 @@ FRAME_COLS  <- c("cat","tprob","hail","wind","flood","cape","shear","ship","rain
 # edited come from raw, every non-category field stays fresh) and THAT becomes docs/outlook.json.
 # With it FALSE, docs/outlook.json is the raw run exactly as before, and raw/ is just a copy (git
 # stores identical files once, so the copy costs nothing). See ROLLBACK.md section 12.
-MANUAL_OUTLOOK <- FALSE
+MANUAL_OUTLOOK <- TRUE    # ON from 8 Oct 2026: Josh published his first edit live
 RAW_DIR <- file.path(ARCHIVE_DIR, "raw")
 # ---- vertical resolution, and the API key that pays for it (14 Sep 2026) ----
 # Open-Meteo prices a request as max(1, variables*models/10) * max(1, days/14) * locations, so our
