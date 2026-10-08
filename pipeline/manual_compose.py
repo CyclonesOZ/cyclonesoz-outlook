@@ -12,8 +12,9 @@ run and this module lays the newest edits over it, so:
     comes straight from the raw run;
   * everything other than the category -- rain, flood, fire, the hover numbers -- stays fresh from
     the raw run. Only the category is held, plus the fields a member's summary reads alongside it
-    (thunderstorm chance, hail, wind), which are brought into line with it so a summary can never
-    say "Chance of thunderstorms" where the map shows no risk.
+    (thunderstorm chance, hail, wind), which are brought into line with it at EVERY point of a day
+    he published, so a summary can never say "Chance of thunderstorms" where his map shows no risk.
+    (The model alone often has a 20%+ thunderstorm chance at points it gives no category.)
 
 On every day the forecaster has published, each point's 3-hourly frames are capped at his category
 for that day, so the 3-hourly view never shows storms where his map shows none, or a worse category
@@ -78,29 +79,29 @@ def tprob_floor(tprob, cat):
 
 
 def harmonise(rec, cat):
-    """Brings the fields a member's summary reads into line with an edited category, using the
-    pipeline's own rules: thunderstorm chance floors, hail no higher than the category, no
-    damaging wind below Marginal and nothing above Damaging below Moderate."""
-    out = dict(rec)
-    out["raw_cat"] = rec.get("cat", 0)
-    out["cat"] = cat
-    out["conditional"] = False
+    """One point-day under the forecaster's category, with the fields a member's summary reads
+    brought into line with it using the pipeline's own rules: thunderstorm chance under the
+    "Chance" bar where he shows no risk and at least at it where he shows any (80%+ from Moderate
+    up), hail no higher than the category, no damaging wind below Marginal and nothing above
+    Damaging below Moderate. Returns rec itself when nothing needs to change."""
+    raw_c = rec.get("cat", 0)
     tp = rec.get("tprob", 0) or 0
-    if cat <= 0:
-        out["tprob"] = min(tp, NO_STORM_TPROB)
-        out["hail"] = 0
-        out["wind"] = 0
-        out["hatch"] = 0
-        return out
-    out["tprob"] = tprob_floor(tp, cat)
-    out["hail"] = min(rec.get("hail", 0) or 0, cat)
+    hail = rec.get("hail", 0) or 0
     wind = rec.get("wind", 0) or 0
-    if cat < 2:
-        wind = 0
-        out["hatch"] = 0
-    elif cat < 3:
-        wind = min(wind, 1)
-    out["wind"] = wind
+    if cat <= 0:
+        ntp, nhail, nwind = min(tp, NO_STORM_TPROB), 0, 0
+    else:
+        ntp, nhail = tprob_floor(tp, cat), min(hail, cat)
+        nwind = 0 if cat < 2 else (min(wind, 1) if cat < 3 else wind)
+    if cat == raw_c and (ntp, nhail, nwind) == (tp, hail, wind):
+        return rec
+    out = dict(rec)
+    out.update(cat=cat, tprob=ntp, hail=nhail, wind=nwind)
+    if cat != raw_c:
+        out["raw_cat"] = raw_c
+        out["conditional"] = False
+        if cat < 2:
+            out["hatch"] = 0
     return out
 
 
@@ -108,7 +109,12 @@ def mask_frame(vals, cols, cap):
     """Caps one 3-hourly frame at the forecaster's category for that day."""
     v = list(vals)
     ci = {c: i for i, c in enumerate(cols)}
-    if "cat" not in ci or v[ci["cat"]] <= cap:
+    if "cat" not in ci:
+        return v
+    if v[ci["cat"]] <= cap:
+        # no storms on his map: no thunderstorm chance in the frames either
+        if cap <= 0 and "tprob" in ci and v[ci["tprob"]] > NO_STORM_TPROB:
+            v[ci["tprob"]] = NO_STORM_TPROB
         return v
     v[ci["cat"]] = cap
     if "tprob" in ci:
@@ -198,8 +204,12 @@ def compose(raw, raw_frames=None, edits=None, published_at=None):
     for i, p in enumerate(raw["points"]):
         d_new = []
         for j, rec in enumerate(p["d"]):
-            c = cats[j][i] if j < len(cats) else rec.get("cat", 0)
-            d_new.append(harmonise(rec, c) if c != rec.get("cat", 0) else rec)
+            # on a day he published, every point is his call, changed or not, so every point's
+            # summary fields follow his category; unedited days stay exactly as the model has them
+            if j < len(info) and info[j]["source"] == "edit":
+                d_new.append(harmonise(rec, cats[j][i]))
+            else:
+                d_new.append(rec)
         q = dict(p)
         q["d"] = d_new
         new_pts.append(q)
