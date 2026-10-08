@@ -320,3 +320,20 @@ blocking the backup run queued behind it.
 through the GitHub web editor; the local gh token has no `workflow` scope). For the Mac retries,
 remove the 04:30 and 05:30 entries from the plist, then
 `launchctl bootout gui/$(id -u) <plist>` and `launchctl bootstrap gui/$(id -u) <plist>`.
+
+## 12. Manual outlook, stage 1: raw copy and carry-forward, 8 Oct 2026
+
+**Why.** The daily category map is moving to the forecaster (Josh edits the 8 days each morning in
+the edit room, `editroom/`). The model run becomes the starting skeleton.
+
+**What changed.** Every live run also writes the untouched model output to `docs/archive/raw/`
+(`outlook.json`, `frames/`, and a dated copy kept 14 days for verification). `outlook.json` gains a
+`dates` field (ISO date per day). `pipeline/manual_compose.py` lays the newest published edits
+(`docs/archive/manual/edits.json`, keyed by date) over a raw run: passed days drop off, unedited
+dates come from raw, non-category fields stay fresh, and thunderstorm chance, hail and wind are
+brought into line with each edited category. On edited days the 3-hourly frames are capped at the
+forecaster's category.
+
+**Switch.** `MANUAL_OUTLOOK <- FALSE` in `pipeline/build_outlook.R` (the state at stage 1): the
+published outlook is the raw run exactly as before. TRUE turns the nightly carry-forward on. If the
+carry-forward ever fails, the run publishes the raw outlook instead and says so in the log.

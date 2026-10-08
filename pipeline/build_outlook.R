@@ -37,6 +37,17 @@ FRAME_HOURS <- 3
 FRAME_TRIG  <- 0.5
 FRAME_DIR   <- file.path(ARCHIVE_DIR, "frames")
 FRAME_COLS  <- c("cat","tprob","hail","wind","flood","cape","shear","ship","rain")
+# ---- manual outlook (8 Oct 2026) ----
+# The daily category map becomes the forecaster's: Josh edits the 8 days each morning in the edit
+# room (editroom/) and publishes. Every live run now also keeps the untouched model output in
+# docs/archive/raw/ (outlook.json, frames/, and a dated copy for verification), which is what the
+# edit room starts from. With MANUAL_OUTLOOK TRUE the run then carries the newest published edit
+# forward over this raw run (pipeline/manual_compose.py: the passed day drops off, dates nobody has
+# edited come from raw, every non-category field stays fresh) and THAT becomes docs/outlook.json.
+# With it FALSE, docs/outlook.json is the raw run exactly as before, and raw/ is just a copy (git
+# stores identical files once, so the copy costs nothing). See ROLLBACK.md section 12.
+MANUAL_OUTLOOK <- FALSE
+RAW_DIR <- file.path(ARCHIVE_DIR, "raw")
 # ---- vertical resolution, and the API key that pays for it (14 Sep 2026) ----
 # Open-Meteo prices a request as max(1, variables*models/10) * max(1, days/14) * locations, so our
 # one-location sounding costs (levels*5 + 10 surface)/10 calls -- 9 at 16 levels, 19.5 at 37. The
@@ -1304,12 +1315,12 @@ if (valid_after_ecmwf != valid_before_ecmwf) {
   cat(sprintf("Valid points unchanged across the second-opinion pass: %d\n", valid_before_ecmwf))
 }
 
-points <- vector("list", nrow(GRID)); day_labels <- NULL; ok <- 0
+points <- vector("list", nrow(GRID)); day_labels <- NULL; day_dates <- NULL; ok <- 0
 frames <- vector("list", nrow(GRID)); frame_ll <- vector("list", nrow(GRID))
 for (k in seq_along(raw_results)){
   res <- raw_results[[k]]
   if (is.null(res) || inherits(res, "try-error")) next
-  if (is.null(day_labels)) day_labels <- format(as.Date(res$days), "%a %e %b")
+  if (is.null(day_labels)) { day_labels <- format(as.Date(res$days), "%a %e %b"); day_dates <- as.character(as.Date(res$days)) }
   # fr rides along on each day record so it survives the parallel workers; split it out here so
   # outlook.json keeps exactly the schema it had and the frames go to their own files.
   frames[[k]] <- lapply(res$d[seq_len(min(FRAME_DAYS, length(res$d)))], function(dd) dd$fr)
@@ -1326,6 +1337,7 @@ points <- Filter(Negate(is.null), points)
 out <- list(run_date = if (is.null(HIST_DATE)) format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz="UTC")
                        else paste0(as.Date(START_DATE) - 1, "T18:00:00Z"),
             days = if (is.null(day_labels)) paste("Day", seq_len(FDAYS)) else day_labels,
+            dates = if (is.null(day_dates)) as.character(as.Date(START_DATE) + seq_len(FDAYS) - 1) else day_dates,
             full_hazards = TRUE,
             model = if (nzchar(MODEL)) MODEL else "best_match",
             second_opinion = SECOND_LABEL,     # which model the rain_ecmwf/ecmwf_ungated fields came from
@@ -1394,6 +1406,29 @@ if (ENABLE_FRAMES && is.null(HIST_DATE)) {
              file.path(FRAME_DIR, "index.json"), auto_unbox=TRUE)
 }
 
+# Keep the untouched model run in docs/archive/raw/ (see MANUAL_OUTLOOK above), then, in manual
+# mode, carry the newest published edit forward over it into docs/outlook.json and the frames.
+# Wrapped so a problem here can never cost the outlook: on any failure the raw run (already
+# written to docs/outlook.json above) stays as the published one, which is still correctly dated.
+if (is.null(HIST_DATE)) tryCatch({
+  dir.create(file.path(RAW_DIR, "frames"), recursive=TRUE, showWarnings=FALSE)
+  file.copy(OUT, file.path(RAW_DIR, "outlook.json"), overwrite=TRUE)
+  for (f in list.files(FRAME_DIR, pattern="^(d[0-9]+|index)\\.json$"))
+    file.copy(file.path(FRAME_DIR, f), file.path(RAW_DIR, "frames", f), overwrite=TRUE)
+  file.copy(OUT, file.path(RAW_DIR, paste0(START_DATE, ".json")), overwrite=TRUE)
+  if (MANUAL_OUTLOOK) {
+    mres <- system2("python3", c("pipeline/manual_compose.py", "--pipeline"), stdout=TRUE, stderr=TRUE)
+    cat(paste(mres, collapse="\n"), "\n")
+    st <- attr(mres, "status")
+    if (!is.null(st) && st != 0) {
+      cat("Manual carry-forward FAILED -- publishing the raw run instead.\n")
+      file.copy(file.path(RAW_DIR, "outlook.json"), OUT, overwrite=TRUE)
+      for (f in list.files(file.path(RAW_DIR, "frames"), pattern="^(d[0-9]+|index)\\.json$"))
+        file.copy(file.path(RAW_DIR, "frames", f), file.path(FRAME_DIR, f), overwrite=TRUE)
+    }
+  }
+}, error=function(e) cat("raw copy / manual carry-forward skipped:", conditionMessage(e), "\n"))
+
 # archive this run for the viewer's historical-run picker, dated by START_DATE (the run's own
 # Day-1 anchor) so a given archive file always matches what that date's Day 1 actually looked
 # like when it was generated -- same convention the "Update outlook YYYY-MM-DD" commit message
@@ -1415,6 +1450,9 @@ cutoff <- as.Date(format(Sys.time() + 8*3600, "%Y-%m-%d", tz="UTC")) - ARCHIVE_D
 keep <- existing_dates[!is.na(as.Date(existing_dates)) & (as.Date(existing_dates) >= cutoff | existing_dates %in% pinned)]
 stale <- setdiff(existing, paste0(keep, ".json"))
 if (length(stale) > 0) file.remove(file.path(ARCHIVE_DIR, stale))
+raw_dated <- list.files(RAW_DIR, pattern="^\\d{4}-\\d{2}-\\d{2}\\.json$")
+raw_stale <- raw_dated[as.Date(sub("\\.json$", "", raw_dated)) < cutoff]
+if (length(raw_stale) > 0) file.remove(file.path(RAW_DIR, raw_stale))
 write_json(sort(keep), file.path(ARCHIVE_DIR, "index.json"))  # NOT auto_unbox: must stay an
 # array even when only one date exists yet, since the viewer always expects to parse a list
 cat(sprintf("Archived run for %s (%d dates kept, %d pruned)\n", START_DATE, length(keep), length(stale)))
