@@ -17,7 +17,7 @@ day 1 is today, every member summary agrees with your map), commits it to main w
 GitHub login and pushes; the editor then watches the website until it serves your outlook. The app
 caches it for up to 30 minutes more. To drop back to sandbox mode (Publish only writes to
 `~/.cyclonesoz/edit-room/sandbox/`, viewable at http://localhost:8417/sandbox/), create the file
-`~/.cyclonesoz/edit-room/SANDBOX`; delete it to go live again.
+`~/.cyclonesoz/edit-room/SANDBOX_MODE`; delete it to go live again.
 
 **How it fits together:** `server.py` (standard-library Python, runs from its own clone in
 `~/.cyclonesoz/edit-room/repo`, refreshed from GitHub when the editor loads) uses

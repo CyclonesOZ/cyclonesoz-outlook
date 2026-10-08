@@ -13,7 +13,7 @@ LIVE (from 8 Oct 2026): "Publish" checks the outlook, commits it to main from th
 (docs/outlook.json, the frames, the edit itself in docs/archive/manual/edits.json and today's archive
 copy) and pushes, using the Mac's existing GitHub login; the editor then watches the public site
 until it serves the new file. That one file feeds the website, Front Line, Broadcast, the app map
-and member summaries. Creating ~/.cyclonesoz/edit-room/SANDBOX switches back to sandbox mode, where
+and member summaries. Creating the file ~/.cyclonesoz/edit-room/SANDBOX_MODE switches back to sandbox mode, where
 Publish only writes to ~/.cyclonesoz/edit-room/sandbox/ (viewable at /sandbox/).
 
 Only listens on 127.0.0.1, checks the Host header (so another website can't reach it through DNS
@@ -49,7 +49,8 @@ AUTHOR = ("Josh Toohey", "josh@cyclonesoz.com.au")
 
 
 def mode():
-    return "sandbox" if os.path.exists(os.path.join(BASE, "SANDBOX")) else "live"
+    # a FILE named SANDBOX_MODE (macOS names ignore case, so it must not collide with sandbox/)
+    return "sandbox" if os.path.isfile(os.path.join(BASE, "SANDBOX_MODE")) else "live"
 ALLOWED_HOSTS = {"localhost:%d" % PORT, "127.0.0.1:%d" % PORT}
 STARTED_MTIME = os.path.getmtime(os.path.abspath(__file__))
 
