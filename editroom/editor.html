@@ -217,7 +217,7 @@
   function load(refresh){
     banner('Loading the latest model run…');
     return api('/api/state'+(refresh?'?refresh=1':'')).then(function(st){
-      S.st=st;
+      S.st=st; syncMode();
       return fetch('/data/raw.json').then(function(r){return r.json();});
     }).then(function(raw){
       S.raw=raw; S.pts=raw.points; S.nd=S.st.dates.length;
@@ -236,6 +236,11 @@
       banner(notes.join(' '), false);
       offerRestore();
     }).catch(function(e){ banner('Couldn\'t load the outlook: '+e.message+'. Is the edit room server running?', true); });
+  }
+  function syncMode(){
+    var live=S.st.mode==='live', b=$('modeBadge');
+    b.className='badge '+(live?'live':'sandbox');
+    b.textContent=live?'Live · Publish updates the website, app and summaries':'Sandbox · publishing stays on this Mac';
   }
   function banner(msg,err,btn){
     var b=$('banner'); if(!msg){b.style.display='none';return;}
@@ -607,7 +612,7 @@
       body.innerHTML='<h2>Publish the outlook'+(S.st.mode==='sandbox'?' to the sandbox':'')+'?</h2>'+
         '<p>'+(S.st.mode==='sandbox'?'Sandbox: this stays on this Mac. You can view it as the public page afterwards. Nothing reaches the website, Front Line, Broadcast or the app.':'This goes to the website, Front Line, Broadcast, the app map and member summaries.')+'</p>'+
         '<table>'+rows+'</table>'+msgs+
-        '<div class="row"><button class="btn" id="pcancel">Cancel</button><button class="btn primary" id="pgo"'+(blocked?' disabled':'')+'>Publish'+(S.st.mode==='sandbox'?' to sandbox':'')+'</button></div>';
+        '<div class="row"><button class="btn" id="pcancel">Cancel</button><button class="btn primary" id="pgo"'+(blocked?' disabled':'')+'>'+(S.st.mode==='sandbox'?'Publish to sandbox':'Publish live')+'</button></div>';
       $('pcancel').onclick=function(){dlg.close();};
       $('pgo').onclick=function(){
         $('pgo').disabled=true; $('pgo').textContent='Publishing…';
@@ -621,12 +626,26 @@
           S.hi.forEach(function(h){ h.clear(); }); styleAll();
           try{localStorage.removeItem(DRAFT_KEY);}catch(e){}
           syncTabs(); syncStatus();
-          toast('Published to the sandbox at '+new Date(r.published_at).toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit'})+'.','<a href="'+r.url+'" target="_blank" rel="noopener">Open the sandbox map</a>');
+          var at=new Date(r.published_at).toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit'});
+          if(r.mode==='live'){ toast('Published at '+at+'. Waiting for the website to pick it up…',null,true); watchLive(r.published_at,r.url); }
+          else toast('Published to the sandbox at '+at+'.','<a href="'+r.url+'" target="_blank" rel="noopener">Open the sandbox map</a>');
         }).catch(function(e){ dlg.close(); banner('Not published: '+e.message,true); });
       };
     }).catch(function(e){ body.innerHTML='<h2>Couldn\'t reach the edit room server</h2><p>'+e.message+'</p>'; });
   };
-  function toast(msg,html){ var t=$('toast'); t.innerHTML=msg+(html||''); t.style.display='block'; clearTimeout(t._t); t._t=setTimeout(function(){t.style.display='none';},9000); }
+  function toast(msg,html,sticky){ var t=$('toast'); t.innerHTML=msg+(html||''); t.style.display='block'; clearTimeout(t._t); if(!sticky) t._t=setTimeout(function(){t.style.display='none';},12000); }
+  // after a live publish: poll until the public site serves this outlook (GitHub Pages takes a
+  // minute or two; the app caches it for up to 30 more)
+  function watchLive(pubAt,url){
+    var t0=Date.now();
+    (function poll(){
+      api('/api/live?published_at='+encodeURIComponent(pubAt)).then(function(r){
+        if(r.live){ toast('Live on the website. The app\'s summaries follow within 30 minutes.','<a href="'+url+'" target="_blank" rel="noopener">Open the live map</a>'); return; }
+        if(Date.now()-t0>8*60000){ toast('Published, but the website hasn\'t shown it after 8 minutes. Check the live map shortly.','<a href="'+url+'" target="_blank" rel="noopener">Open the live map</a>'); return; }
+        setTimeout(poll,10000);
+      }).catch(function(){ setTimeout(poll,10000); });
+    })();
+  }
   window.addEventListener('beforeunload',function(e){ for(var j=0;j<S.nd;j++) if(dirty(j)){ e.preventDefault(); e.returnValue=''; return; } });
 
   setTool('paint'); setSize(1);

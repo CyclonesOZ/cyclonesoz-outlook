@@ -9,10 +9,12 @@ the nightly pipeline uses, so what the editor previews is what gets published.
 It works from its own clone of the outlook repo (~/.cyclonesoz/edit-room/repo), refreshed from
 GitHub whenever the editor loads, so it never touches a working copy anyone is editing.
 
-SANDBOX MODE (stage 2 of the manual outlook, 8 Oct 2026): "Publish" writes to
-~/.cyclonesoz/edit-room/sandbox/ only, and the result is viewable at /sandbox/ -- the public map's
-own page, fed the sandbox outlook. Nothing reaches the live site, Front Line, Broadcast or the app.
-Publishing for real is switched on at stage 4.
+LIVE (from 8 Oct 2026): "Publish" checks the outlook, commits it to main from the managed clone
+(docs/outlook.json, the frames, the edit itself in docs/archive/manual/edits.json and today's archive
+copy) and pushes, using the Mac's existing GitHub login; the editor then watches the public site
+until it serves the new file. That one file feeds the website, Front Line, Broadcast, the app map
+and member summaries. Creating ~/.cyclonesoz/edit-room/SANDBOX switches back to sandbox mode, where
+Publish only writes to ~/.cyclonesoz/edit-room/sandbox/ (viewable at /sandbox/).
 
 Only listens on 127.0.0.1, checks the Host header (so another website can't reach it through DNS
 tricks) and needs a custom header on every POST (so another website can't post to it from a
@@ -42,6 +44,12 @@ REPO = os.path.dirname(HERE)                     # the repo this server file liv
 DOCS = os.path.join(REPO, "docs")
 LOG = os.path.join(BASE, "server.log")
 SYNC_EVERY_S = 60
+LIVE_URL = "https://cyclonesoz.github.io/cyclonesoz-outlook/"
+AUTHOR = ("Josh Toohey", "josh@cyclonesoz.com.au")
+
+
+def mode():
+    return "sandbox" if os.path.exists(os.path.join(BASE, "SANDBOX")) else "live"
 ALLOWED_HOSTS = {"localhost:%d" % PORT, "127.0.0.1:%d" % PORT}
 STARTED_MTIME = os.path.getmtime(os.path.abspath(__file__))
 
@@ -92,20 +100,39 @@ def sync_repo(force=False):
 
 
 def raw_sources():
-    """The raw model run and its frames. Before the first run with stage 1 (8 Oct 2026) there is no
-    docs/archive/raw yet; until manual mode goes live the published files ARE the raw run."""
+    """The raw model run and its frames (docs/archive/raw, written by every run since 8 Oct 2026).
+    docs/outlook.json is the PUBLISHED outlook now, so it is never used as a stand-in."""
     rd = os.path.join(DOCS, "archive", "raw")
-    if os.path.exists(os.path.join(rd, "outlook.json")):
-        return os.path.join(rd, "outlook.json"), os.path.join(rd, "frames"), "raw"
-    return os.path.join(DOCS, "outlook.json"), os.path.join(DOCS, "archive", "frames"), "published (pre-raw)"
+    if not os.path.exists(os.path.join(rd, "outlook.json")):
+        raise RuntimeError("the raw model run (docs/archive/raw/outlook.json) is missing")
+    return os.path.join(rd, "outlook.json"), os.path.join(rd, "frames"), "raw"
 
 
 def current_edits():
-    p = os.path.join(SANDBOX, "edits.json")
+    """The last published edit: the live one, or the sandbox one in sandbox mode."""
+    p = os.path.join(SANDBOX, "edits.json") if mode() == "sandbox" else \
+        os.path.join(REPO, "docs", "archive", "manual", "edits.json")
     if os.path.exists(p):
         with open(p) as f:
             return json.load(f)
     return None
+
+
+def git(*args, timeout=120):
+    env = dict(os.environ, GIT_TERMINAL_PROMPT="0")
+    return subprocess.run(["git", "-C", REPO] + list(args), check=True, timeout=timeout,
+                          capture_output=True, text=True, env=env)
+
+
+def live_published_at():
+    """published_at of the outlook the public site is serving right now (curl, so macOS's own
+    certificates are used), or None."""
+    try:
+        r = subprocess.run(["curl", "-sf", "--max-time", "20", LIVE_URL + "outlook.json?_=%d" % time.time()],
+                           capture_output=True, timeout=30)
+        return (json.loads(r.stdout).get("manual") or {}).get("published_at") if r.returncode == 0 else None
+    except Exception:
+        return None
 
 
 # ---------------------------------------------------------------- review flags --------------
@@ -182,7 +209,8 @@ def summary_for(rec):
 
 
 def run_checks(out, raw, frames):
-    """Blocking problems and warnings for a composed outlook."""
+    """Blocking problems and warnings for a composed outlook. Publishing live with a stale day 1 is
+    blocked: the app reads the first day as "today", so members would get yesterday's risk."""
     problems, warnings = [], []
     if len(out["points"]) != len(raw["points"]):
         problems.append("%d points in the outlook, %d in the model run" % (len(out["points"]), len(raw["points"])))
@@ -192,7 +220,8 @@ def run_checks(out, raw, frames):
         problems.append("%d points are missing days" % short)
     dates = out.get("dates") or []
     if dates and dates[0] != awst_today():
-        warnings.append("Day 1 is %s, not today (%s). The overnight model run hasn't landed yet." % (dates[0], awst_today()))
+        msg = "Day 1 is %s, not today (%s). The overnight model run hasn't landed yet." % (dates[0], awst_today())
+        (problems if mode() == "live" else warnings).append(msg)
     # every member's summary (days 1-2, what localBrief reads) must agree with the map
     bad = []
     for p in out["points"]:
@@ -339,6 +368,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return self._file(os.path.join(HERE, "editor.html"))
             if p == "/api/state":
                 return self._state(force="refresh" in q)
+            if p == "/api/live":
+                want = (q.get("published_at") or [""])[0]
+                got = live_published_at()
+                return self._send(200, {"live": bool(want) and got == want, "serving": got})
             if p == "/data/raw.json":
                 return self._file(raw_sources()[0])
             if p in ("/data/coastline.geo.json", "/data/states.geo.json"):
@@ -385,7 +418,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         review = review_flags(m, raw, edits, cats, raw_cats, info)
         restart = os.path.getmtime(os.path.abspath(__file__)) != STARTED_MTIME
         self._send(200, {
-            "mode": "sandbox",
+            "mode": mode(),
+            "live_url": LIVE_URL,
             "base_run": raw.get("run_date"),
             "model": raw.get("model"),
             "dates": m.run_dates(raw),
@@ -444,6 +478,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         return self._send(200, {"ok": True, "report": rep, "problems": problems, "warnings": warnings})
 
     def _publish(self, body):
+        if mode() == "live":
+            return self._publish_live(body)
         if not self._check_base(body):
             return
         now = dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -461,6 +497,58 @@ class Handler(http.server.BaseHTTPRequestHandler):
         log("sandbox publish: base %s, changed per day %s" % (raw.get("run_date"), changed))
         return self._send(200, {"ok": True, "mode": "sandbox", "published_at": now, "report": rep,
                                 "warnings": warnings, "url": "/sandbox/"})
+
+
+    def _publish_live(self, body):
+        """Commit the outlook to main and push. Starts from a fresh copy of main each attempt, so a
+        push that loses a race (e.g. with the nightly run) is rebuilt on top of whatever landed."""
+        if os.path.realpath(REPO) != os.path.realpath(MANAGED_CLONE):
+            return self._send(400, {"ok": False, "problems": ["Live publishing only runs from the edit room's own copy (%s)." % MANAGED_CLONE]})
+        m = mc()
+        with _lock:
+            last = ""
+            for attempt in range(3):
+                note = sync_repo(force=True)
+                if note != "synced":
+                    return self._send(503, {"ok": False, "problems": ["Couldn't reach GitHub to publish: " + note]})
+                m = mc()
+                with open(raw_sources()[0]) as f:
+                    run = json.load(f).get("run_date")
+                if body.get("base_run") != run:
+                    return self._send(409, {"error": "A newer model run has landed since you opened the editor. "
+                                                     "Reload to bring your edits onto it.", "run_date": run})
+                now = dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+                out, fo, rep, raw, edits = build(body.get("dates") or {}, published_at=now)
+                problems, warnings = run_checks(out, raw, fo)
+                if problems:
+                    return self._send(422, {"ok": False, "problems": problems, "warnings": warnings})
+                day1 = out["dates"][0]
+                m.write_json_atomic(os.path.join(DOCS, "outlook.json"), out)
+                if fo:
+                    m.write_frames(os.path.join(DOCS, "archive", "frames"), fo)
+                m.write_json_atomic(os.path.join(DOCS, "archive", "manual", "edits.json"), edits)
+                m.write_json_atomic(os.path.join(DOCS, "archive", day1 + ".json"), out)
+                changed = [x["changed"] for x in rep["days"]]
+                local = (dt.datetime.utcnow() + dt.timedelta(hours=8)).strftime("%-d %b %H:%M AWST")
+                try:
+                    git("add", "docs/outlook.json", "docs/archive/frames", "docs/archive/manual", "docs/archive/%s.json" % day1)
+                    git("-c", "user.name=%s" % AUTHOR[0], "-c", "user.email=%s" % AUTHOR[1], "commit", "-q", "-m",
+                        "Publish edited outlook (%s)\n\nPublished from the edit room on model run %s. Squares changed "
+                        "from the model by day: %s." % (local, run, ", ".join(str(c) for c in changed)))
+                    git("push", "-q", "origin", "HEAD:main", timeout=180)
+                except subprocess.CalledProcessError as e:
+                    last = (e.stderr or e.stdout or str(e)).strip()
+                    log("live publish attempt %d failed: %s" % (attempt + 1, last))
+                    continue
+                except subprocess.TimeoutExpired:
+                    last = "GitHub didn't respond in time"
+                    log("live publish attempt %d timed out" % (attempt + 1))
+                    continue
+                sha = git("rev-parse", "--short", "HEAD").stdout.strip()
+                log("LIVE publish %s: base %s, changed per day %s" % (sha, run, changed))
+                return self._send(200, {"ok": True, "mode": "live", "published_at": now, "report": rep,
+                                        "warnings": warnings, "commit": sha, "url": LIVE_URL})
+            return self._send(502, {"ok": False, "problems": ["Couldn't push to GitHub after 3 tries: " + last[-300:]]})
 
 
 class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
