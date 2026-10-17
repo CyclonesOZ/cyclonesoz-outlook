@@ -7,7 +7,7 @@ Inputs (see data/postcodes/README.md for how each is made):
   --csv     Matthew Proctor's australian_postcodes.csv (names, state, coordinates, type)
   --joined  point-only postcodes spatially joined to the POA polygon that contains them (GeoJSON)
 
-Output record: {"state", "localities": [..up to 8..], "n_localities", "lat", "lon", "types": [..],
+Output record: {"state", "localities": [all names], "n_localities", "lat", "lon", "types": [..],
                 "area": true|false, "host": "<POA code that draws it>"}
 A postcode with its own area has host == itself. A point-only postcode (PO Box, large-volume
 receiver, a few small localities) is hosted by the area that physically contains its point, so
@@ -56,7 +56,7 @@ def main():
         m = meta.get(p, {"state": None, "localities": [], "lat": None, "lon": None, "types": []})
         has = p in areas
         out[p] = {
-            "state": m["state"], "localities": m["localities"][:8], "n_localities": len(m["localities"]),
+            "state": m["state"], "localities": m["localities"], "n_localities": len(m["localities"]),
             "lat": m["lat"], "lon": m["lon"], "types": m["types"], "area": has,
             "host": p if has else host_of.get(p),
         }
