@@ -1,5 +1,5 @@
 {
- "generated": "2026-10-16T20:09:03Z",
+ "generated": "2026-10-17T20:01:58Z",
  "source": "NOAA CPC Global Unified Gauge-Based Analysis of Daily Precipitation (0.5 deg)",
  "verifies": "storm-day occurrence only (rainfall). NOT severe intensity -- a gauge cannot distinguish MRGL from MDT.",
  "thresholds_mm": {
@@ -91,9 +91,9 @@
    "points": 75534,
    "no_gauge": 8,
    "wet": {
-    "hit": 3604,
+    "hit": 3605,
     "miss": 4176,
-    "fa": 3215,
+    "fa": 3214,
     "cn": 64531,
     "pod": 0.463,
     "far": 0.471,
@@ -120,9 +120,9 @@
    "points": 74192,
    "no_gauge": 8,
    "wet": {
-    "hit": 3445,
+    "hit": 3446,
     "miss": 4105,
-    "fa": 3066,
+    "fa": 3065,
     "cn": 63568,
     "pod": 0.456,
     "far": 0.471,
@@ -149,9 +149,9 @@
    "points": 72850,
    "no_gauge": 8,
    "wet": {
-    "hit": 3224,
+    "hit": 3225,
     "miss": 3989,
-    "fa": 3001,
+    "fa": 3000,
     "cn": 62628,
     "pod": 0.447,
     "far": 0.482,
@@ -178,13 +178,13 @@
    "points": 71508,
    "no_gauge": 8,
    "wet": {
-    "hit": 3115,
+    "hit": 3116,
     "miss": 3956,
-    "fa": 3159,
+    "fa": 3158,
     "cn": 61270,
     "pod": 0.441,
-    "far": 0.504,
-    "csi": 0.304,
+    "far": 0.503,
+    "csi": 0.305,
     "bias": 0.887
    },
    "conv": {
@@ -208,9 +208,9 @@
    "no_gauge": 0,
    "wet": {
     "hit": 2547,
-    "miss": 4237,
+    "miss": 4238,
     "fa": 2900,
-    "cn": 59642,
+    "cn": 59641,
     "pod": 0.375,
     "far": 0.532,
     "csi": 0.263,
@@ -237,9 +237,9 @@
    "no_gauge": 0,
    "wet": {
     "hit": 1950,
-    "miss": 4778,
+    "miss": 4779,
     "fa": 2812,
-    "cn": 58444,
+    "cn": 58443,
     "pod": 0.29,
     "far": 0.591,
     "csi": 0.204,
@@ -266,9 +266,9 @@
    "no_gauge": 0,
    "wet": {
     "hit": 1606,
-    "miss": 5191,
+    "miss": 5192,
     "fa": 2430,
-    "cn": 57415,
+    "cn": 57414,
     "pod": 0.236,
     "far": 0.602,
     "csi": 0.174,
@@ -295,10 +295,10 @@
    "no_gauge": 0,
    "wet": {
     "hit": 1508,
-    "miss": 5269,
+    "miss": 5270,
     "fa": 2755,
-    "cn": 55768,
-    "pod": 0.223,
+    "cn": 55767,
+    "pod": 0.222,
     "far": 0.646,
     "csi": 0.158,
     "bias": 0.629
