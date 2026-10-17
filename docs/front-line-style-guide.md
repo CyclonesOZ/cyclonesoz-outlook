@@ -1,4 +1,4 @@
-# The Front Line: writing and image style guide (DRAFT for Josh's approval)
+# The Front Line: writing and image style guide (APPROVED by Josh, 17 Oct 2026)
 
 Learned from all 40 `SectorForecast` posts (19 Jun to 12 Oct 2026), the 2 `ClimateNews`
 posts, and six of the forecast images (SWPA042, 040, 029/028, 037, 016, 026).
@@ -84,17 +84,16 @@ New for postcode alerts: the polygons become **postcode areas** coloured by tier
 the rest of the layout. Place labels come from the largest localities among the selected
 postcodes plus the capital.
 
-## 6. Things I need you to confirm
+## 6. Decisions (all approved by Josh)
 
-1. "G'day <region>," as the standard opener and `~Josh` as the sign-off, for both
-   hand-written and Claude-drafted posts.
-2. Keep the SWPAnnn numbering and the title format? (I would continue the sequence
-   automatically from the highest number, SWPA043.)
-3. Should one event produce one post with one text for all selected postcodes, or still
-   one text per region as now (SWPA027)? With postcode targeting I would suggest one
-   master text plus an optional per-region paragraph, which you can edit.
-4. Is it fine for me to learn the voice from the 40 posts only, i.e. Claude drafts and you
-   proofread, never auto-publish?
-5. Image: draw deterministically from data in this layout (my recommendation), rather than
-   an AI-generated picture. Basemap: I need a satellite-style tile source I may use
-   (your current one looks like NASA Blue Marble). Which is it?
+1. "G'day <region>," opener and `~Josh` sign-off, for hand-written and Claude-drafted posts.
+2. Keep SWPAnnn numbering and the title format; continue automatically from the highest number (SWPA043, so next is SWPA044).
+3. One master text per event, plus an optional editable regional paragraph.
+4. Claude drafts, Josh proofreads. Never auto-publish.
+5. Image drawn deterministically from data in the layout above. Basemap: NASA Blue Marble.
+
+## 7. Hard rule
+
+No test alert, email or notification goes to a real subscriber. Test sends go only to
+josh@cyclonesoz.com.au (hard-coded in the send function), test mode is the default, and live
+sending stays off until Josh says go.
