@@ -1,0 +1,64 @@
+{
+  "_README": "PLACEHOLDER thresholds so the scanner runs end to end. Replace with Josh's real rules. Each rule fires at a grid point/day when ALL conditions hold. A cluster of neighbouring firing points becomes an event once some rule has at least its min_points inside it. 'level' (1-3) is only used to detect escalation, it is NOT an impact rating. Fields come from docs/archive/raw/outlook.json (per point, per day): cape, shear (kt), scp, stp, ship, dcape, cin, rain (mm per UTC day), pop, tprob, hail/wind/flood/fire (tiers), cat (0 none, 1 TSTM, 2 MRGL, 3 MDT, 4 HIGH). 'days' is [first, last] lead day, 1-based, 1 = today.",
+  "scan_days": [1, 7],
+  "neighbour_deg": 1.1,
+  "rules": [
+    {
+      "id": "supercell_env",
+      "label": "Supercell environment",
+      "level": 2,
+      "days": [1, 7],
+      "min_points": 2,
+      "when": [
+        {"field": "scp", "op": ">=", "value": 4},
+        {"field": "cape", "op": ">=", "value": 1000}
+      ]
+    },
+    {
+      "id": "hail",
+      "label": "Large hail potential",
+      "level": 2,
+      "days": [1, 7],
+      "min_points": 2,
+      "when": [
+        {"field": "ship", "op": ">=", "value": 1.0},
+        {"field": "cape", "op": ">=", "value": 800}
+      ]
+    },
+    {
+      "id": "damaging_wind",
+      "label": "Damaging wind potential",
+      "level": 2,
+      "days": [1, 7],
+      "min_points": 2,
+      "when": [
+        {"field": "wind", "op": ">=", "value": 2}
+      ]
+    },
+    {
+      "id": "heavy_rain",
+      "label": "Heavy rainfall",
+      "level": 2,
+      "days": [1, 7],
+      "min_points": 3,
+      "when": [
+        {"field": "rain", "op": ">=", "value": 60}
+      ]
+    },
+    {
+      "id": "severe_tier",
+      "label": "Model severe-storm category Moderate or higher",
+      "level": 3,
+      "days": [1, 3],
+      "min_points": 2,
+      "when": [
+        {"field": "cat", "op": ">=", "value": 3}
+      ]
+    }
+  ],
+  "escalation": {
+    "area_factor": 1.5,
+    "area_min_extra_points": 3,
+    "shift_deg": 1.5
+  }
+}
