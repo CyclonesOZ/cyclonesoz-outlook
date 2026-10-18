@@ -474,6 +474,15 @@ def main():
             json.dump(new_state, f, indent=1)
         with open(LAST_EMAIL, "w") as f:
             f.write(subject + "\n\n" + body + "\n")
+        try:  # proposed postcode alerts for the tab; suggestions only, never sent anywhere
+            import proposals
+            pcs = os.path.join(ROOT, "data", "postcodes", "postcodes.json")
+            if os.path.exists(pcs):
+                n = len(proposals.write_proposals(os.path.join(STATE_DIR, "proposals.json"), run["run_date"],
+                                                  report["events"], th, pcs)["proposals"])
+                print("[proposals] wrote %d" % n)
+        except Exception as e:
+            print("[proposals FAILED: %s]" % e, file=sys.stderr)
         try:
             sent = send(subject, body)
             print("\n[email %s]" % ("sent" if sent else "not configured: saved to last_email.txt only"))
