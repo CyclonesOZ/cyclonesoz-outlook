@@ -15,6 +15,11 @@ The old Post Forecast page is untouched.
 | Entities `PostcodeAlert`, `AlertAuditLog` | Admin-only records of each alert and an audit trail. |
 | `public/geo/*`, `public/fonts/*`, `public/brand/cyclonesoz-logo.png` | Data, self-hosted fonts (Bebas Neue, Barlow Condensed; SIL OFL), logo. |
 
+## Standing rule (Josh, 18 Oct 2026)
+
+**Only Josh sends live alerts. Never an assistant, never Base44.** `ALERT_LIVE_SEND` is not set and must never be
+set by anyone but Josh. The same rule is at the top of the Base44 app's `CLAUDE.md` for other agents.
+
 ## Safeguards (Josh's hard rule)
 
 - `test` emails **josh@cyclonesoz.com.au only** (constant in the function), one email per tier present.
