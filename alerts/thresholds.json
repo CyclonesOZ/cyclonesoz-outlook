@@ -1,58 +1,255 @@
 {
-  "_README": "PLACEHOLDER thresholds so the scanner runs end to end. Replace with Josh's real rules. Each rule fires at a grid point/day when ALL conditions hold. A cluster of neighbouring firing points becomes an event once some rule has at least its min_points inside it. 'level' (1-3) is only used to detect escalation, it is NOT an impact rating. Fields come from docs/archive/raw/outlook.json (per point, per day): cape, shear (kt), scp, stp, ship, dcape, cin, rain (mm per UTC day), pop, tprob, hail/wind/flood/fire (tiers), cat (0 none, 1 TSTM, 2 MRGL, 3 MDT, 4 HIGH). 'days' is [first, last] lead day, 1-based, 1 = today.",
-  "scan_days": [1, 7],
+  "_README": "DRAFT v1 (Claude, 18 Oct 2026) for Josh to edit. 'level' is now the impact tier: 1 Minor, 2 Moderate, 3 Significant, 4 Major. Each rule fires per grid point/day when ALL 'when' conditions hold; an event needs min_points neighbouring points firing. Fields per point per day: cat 0-4, cape, shear, scp, stp, ship, rain mm, wind/hail/flood/fire tiers, tprob, pop. Tune the numbers, then run: python3 pipeline/alert_scan.py --backtest",
+  "scan_days": [
+    1,
+    7
+  ],
   "neighbour_deg": 1.1,
   "rules": [
     {
-      "id": "supercell_env",
-      "label": "Supercell environment",
-      "level": 2,
-      "days": [1, 7],
-      "min_points": 2,
+      "id": "minor_storm",
+      "label": "Severe storms possible",
+      "level": 1,
+      "days": [
+        1,
+        3
+      ],
+      "min_points": 4,
       "when": [
-        {"field": "scp", "op": ">=", "value": 4},
-        {"field": "cape", "op": ">=", "value": 1000}
+        {
+          "field": "cat",
+          "op": ">=",
+          "value": 2
+        },
+        {
+          "field": "cape",
+          "op": ">=",
+          "value": 1500
+        }
       ]
     },
     {
-      "id": "hail",
+      "id": "minor_wind",
+      "label": "Damaging wind potential",
+      "level": 1,
+      "days": [
+        1,
+        3
+      ],
+      "min_points": 4,
+      "when": [
+        {
+          "field": "wind",
+          "op": ">=",
+          "value": 1
+        },
+        {
+          "field": "cape",
+          "op": ">=",
+          "value": 1000
+        }
+      ]
+    },
+    {
+      "id": "mod_hail",
       "label": "Large hail potential",
       "level": 2,
-      "days": [1, 7],
-      "min_points": 2,
-      "when": [
-        {"field": "ship", "op": ">=", "value": 1.0},
-        {"field": "cape", "op": ">=", "value": 800}
-      ]
-    },
-    {
-      "id": "damaging_wind",
-      "label": "Damaging wind potential",
-      "level": 2,
-      "days": [1, 7],
-      "min_points": 2,
-      "when": [
-        {"field": "wind", "op": ">=", "value": 2}
-      ]
-    },
-    {
-      "id": "heavy_rain",
-      "label": "Heavy rainfall",
-      "level": 2,
-      "days": [1, 7],
+      "days": [
+        1,
+        4
+      ],
       "min_points": 3,
       "when": [
-        {"field": "rain", "op": ">=", "value": 60}
+        {
+          "field": "hail",
+          "op": ">=",
+          "value": 2
+        }
       ]
     },
     {
-      "id": "severe_tier",
-      "label": "Model severe-storm category Moderate or higher",
+      "id": "mod_wind",
+      "label": "Damaging wind potential",
+      "level": 2,
+      "days": [
+        1,
+        4
+      ],
+      "min_points": 3,
+      "when": [
+        {
+          "field": "wind",
+          "op": ">=",
+          "value": 2
+        }
+      ]
+    },
+    {
+      "id": "mod_storm",
+      "label": "Organised severe storms",
+      "level": 2,
+      "days": [
+        1,
+        4
+      ],
+      "min_points": 3,
+      "when": [
+        {
+          "field": "cat",
+          "op": ">=",
+          "value": 3
+        }
+      ]
+    },
+    {
+      "id": "mod_rain",
+      "label": "Heavy rainfall",
+      "level": 2,
+      "days": [
+        1,
+        5
+      ],
+      "min_points": 4,
+      "when": [
+        {
+          "field": "rain",
+          "op": ">=",
+          "value": 50
+        }
+      ]
+    },
+    {
+      "id": "sig_supercell",
+      "label": "Supercell / tornado environment",
       "level": 3,
-      "days": [1, 3],
+      "days": [
+        1,
+        5
+      ],
+      "min_points": 3,
+      "when": [
+        {
+          "field": "scp",
+          "op": ">=",
+          "value": 8
+        },
+        {
+          "field": "cape",
+          "op": ">=",
+          "value": 2000
+        },
+        {
+          "field": "shear",
+          "op": ">=",
+          "value": 35
+        }
+      ]
+    },
+    {
+      "id": "sig_wind",
+      "label": "Destructive wind potential",
+      "level": 3,
+      "days": [
+        1,
+        5
+      ],
+      "min_points": 3,
+      "when": [
+        {
+          "field": "wind",
+          "op": ">=",
+          "value": 3
+        }
+      ]
+    },
+    {
+      "id": "sig_rain",
+      "label": "Flash-flood rainfall",
+      "level": 3,
+      "days": [
+        1,
+        5
+      ],
+      "min_points": 4,
+      "when": [
+        {
+          "field": "rain",
+          "op": ">=",
+          "value": 100
+        }
+      ]
+    },
+    {
+      "id": "sig_flood",
+      "label": "Flood risk tier 2+",
+      "level": 3,
+      "days": [
+        1,
+        5
+      ],
       "min_points": 2,
       "when": [
-        {"field": "cat", "op": ">=", "value": 3}
+        {
+          "field": "flood",
+          "op": ">=",
+          "value": 2
+        }
+      ]
+    },
+    {
+      "id": "major_tornado",
+      "label": "Significant tornado environment",
+      "level": 4,
+      "days": [
+        1,
+        3
+      ],
+      "min_points": 2,
+      "when": [
+        {
+          "field": "stp",
+          "op": ">=",
+          "value": 2
+        },
+        {
+          "field": "cape",
+          "op": ">=",
+          "value": 2000
+        }
+      ]
+    },
+    {
+      "id": "major_cat",
+      "label": "Model HIGH risk",
+      "level": 4,
+      "days": [
+        1,
+        3
+      ],
+      "min_points": 2,
+      "when": [
+        {
+          "field": "cat",
+          "op": ">=",
+          "value": 4
+        }
+      ]
+    },
+    {
+      "id": "major_rain",
+      "label": "Extreme rainfall",
+      "level": 4,
+      "days": [
+        1,
+        5
+      ],
+      "min_points": 5,
+      "when": [
+        {
+          "field": "rain",
+          "op": ">=",
+          "value": 180
+        }
       ]
     }
   ],
