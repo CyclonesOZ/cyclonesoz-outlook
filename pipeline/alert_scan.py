@@ -32,6 +32,7 @@ import sys
 from email.message import EmailMessage
 from zoneinfo import ZoneInfo
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RAW = os.path.join(ROOT, "docs", "archive", "raw", "outlook.json")
 PUBLISHED = os.path.join(ROOT, "docs", "outlook.json")
@@ -227,7 +228,7 @@ def build_events(run, th, districts, published=None):
                 "level": max(rules[r]["level"] for r in live),
                 "districts": districts.names_for([(pts[pi]["lat"], pts[pi]["lon"]) for pi in members])[:6],
                 "peak": {f: max(r.get(f, 0) for r in recs) for f in
-                         ("cape", "shear", "scp", "ship", "dcape", "rain", "hail", "wind", "cat")},
+                         ("cape", "shear", "scp", "ship", "dcape", "rain", "hail", "wind", "cat", "heat", "snow72")},
                 "window_local": local_window(date, lat, lon),
             }
             if date in pub_idx:
@@ -455,6 +456,12 @@ def main():
                 print("[email FAILED: %s]" % e, file=sys.stderr)
         return
     published = load_json(PUBLISHED) if os.path.exists(PUBLISHED) else None
+    try:  # heatwave + snow need outside data; if it fails the rest of the scan still runs
+        import extra_hazards
+        extra_note = extra_hazards.augment_run(run, th, key=os.environ.get("OPENMETEO_KEY", ""))
+    except Exception as e:
+        extra_note = "heat+snow SKIPPED (%s)" % e
+    print("[extra hazards] " + extra_note)
     report, new_state = scan(run, th, state, districts, published)
     live = not args.dry_run
     note = ("TEST (dry run, nothing sent or saved)" if args.dry_run else

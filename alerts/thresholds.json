@@ -382,6 +382,108 @@
           "value": 4
         }
       ]
+    },
+    {
+      "id": "heat_minor",
+      "label": "Heatwave (max +12C, warm nights)",
+      "level": 1,
+      "days": [
+        1,
+        7
+      ],
+      "min_points": 2,
+      "when": [
+        {
+          "field": "heat",
+          "op": ">=",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "id": "heat_mod",
+      "label": "Heatwave (max +14C)",
+      "level": 2,
+      "days": [
+        1,
+        7
+      ],
+      "min_points": 2,
+      "when": [
+        {
+          "field": "heat",
+          "op": ">=",
+          "value": 2
+        }
+      ]
+    },
+    {
+      "id": "heat_sig",
+      "label": "Heatwave (max +17C)",
+      "level": 3,
+      "days": [
+        1,
+        7
+      ],
+      "min_points": 2,
+      "when": [
+        {
+          "field": "heat",
+          "op": ">=",
+          "value": 3
+        }
+      ]
+    },
+    {
+      "id": "heat_major",
+      "label": "Heatwave (max +21C)",
+      "level": 4,
+      "days": [
+        1,
+        7
+      ],
+      "min_points": 2,
+      "when": [
+        {
+          "field": "heat",
+          "op": ">=",
+          "value": 4
+        }
+      ]
+    },
+    {
+      "id": "snow_mod",
+      "label": "Heavy snow (50+ cm in 72 h)",
+      "level": 2,
+      "days": [
+        1,
+        5
+      ],
+      "min_points": 1,
+      "when": [
+        {
+          "field": "snow72",
+          "op": ">=",
+          "value": 50
+        }
+      ]
+    },
+    {
+      "id": "snow_sig",
+      "label": "Very heavy snow (100+ cm in 72 h)",
+      "level": 3,
+      "days": [
+        1,
+        5
+      ],
+      "min_points": 1,
+      "when": [
+        {
+          "field": "snow72",
+          "op": ">=",
+          "value": 100
+        }
+      ]
     }
   ],
   "escalation": {
@@ -390,7 +492,7 @@
     "shift_deg": 1.5
   },
   "extra_hazards": {
-    "_note": "Josh's rules (19 Oct 2026). NOT yet run by alert_scan.py: each needs a data source the nightly model run does not carry. See DRAFT-thresholds.md.",
+    "_note": "Heatwave and snow now run via pipeline/extra_hazards.py (heat needs data/climatology.json from pipeline/build_climatology.py; snow from Open-Meteo snowfall). Tropical cyclone is still to wire in (data lives in the app).",
     "tropical_cyclone": {
       "source": "Base44 TropicalSystem entity (peak_category, peak_vmax_kt, consensus_track, risk_geojson)",
       "tiers": {

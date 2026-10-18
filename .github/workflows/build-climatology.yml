@@ -1,0 +1,27 @@
+name: Build climatology
+
+# One-off (re-runnable): 1991-2020 average daily max/min per model grid point, for heatwave anomalies.
+# Resumable if the API limit stops it. Commits data/climatology.json only; touches nothing else.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        env:
+          OPENMETEO_KEY: ${{ secrets.OPENMETEO_KEY }}
+        run: python3 pipeline/build_climatology.py
+      - name: Commit
+        run: |
+          git config user.name  "outlook-bot"
+          git config user.email "actions@github.com"
+          git add data/climatology.json
+          git commit -m "Build heatwave climatology" || echo "no change"
+          git push
