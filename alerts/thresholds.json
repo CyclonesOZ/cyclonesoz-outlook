@@ -388,5 +388,38 @@
     "area_factor": 1.5,
     "area_min_extra_points": 3,
     "shift_deg": 1.5
+  },
+  "extra_hazards": {
+    "_note": "Josh's rules (19 Oct 2026). NOT yet run by alert_scan.py: each needs a data source the nightly model run does not carry. See DRAFT-thresholds.md.",
+    "tropical_cyclone": {
+      "source": "Base44 TropicalSystem entity (peak_category, peak_vmax_kt, consensus_track, risk_geojson)",
+      "tiers": {
+        "minor": "tropical low",
+        "moderate": "cat 1",
+        "significant": "cat 2-3",
+        "major": "cat 4-5"
+      }
+    },
+    "snow": {
+      "source": "to add: Open-Meteo snowfall (cm), alpine grid points",
+      "window_hours": 72,
+      "tiers": {
+        "moderate_cm": 50,
+        "significant_cm": 100
+      },
+      "minor": null,
+      "major": null
+    },
+    "heatwave": {
+      "source": "temperature_2m in the model run + a per-point climatology (to build)",
+      "min_consecutive_days": 2,
+      "also_requires": "overnight minimum above average on those days",
+      "tmax_anomaly_c": {
+        "minor": 12,
+        "moderate": 14,
+        "significant": 17,
+        "major": 21
+      }
+    }
   }
 }
