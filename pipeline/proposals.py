@@ -46,11 +46,42 @@ def build_proposals(events, th, postcodes):
     return sorted(out, key=lambda p: (-list(TIERS.values()).index(p["tier"]), p["date"]))
 
 
+def build_episode_proposals(events, th, postcodes):
+    """One proposal per episode (a week of rain is one alert, not seven): postcodes are the union across
+    the days, each at the highest tier it reaches, valid from the first day to the last."""
+    by_ep = {}
+    for ev in events:
+        by_ep.setdefault(ev.get("episode_id") or ("E-" + str(ev.get("id"))), []).append(ev)
+    rank = {t: i for i, t in enumerate(TIERS.values())}
+    out = []
+    for eid, evs in by_ep.items():
+        evs.sort(key=lambda e: e["date"])
+        daily = build_proposals(evs, th, postcodes)
+        merged = {}
+        for d in daily:
+            for pc, tier in d["postcodes"].items():
+                if pc not in merged or rank[tier] > rank[merged[pc]]:
+                    merged[pc] = tier
+        peak = max(daily, key=lambda d: (rank[d["tier"]], d["model_points"]))
+        out.append({
+            "episode_id": eid, "kind": "one_off" if len({e["date"] for e in evs}) == 1 else "multi_day",
+            "first_date": min(e.get("start_date", e["date"]) for e in evs), "last_date": evs[-1]["date"],
+            "n_event_days": len({e["date"] for e in evs}),
+            "tier": peak["tier"], "peak_date": peak["date"], "hazards": peak["hazards"],
+            "districts": list(dict.fromkeys(x for d in daily for x in d["districts"]))[:6],
+            "basis": evs[0].get("basis", "raw model run"),
+            "days": [{"date": d["date"], "tier": d["tier"], "model_points": d["model_points"], "n_postcodes": d["n_postcodes"]} for d in daily],
+            "postcodes": merged, "n_postcodes": len(merged),
+            "suggested_title": peak["suggested_title"],
+        })
+    return sorted(out, key=lambda x: (-rank[x["tier"]], x["first_date"]))
+
+
 def write_proposals(path, run_date, events, th, postcodes_path):
     with open(postcodes_path) as f:
         postcodes = json.load(f)
-    data = {"run_date": run_date, "note": "Suggestions only. Nothing is sent from here.",
-            "proposals": build_proposals(events, th, postcodes)}
+    data = {"run_date": run_date, "note": "Suggestions only. Nothing is sent from here. One proposal per episode.",
+            "proposals": build_episode_proposals(events, th, postcodes)}
     with open(path, "w") as f:
         json.dump(data, f, separators=(",", ":"))
     return data

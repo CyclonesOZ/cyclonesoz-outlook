@@ -66,7 +66,18 @@ def load_run(path):
     if "dates" not in run:
         d0 = dt.date.fromisoformat(os.path.basename(path)[:10])
         run["dates"] = [(d0 + dt.timedelta(days=i)).isoformat() for i in range(len(run["days"]))]
+    add_rolling_rain(run)
     return run
+
+
+def add_rolling_rain(run):
+    """rain3 / rain5: model rain summed over the 3 / 5 days ending on each day (shorter at the start of
+    the run). A week of steady 30 mm days is one event; no single day shows it."""
+    for p in run["points"]:
+        r = [(d.get("rain") or 0) for d in p["d"]]
+        for i, d in enumerate(p["d"]):
+            d["rain3"] = round(sum(r[max(0, i - 2):i + 1]), 1)
+            d["rain5"] = round(sum(r[max(0, i - 4):i + 1]), 1)
 
 
 def rule_fires(rule, rec):
@@ -82,18 +93,32 @@ def point_key(p):
     return "%.2f,%.2f" % (p["lat"], p["lon"])
 
 
-def triggered_points(run, th):
-    """{day_index: {point_index: [rule ids]}} for the days the scan covers."""
+def published_index(published):
+    """{point key: {date: record}} from the published (Josh-edited) outlook."""
+    if not published:
+        return {}
+    dates = published.get("dates", [])
+    return {point_key(p): {dates[i]: d for i, d in enumerate(p["d"]) if i < len(dates)} for p in published["points"]}
+
+
+def triggered_points(run, th, pub_idx=None):
+    """{day_index: {point_index: [rule ids]}} for the days the scan covers.
+
+    A rule with "source": "published" reads Josh's edited map (his storm categories, hail and wind
+    tiers) instead of the raw model run, wherever the published map has that point and day."""
     lo, hi = th["scan_days"]
     out = {}
     for di in range(lo - 1, min(hi, len(run["dates"]))):
         hits = {}
+        date = run["dates"][di]
         for pi, p in enumerate(run["points"]):
             if di >= len(p["d"]):
                 continue
             rec = p["d"][di]
+            prec = pub_idx.get(point_key(p), {}).get(date) if pub_idx else None
             ids = [r["id"] for r in th["rules"]
-                   if r["days"][0] - 1 <= di <= r["days"][1] - 1 and rule_fires(r, rec)]
+                   if r["days"][0] - 1 <= di <= r["days"][1] - 1
+                   and rule_fires(r, prec if (r.get("source") == "published" and prec is not None) else rec)]
             if ids:
                 hits[pi] = ids
         if hits:
@@ -201,8 +226,9 @@ def build_events(run, th, districts, published=None):
     pts = run["points"]
     rules = {r["id"]: r for r in th["rules"]}
     pub_idx = {d: i for i, d in enumerate(published["dates"])} if published else {}
+    pidx = published_index(published)
     events = []
-    for di, hits in sorted(triggered_points(run, th).items()):
+    for di, hits in sorted(triggered_points(run, th, pidx).items()):
         date = run["dates"][di]
         for group in clusters(pts, hits, th["neighbour_deg"]):
             per_rule = {}
@@ -213,7 +239,8 @@ def build_events(run, th, districts, published=None):
             if not live:
                 continue
             members = sorted({pi for m in live.values() for pi in m})
-            recs = [pts[pi]["d"][di] for pi in members]
+            from_pub = any(rules[rid].get("source") == "published" for rid in live) and bool(pidx)
+            recs = [(pidx.get(point_key(pts[pi]), {}).get(date) if from_pub else None) or pts[pi]["d"][di] for pi in members]
             lat = sum(pts[pi]["lat"] for pi in members) / len(members)
             lon = sum(pts[pi]["lon"] for pi in members) / len(members)
             ev = {
@@ -230,6 +257,11 @@ def build_events(run, th, districts, published=None):
                 "peak": {f: max(r.get(f, 0) for r in recs) for f in
                          ("cape", "shear", "scp", "ship", "dcape", "rain", "hail", "wind", "cat", "heat", "snow72")},
                 "window_local": local_window(date, lat, lon),
+                "basis": "published map" if from_pub else "raw model run",
+                # an accumulation rule (rain over 5 days) is about rain that fell BEFORE the day it fires,
+                # so the event starts at the beginning of its window, not on the day the total crosses the line
+                "start_date": max(dt.date.fromisoformat(date) - dt.timedelta(days=max(rules[rid].get("window_days", 1) for rid in live) - 1),
+                                  dt.date.fromisoformat(run["dates"][0])).isoformat(),
             }
             if date in pub_idx:
                 j = pub_idx[date]
@@ -298,6 +330,8 @@ def scan(run, th, state, districts, published=None):
     for i, j in pairs:
         ev, prev = events[i], old[j]
         ev["id"], ev["first_seen"] = prev["id"], prev.get("first_seen", run["run_date"])
+        if prev.get("episode_id"):
+            ev["episode_id"] = prev["episode_id"]
         told = prev.get("told")
         status = classify(ev, told, esc)
         if status:
@@ -321,8 +355,13 @@ def scan(run, th, state, districts, published=None):
             changes.append(("CLEARED", prev))
     order = {"NEW": 0, "ESCALATED": 1, "SHIFTED": 2, "WEAKENED": 3, "CLEARED": 4}
     changes.sort(key=lambda c: (order[c[0]], c[1]["date"]))
+    import episodes
+    eps = episodes.annotate(keep)
+    for status, ev in changes:                      # CLEARED events come from the old state
+        if status == "CLEARED" and "episode_id" not in ev:
+            ev["episode_id"], ev["episode_kind"], ev["episode_day"], ev["episode_days"] = "E-" + ev["id"], "one_off", 1, 1
     new_state = {"run_date": run["run_date"], "events": sorted(keep, key=lambda e: (e["date"], e["id"]))}
-    return {"changes": changes, "quiet": quiet, "events": keep}, new_state
+    return {"changes": changes, "quiet": quiet, "events": keep, "episodes": eps}, new_state
 
 
 # --------------------------------------------------------------------------- email
@@ -353,27 +392,80 @@ def describe(status, ev, rule_labels):
     return "\n".join(lines)
 
 
+LEVEL_NAMES = {1: "Minor", 2: "Moderate", 3: "Significant", 4: "Major"}
+
+
+def _day(d):
+    return dt.date.fromisoformat(d).strftime("%a %-d %b")
+
+
+def describe_episode(ep, items, labels):
+    """One block per episode: what it is, how long it runs, peak day, a line per day."""
+    status = {ev["id"]: st for st, ev in items}
+    group = {"thunderstorm": "Thunderstorms", "rain": "Heavy rain", "fire": "Fire weather", "heat": "Heatwave",
+             "snow": "Snow"}.get(ep["group"], ep["group"])
+    if ep["kind"] == "one_off":
+        head = "ONE-OFF  %s  %s" % (_day(ep["first_date"]), group) if ep["first_date"] == ep["last_date"] else \
+            "ONE-OFF  %s to %s  %s" % (_day(ep["first_date"]), _day(ep["last_date"]), group)
+    else:
+        head = "MULTI-DAY EPISODE  %s to %s  (%d days)  %s" % (
+            _day(ep["first_date"]), _day(ep["last_date"]), ep["span_days"], group)
+    peak = [e for e in ep["events"] if e["date"] == ep["peak_date"] and e["level"] == ep["peak_level"]][0]
+    lines = [head,
+             "   Peak:    %s on %s, %d model points" % (LEVEL_NAMES.get(ep["peak_level"], "level %d" % ep["peak_level"]),
+                                                      _day(ep["peak_date"]), peak["n_points"]),
+             "   Where:   " + (", ".join(ep["districts"]) or "no named district")]
+    if ep["kind"] == "multi_day":
+        lines.append("   By day:")
+        for e in sorted(ep["events"], key=lambda e: e["date"]):
+            tag = ("  [%s]" % status[e["id"]]) if e["id"] in status else ""
+            lines.append("      %-10s %-12s %3d pts  %s%s" % (_day(e["date"]), LEVEL_NAMES.get(e["level"], e["level"]),
+                                                              e["n_points"], "; ".join(labels.get(r, r) for r in e["rules"][:2]), tag))
+    else:
+        lines.append("   " + describe(status.get(peak["id"], "NEW"), peak, labels).replace("\n", "\n   "))
+    lines.append("   Basis:   " + ("your published (edited) map" if peak.get("basis") == "published map" else "raw model run"))
+    return "\n".join(lines)
+
+
 def compose_email(run, th, report, mode_note):
     labels = {r["id"]: r["label"] for r in th["rules"]}
     ch, q = report["changes"], report["quiet"]
+    eps = report.get("episodes") or []
+    changed, cleared = {}, []
+    for st, ev in ch:
+        if st == "CLEARED":
+            cleared.append(ev)
+        else:
+            changed.setdefault(ev.get("episode_id", "E-" + ev["id"]), []).append((st, ev))
+    active = [ep for ep in eps if ep["episode_id"] in changed]
+    quiet_eps = [ep for ep in eps if ep["episode_id"] not in changed]
+    n_multi = sum(ep["kind"] == "multi_day" for ep in active)
     run_local = dt.datetime.fromisoformat(run["run_date"].replace("Z", "+00:00")).astimezone(ZoneInfo("Australia/Perth"))
-    head = ("ACTION: %d alert(s) to look at" % len(ch)) if ch else "Scan complete: nothing new"
+    head = (("ACTION: %d episode(s) to look at (%d multi-day, %d one-off)" % (len(active), n_multi, len(active) - n_multi))
+            if active else ("ACTION: %d cleared" % len(cleared)) if cleared else "Scan complete: nothing new")
     subject = "[Front Line] %s (model run %s AWST)" % (head, run_local.strftime("%a %-d %b %H:%M"))
     body = [mode_note, "",
             "Model: %s, second opinion %s. Run %s UTC. Scanned days %d-%d against alerts/thresholds.json."
-            % (run["model"], run["second_opinion"], run["run_date"], th["scan_days"][0], th["scan_days"][1]), ""]
-    if ch:
-        for status, ev in ch:
-            body += [describe(status, ev, labels), ""]
-    else:
+            % (run["model"], run["second_opinion"], run["run_date"], th["scan_days"][0], th["scan_days"][1]),
+            "%d daily detections grouped into %d episodes (%d multi-day, %d one-off). Thunderstorm rules read your published map."
+            % (len(report.get("events", [])), len(eps), sum(e["kind"] == "multi_day" for e in eps),
+               sum(e["kind"] == "one_off" for e in eps)), ""]
+    for ep in active:
+        body += [describe_episode(ep, changed[ep["episode_id"]], labels), ""]
+    for ev in cleared:
+        body += [describe("CLEARED", ev, labels), ""]
+    if not active and not cleared:
         body += ["No new, escalated, shifted, weakened or cleared events since the last email.", ""]
-    if q:
-        body.append("Still open, unchanged since you were last told (%d):" % len(q))
-        for ev in q:
-            body.append("   %s  %s  %d pts  %s" % (ev["id"], ev["date"], ev["n_points"], ", ".join(ev["districts"][:3]) or "-"))
+    if quiet_eps:
+        body.append("Still open, unchanged since you were last told (%d episodes):" % len(quiet_eps))
+        for ep in quiet_eps:
+            span = _day(ep["first_date"]) if ep["kind"] == "one_off" else "%s to %s" % (_day(ep["first_date"]), _day(ep["last_date"]))
+            body.append("   %s  %s  %s  peak %s  %s" % (ep["episode_id"], span, ep["group"],
+                                                          LEVEL_NAMES.get(ep["peak_level"], ep["peak_level"]),
+                                                          ", ".join(ep["districts"][:3]) or "-"))
         body.append("")
-    body += ["This is an automatic detection from the raw model run. It is not a forecast and not an",
-             "official warning. It does not know about your edits to the map."]
+    body += ["This is an automatic detection. Thunderstorm rules use your published map; every other hazard uses the",
+             "raw model run, so it does not know about your edits to those. It is not a forecast and not an official warning."]
     return subject, "\n".join(body)
 
 
@@ -464,8 +556,12 @@ def main():
     print("[extra hazards] " + extra_note)
     report, new_state = scan(run, th, state, districts, published)
     live = not args.dry_run
-    note = ("TEST (dry run, nothing sent or saved)" if args.dry_run else
-            "LIVE scan. Shadow mode: this goes only to you, nothing is published to subscribers.")
+    pub_note = ""
+    if published and published.get("run_date") != run["run_date"]:
+        pub_note = " WARNING: your published map is from model run %s but the raw run is %s, so storm detections may be stale." % (
+            published.get("run_date"), run["run_date"])
+    note = ("TEST (dry run, nothing sent or saved)" + pub_note if args.dry_run else
+            "LIVE scan. Shadow mode: this goes only to you, nothing is published to subscribers." + pub_note)
     subject, body = compose_email(run, th, report, note)
     print(subject + "\n\n" + body)
     if live:

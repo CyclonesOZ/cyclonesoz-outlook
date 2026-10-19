@@ -21,7 +21,8 @@
           "op": ">=",
           "value": 3
         }
-      ]
+      ],
+      "source": "published"
     },
     {
       "id": "storms_mod_wide",
@@ -38,7 +39,8 @@
           "op": ">=",
           "value": 3
         }
-      ]
+      ],
+      "source": "published"
     },
     {
       "id": "storms_mod_high",
@@ -55,7 +57,8 @@
           "op": ">=",
           "value": 4
         }
-      ]
+      ],
+      "source": "published"
     },
     {
       "id": "storms_sig",
@@ -72,7 +75,8 @@
           "op": ">=",
           "value": 4
         }
-      ]
+      ],
+      "source": "published"
     },
     {
       "id": "hail_minor",
@@ -89,7 +93,8 @@
           "op": ">=",
           "value": 2
         }
-      ]
+      ],
+      "source": "published"
     },
     {
       "id": "hail_mod",
@@ -106,7 +111,8 @@
           "op": ">=",
           "value": 2
         }
-      ]
+      ],
+      "source": "published"
     },
     {
       "id": "hail_mod_vl",
@@ -123,7 +129,8 @@
           "op": ">=",
           "value": 3
         }
-      ]
+      ],
+      "source": "published"
     },
     {
       "id": "hail_sig",
@@ -140,7 +147,8 @@
           "op": ">=",
           "value": 3
         }
-      ]
+      ],
+      "source": "published"
     },
     {
       "id": "wind_minor",
@@ -162,7 +170,8 @@
           "op": ">=",
           "value": 3
         }
-      ]
+      ],
+      "source": "published"
     },
     {
       "id": "wind_mod",
@@ -179,7 +188,8 @@
           "op": ">=",
           "value": 2
         }
-      ]
+      ],
+      "source": "published"
     },
     {
       "id": "wind_sig",
@@ -196,7 +206,8 @@
           "op": ">=",
           "value": 3
         }
-      ]
+      ],
+      "source": "published"
     },
     {
       "id": "tor_minor",
@@ -218,7 +229,8 @@
           "op": ">=",
           "value": 3
         }
-      ]
+      ],
+      "source": "published"
     },
     {
       "id": "tor_mod",
@@ -240,7 +252,8 @@
           "op": ">=",
           "value": 3
         }
-      ]
+      ],
+      "source": "published"
     },
     {
       "id": "tor_sig",
@@ -262,7 +275,8 @@
           "op": ">=",
           "value": 4
         }
-      ]
+      ],
+      "source": "published"
     },
     {
       "id": "rain_minor",
@@ -484,6 +498,82 @@
           "value": 100
         }
       ]
+    },
+    {
+      "id": "rain5_minor",
+      "label": "Heavy rain over 5 days (100+ mm)",
+      "level": 1,
+      "days": [
+        3,
+        7
+      ],
+      "min_points": 4,
+      "when": [
+        {
+          "field": "rain5",
+          "op": ">=",
+          "value": 100
+        }
+      ],
+      "provisional": true,
+      "window_days": 5
+    },
+    {
+      "id": "rain5_mod",
+      "label": "Very heavy rain over 5 days (150+ mm)",
+      "level": 2,
+      "days": [
+        3,
+        7
+      ],
+      "min_points": 3,
+      "when": [
+        {
+          "field": "rain5",
+          "op": ">=",
+          "value": 150
+        }
+      ],
+      "provisional": true,
+      "window_days": 5
+    },
+    {
+      "id": "rain3_minor",
+      "label": "Heavy rain over 3 days (100+ mm)",
+      "level": 1,
+      "days": [
+        3,
+        7
+      ],
+      "min_points": 2,
+      "when": [
+        {
+          "field": "rain3",
+          "op": ">=",
+          "value": 100
+        }
+      ],
+      "provisional": true,
+      "window_days": 3
+    },
+    {
+      "id": "rain3_mod",
+      "label": "Very heavy rain over 3 days (150+ mm)",
+      "level": 2,
+      "days": [
+        3,
+        7
+      ],
+      "min_points": 2,
+      "when": [
+        {
+          "field": "rain3",
+          "op": ">=",
+          "value": 150
+        }
+      ],
+      "provisional": true,
+      "window_days": 3
     }
   ],
   "escalation": {
@@ -523,5 +613,6 @@
         "major": 21
       }
     }
-  }
+  },
+  "_README2": "19 Oct 2026: rules with source=published read Josh's edited map (storm category, hail, wind tiers) instead of the raw model run. rain3/rain5 rules are PROVISIONAL placeholders fitted to one event (the SEQ rain event, 100 mm over 5 days at 4+ points); real values come from the rulebook's climate-zone rain table."
 }
