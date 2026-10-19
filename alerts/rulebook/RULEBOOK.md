@@ -6,7 +6,7 @@ Written 19 Oct 2026 in answer to "Threshold Rulebook Prompt v2". Draft for Josh 
 
 **How honest the numbers are.** I could not reach SILO, ERA5, BoM warnings or ensemble data from the build environment, so no threshold below was fitted to real climatology. What is solid:
 - Josh's own definitions (the tier scheme, tropical cyclone tiers, snow depths, heatwave anomalies) are carried over exactly.
-- Absolute benchmarks that are BoM or industry standards are used as stated: wind 90 / 125 / 160 km/h, Australian cyclone categories, FFDI 50 / 75 / 100, EHF, BoM flood classes.
+- Absolute benchmarks that are BoM or industry standards are used as stated: wind 90 / 125 / 160 km/h, Australian cyclone categories, FFDI 50 / 75 / 100, EHF. No BoM data feed is used for flooding (it is paywalled): flood is built from rainfall.
 - Percentile and return-period rules are given as formulas the code computes from SILO or ERA5. The numeric floors and caps around them are my starting guesses and are flagged as tunable.
 
 What I could test: the current scanner's output on 10 archived model runs (8 to 17 Oct 2026). That is the only measured frequency in this document.
@@ -33,7 +33,7 @@ Tiers follow Josh's definitions: Minor a few times a year, Moderate about twice 
 |---|---|---|---|---|---|
 | 1 | Tropical cyclone | Tropical low, 30%+ chance of gales, within 300 km of coast | Category 1 | Category 2-3 | Category 4-5 |
 | 2 | Severe thunderstorms | MDT category | Widespread MDT (6+ cells) or isolated HIGH | HIGH widespread (6+ cells), or hail 6 cm+, wind 160 km/h+, or STP 4+ | HIGH, 12+ cells, two top-tier hazards, 1M+ people |
-| 3 | Flooding | BoM minor flood forecast, or flash-flood rain rate | Moderate flood class, or minor at 3+ gauges on wet soil | Major flood class at a town gauge | Major at 2+ gauges incl. a 10,000+ town, or near flood of record |
+| 3 | Flooding (rain-based) | Rain at Minor level on soil 70th pct+, or 60 mm in 3 h | Rain at Moderate level on soil 85th pct+ | Rain at Significant level on wet soil, or Moderate on saturated soil | Major rain on wet soil, or Significant on saturated soil over 12+ cells |
 | 4 | Heavy rain | 10th-wettest day of a typical year | 2nd-wettest day | Median annual-maximum day | 10-year return level |
 | 5 | Cold front | 2 of 4 signals (gust 90, 12 C drop, 10 hPa fall, snow level) | Gust 100+ and 14 C drop, 6+ cells | Wind tier 2 (125 km/h) at 3+ cells with the front | Wind tier 3, or 1,000 km wide gale band |
 | 6 | Damaging wind (non-convective) | Gust 90+ and P99.5 | Gust 110+ and P99.8 | Gust 125+ and P99.95 | Gust 160+ coastal / 140+ inland and P99.99 |
@@ -81,7 +81,7 @@ Tier lifts are explicit and capped at one tier per prospect. No generic "two haz
 
 | Condition | Effect |
 |---|---|
-| Rain at or above Moderate on soil above the 85th percentile (SILO/ERA5 soil moisture) | Flood and rain hazards lifted one tier (max Significant) |
+| Rain at or above Moderate on soil above the 85th percentile (SILO/ERA5 soil moisture) | Heavy-rain hazard lifted one tier (max Significant). Flooding does not use this lift: it applies its own soil conditions (4.3) |
 | Tropical cyclone/low landfall within 6 h of a high tide at or above HAT minus 0.2 m | Surge hazard lifted one tier; headline may take the cyclone tier |
 | Tropical cyclone with rain at Significant or above in the same cluster | Cyclone tier lifted one tier (max Major) |
 | Cyclone category 1-2 crossing within 50 km of a city with 100,000+ people | Cyclone lifted one tier |
@@ -137,13 +137,13 @@ Josh's framework, made computable:
 1. **Data:** SILO daily rainfall, 0.05 degree grid, 1889 to present. Average to forecast cells first (section 2.1).
 2. **Baseline:** 1991-2020 for everything that is a "typical year" statistic (Minor, Moderate, Significant). 1900-2025 for the 10-year return level (Major), because 30 years cannot estimate a 1-in-10 well. Run both baselines and report the difference, so you can see how much the answer depends on the period.
 3. **Days:** all days, not just wet days (the k-th largest day per year does not care). Days at or above 1 mm are used only as a sanity check.
-4. **Windows:** 1-day, 2-day and 3-day running totals, computed separately. A cell can fire on any window; the sweep uses whichever window is most extreme relative to its own threshold. Events are declustered (separated by 3 days) before counting.
+4. **Windows:** 1-day, 2-day, 3-day, 5-day and 7-day running totals, computed separately (5- and 7-day are used by flooding). A cell can fire on any window; the sweep uses whichever window is most extreme relative to its own threshold. Events are declustered (separated by 3 days; 5 days for the 5- and 7-day windows) before counting.
 5. **Tier thresholds (per cell, per window):**
    - Minor: the median across baseline years of that year's 10th-largest total.
    - Moderate: the median across years of the 2nd-largest total.
    - Significant: the median across years of the largest total (the median annual maximum, about a 1.4-year return period).
    - Major: the 10-year return level of the annual maximum series (GEV fitted by L-moments, 1900-2025).
-6. **Absolute floors** (24 h mm; scale 1.4x for 48 h, 1.7x for 72 h): Minor 25, Moderate 40, Significant 60, Major 100. Arid cells where the formula gives less than the floor use the floor and require a higher P gate (add 10 points) because model rain there is poorly constrained.
+6. **Absolute floors** (24 h mm; scale 1.4x for 48 h, 1.7x for 72 h, 2.2x for 5 days, 2.7x for 7 days): Minor 25, Moderate 40, Significant 60, Major 100. Arid cells where the formula gives less than the floor use the floor and require a higher P gate (add 10 points) because model rain there is poorly constrained.
 7. **Absolute caps** (24 h mm), so very wet places stay reachable: Minor 120, Moderate 200, Significant 300, Major 500.
 8. **Seasonal stratification:** north of 19 S, the statistic uses November-April only (the monsoon season); elsewhere it uses the full year.
 9. **Output file:** `data/rain_thresholds.json`, a table cell x window x tier, built offline once and rebuilt each decade. Floors and caps are applied when it is built, not when the sweep runs.
@@ -195,28 +195,39 @@ For each hazard: variables, tier thresholds, floors/caps, duration and extent, l
   - Major: "This is an exceptional storm outbreak that could hit a lot of people with giant hail and destructive winds; I'd want you prepared well in advance."
 - **Calibration events:** Sydney hailstorm, 14 Apr 1999, Major (`ok`). Perth hailstorm, 22 Mar 2010, Significant to Major (`ok`). Brisbane hail and wind, 27 Nov 2014, Significant (`ok`). Canberra hailstorm, 20 Jan 2020, Significant (`ok`). Minor and Moderate examples: any routine MDT day in south-east Queensland (use the archived outlooks to pick them).
 
-### 4.3 Flooding (riverine and flash)
+### 4.3 Flooding (riverine and flash), built from rainfall only
 
-- **Variables:** BoM flood class forecasts at river gauges (minor / moderate / major) where available (D1-3), the model's flood tier from rain intensity (1 slight, 2 moderate, 3 high, scaled 0.4x south of 23.5 S), 72 h rain versus section 3, soil moisture percentile (SILO/ERA5), catchment response mask, and gauge-to-postcode lookup.
-- **Two routes:**
-  - Route A (gauge, D1-3): BoM warning or ensemble river forecast.
-  - Route B (rain proxy, D1-7): 72 h rain against section 3 thresholds, antecedent soil, catchment type.
+**Design rule (Josh, 19 Oct 2026): no BoM flood data.** BoM gauge forecasts and flood-class warnings are paywalled, so nothing in this hazard depends on them. A flood prospect is derived from rainfall, antecedent wetness and catchment shape, all from free sources: the model forecast, SILO and ERA5, and the Geoscience Australia hydrological geofabric (free, CC-BY) for basin outlines. The sweep never reads a river height. Where BoM issues its own warning, that is outside this system and is not a trigger or an input.
+
+- **Variables:**
+  - `rain_72h`, `rain_120h`, `rain_168h` (cell-mean model totals) as ratios to the section 3 table for the same window.
+  - `rain_peak_3h` (mm, the wettest 3 hours in the cell-mean forecast), for flash flooding.
+  - `soil_moisture_percentile` (SILO or ERA5 top-layer soil moisture against that cell and calendar month, 1991-2020).
+  - `api30_percentile`, the antecedent rainfall index: 30-day exponentially weighted rainfall (decay 0.85 a day) as a percentile for the cell and month, from SILO observed rain up to yesterday.
+  - `basin_mean_rain_168h_ratio`, the area-weighted forecast rain over the whole upstream catchment, which is what drives slow inland rivers.
+  - `catchment_response` flag per cell: steep and coastal (fast), urban impervious (fast), flat inland (slow), taken from the geofabric once and stored.
+- **Three routes, any one can fire a tier:**
+  - **Flash route (D1-3):** short, intense rain on a fast-responding catchment.
+  - **Event route (D1-7):** 72 h or 120 h rain against the section 3 thresholds, made worse by wet soil.
+  - **Basin route (D2-7):** whole-catchment rain over 5-7 days for slow rivers (Murray-Darling, Fitzroy, Burdekin and similar), where the peak arrives days after the rain.
 - **Tiers:**
-  - Minor: Route A: forecast to reach minor flood class at 1+ gauge, or Route B: 72 h rain at Minor level with soil above 70th percentile, or a flash-flood rain rate of at least 60 mm/h forecast over 3+ cells.
-  - Moderate: Route A: moderate flood class at 1+ gauge, or minor at 3+ gauges in one basin; Route B: Moderate rain with soil above 85th percentile.
-  - Significant: Route A: major flood class at a gauge with a town, or moderate at 3+ gauges in one basin; Route B: Significant rain on saturated soil.
-  - Major: Route A: major flood at 2+ gauges in a basin including a town of 10,000+, or forecast near the flood of record; Route B: Major rain on saturated soil, or Significant rain on soil above 95th percentile over 12+ cells.
-- **Floors/caps:** Route B never fires below the rain floors in section 3; Route A is subject to BoM's own gauge criteria. A gauge with no downstream residents is ignored.
-- **Duration/extent:** the flood window runs from forecast first minor-class exceedance to return below it, plus 12 h.
-- **Lead/confidence:** gauge forecasts are usually 1-3 days; use Route B beyond that and cap Route B at Significant at D6-7 unless soil is above the 95th percentile. Prefer the higher of the two routes when both exist.
-- **Region/season:** tropical north wet season (Nov-Apr) uses the monsoon trough lead-in as a flag; Murray-Darling slow floods use catchment-wide 14-day totals (a modification beyond the 72 h window).
-- **Compounds:** section 2.5 (saturated soil, TC rain).
+  - **Minor:** flash route: `rain_peak_3h` at least 60 mm over 3 or more cells on fast catchments; or event route: `rain_72h` at or above the Minor threshold with `soil_moisture_percentile` at least 70; or basin route: basin mean 7-day rain at or above the Moderate threshold with `api30_percentile` at least 70.
+  - **Moderate:** event route: `rain_72h` at or above the Moderate threshold with soil at least 85; or `rain_120h` at or above Moderate with `api30_percentile` at least 85; or flash route: `rain_peak_3h` at least 90 mm on fast catchments.
+  - **Significant:** event route: `rain_72h` at or above the Significant threshold with soil at least 85; or Moderate with soil at least 95 (saturated); or basin route: basin mean 7-day rain at or above Significant with `api30_percentile` at least 85.
+  - **Major:** event route: `rain_72h` at or above the Major threshold with soil at least 85, over 2 or more cells; or Significant with soil at least 95 over 12 or more cells (outbreak scale); or 3 consecutive days each at Significant level on the same basin.
+- **Floors/caps:** inherits the rain floors and caps in section 3, so a dry-country cell cannot fire on a nuisance total. The flash route has its own absolute 60 / 90 mm 3-hour floors. A cell with no residents downstream (basin outlet with no subscriber postcodes or 1,000 residents) is not queued.
+- **Duration/extent:** the window runs from the first rain at the tier level to 36 hours after the last (slow catchments 5 days after). Minimum 3 cells for Minor and Moderate, 2 for Significant and Major.
+- **Lead/confidence:** the flash route is only D1-3 (hourly rain is not trusted beyond). Event route to D7 with the section 2.3 gates; basin route is more reliable at D3-7 than D1 because the basin average smooths model error. At D6-7 cap at Significant unless soil is at least 95.
+- **Region/season:** tropical north, wet season (Nov-Apr) uses the monsoon-trough statistics from section 3. Southern cool-season soils run wetter, so the soil percentile is taken per calendar month, never annual. Urban areas on fast catchments use the lower flash floors.
+- **Compounds:** soil lift (2.5) already uses the same soil test, so do not count it twice: the soil conditions above replace the lift for flood, and the lift still applies to rain hazard. Cyclone rain (2.5) and surge tide (2.5) apply.
+- **Merge:** flood is the headline when it fires; heavy rain in the same cluster becomes evidence.
+- **Limits, stated plainly:** with no river gauges the system cannot know where water actually goes, how levees or dams behave, or timing at a specific town. It warns that the **rain and ground conditions are flood-producing**, not that a named river will reach a named height. The draft message must say so in words like "rainfall like this on ground this wet often leads to flooding", never "the river will peak at". Josh can add the local detail by hand.
 - **Descriptors:**
-  - Minor: "Rivers and creeks near you may rise to minor flood levels; it's a good time to check low-lying roads and move valuables."
-  - Moderate: "Moderate flooding is likely in your area; please prepare for road closures and some property impact."
-  - Significant: "Major flooding is possible; this is the type of event that puts homes at risk, so please act early."
-  - Major: "Record-class flooding is a real risk; many people could be affected and I'd want you ready to move if you need to."
-- **Calibration events:** Brisbane and Ipswich, Jan 2011, Major (`ok`). Lismore, Feb 2022, record flood, Major (`ok`). Townsville, Feb 2019, monsoon flood, Major (`ok`). Eugowra/Forbes and Central West NSW, Oct-Nov 2022, Major (`ok`). Maribyrnong and northern Victoria, Oct 2022, Significant (`verify`).
+  - Minor: "Heavy rain on already damp ground could bring minor flooding in low-lying areas and some roads; it's a good time to check your drains and move valuables."
+  - Moderate: "Rain on very wet ground raises the risk of moderate flooding, with closed roads and water over low areas."
+  - Significant: "This is a serious flood setup: heavy rain on saturated ground, the kind of combination that has flooded homes, so please prepare early."
+  - Major: "Rainfall and ground conditions like these are linked to major, widespread flooding; I'd want you ready to move your family and belongings if you need to."
+- **Calibration events** (check with SILO rainfall, not gauges): Brisbane and Ipswich, Jan 2011, Major (`ok`). Lismore and the Northern Rivers, Feb-Mar 2022, Major (`ok`). Townsville, Jan-Feb 2019, monsoon, Major (`ok`). Central West NSW, Oct-Nov 2022, Major on saturated soil (`ok`). Northern Victoria, Oct 2022, Significant (`verify`). Test target: each of these should reach its tier from 72 h and 120 h SILO rainfall plus a pre-event soil percentile at 95 or above, with no gauge data.
 
 ### 4.4 Significant rainfall
 
@@ -396,10 +407,11 @@ At 16:00 UTC (03:00 AEDT) these are available; everything else is slower.
 | Rain climatology | SILO gridded daily rainfall (public S3 or Long Paddock API), averaged to cells | one-off build of `data/rain_thresholds.json` | Not built |
 | Gust and wave climatology | ERA5 hourly (Copernicus CDS), CAWCR wave hindcast | one-off build | Not built |
 | Soil moisture | SILO / ERA5 `swvl1` percentile | daily from the model run or ERA5T | Partly in pipeline |
-| Tropical cyclones | App `TropicalSystem` (GEFS tracks, genesis), JTWC/ATCF, BoM warnings | scanner reads from the app (private route) | App only |
-| River gauges and flood classes | BoM warnings and Water Data Online | scrape or feed (confirm licence) | Not built |
-| Fire danger | AFDRS ratings (state agencies / BoM Registered User Services), model FFDI | confirm access | Pipeline FFDI only |
-| Tide and HAT | BoM tide predictions and tidal datums | table lookup | Not built |
+| Tropical cyclones | App `TropicalSystem` (GEFS tracks, genesis), JTWC/ATCF | scanner reads from the app (private route) | App only |
+| Soil wetness and antecedent rain | SILO daily rain (up to yesterday) and ERA5 soil moisture, percentile per cell and month | 30-day antecedent index and soil percentile tables, refreshed daily | Partly in pipeline |
+| Catchment outlines and response | Geoscience Australia hydrological geofabric (free) | one-off per-cell basin map and fast/slow flag | Not built |
+| Fire danger | Model FFDI (pipeline) plus fire-season percentiles from ERA5; AFDRS ratings only if a free feed is confirmed | percentile table | Pipeline FFDI only |
+| Tide and HAT | Free tide predictions or a published HAT table per coastal zone (confirm licence; BoM tide data may be restricted) | table lookup | Not built |
 | Postcodes and sectors | `data/postcodes/`, `postcodeSectors` | already built | Built |
 
 **Ordering:** fetch, build per-cell features, evaluate rules, cluster, apply lifts, de-duplicate and merge, match against yesterday's prospects, write the queue, draft messages (Claude drafts, Josh edits). Allow about 20 minutes. If the ensemble fetch fails, fall back to agreement-based gating and mark every prospect `degraded: no ensemble`.
@@ -408,7 +420,7 @@ At 16:00 UTC (03:00 AEDT) these are available; everything else is slower.
 
 1. **Climate frequency (offline, no forecast needed).** Using SILO 1900-2025 and ERA5, count at each cell how often each tier would have fired if the forecast were perfect (for rain, heat, wind, frost, waves). Report events per location per year per tier. Targets: Minor 3-6, Moderate about 2, Significant about 1, Major 0.1 or less, all hazards combined. This is an upper bound: probability and area gates will cut it. If a tier is above target, raise its percentile first, then its floor.
 2. **Forecast replay (needs archived forecasts).** The scanner has 10 archived raw runs (8-17 Oct 2026). On the current 6-hazard version, the backtest gave about 17 raw events a night before persistence filtering and roughly 2 a night at Moderate and above. This is the only measured queue size; build a longer archive of ensemble forecasts to replace it. Backfill with ECMWF reforecasts or ERA5-as-forecast if archived forecasts are not available.
-3. **Event hit rate.** Take the calibration events in section 4. The rulebook passes if each would have produced a prospect at its listed tier (or one below) at D3 or earlier wherever the hazard is predictable at that lead, and none above. Record the miss list.
+3. **Event hit rate.** Take the calibration events in section 4. Flood events are tested against SILO rainfall and soil percentiles, never gauges. The rulebook passes if each would have produced a prospect at its listed tier (or one below) at D3 or earlier wherever the hazard is predictable at that lead, and none above. Record the miss list.
 4. **Review queue targets.** Design target: at most 3 prospects on an average day nationally, and no more than 8 on a peak day, split about 60% Minor, 25% Moderate, 12% Significant, 3% Major. Josh rejects fewer than 30% of what he sees by the end of the first season.
 5. **Tuning knobs (in `rulebook.json` `global`):** `widespread_cells`, `outbreak_cells`, per-tier P gates by lead, tier caps by lead, rain `k` ranks and floors/caps, heat floors and early-season relaxation, fire percentiles, wind percentiles, quiet period, per-location budgets, hysteresis percentage.
 6. **Learning from rejections.** Every reviewed prospect stores a `rejection_code` (not-severe-enough, too-wide, wrong-timing, duplicate, low-confidence, already-covered, other) and an `edit_diff` (tier, area, window changes). Weekly report: rejection rate per hazard x tier x lead, plus the median edit to tier and area. Rules for adjusting:
@@ -427,3 +439,4 @@ At 16:00 UTC (03:00 AEDT) these are available; everything else is slower.
 7. Snow Minor and Major (my additions), and the 800 m snow-level line for Minor.
 8. Annual budgets per location (6 / 3 / 1.5) and the choice to auto-suppress only Minor.
 9. Running a 03:00 sweep on 00Z data plus an update after the nightly build.
+10. Flood thresholds: soil percentiles 70 / 85 / 95, the 60 and 90 mm 3-hour flash floors, and the basin-route windows. No flood-class or gauge data is used anywhere.
