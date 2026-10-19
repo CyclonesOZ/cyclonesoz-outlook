@@ -1,0 +1,120 @@
+[Front Line] ACTION: 16 alert(s) to look at (model run Tue 20 Oct 04:10 AWST)
+
+LIVE scan. Shadow mode: this goes only to you, nothing is published to subscribers.
+
+Model: ecmwf_ifs025, second opinion GFS. Run 2026-10-19T20:10:26Z UTC. Scanned days 1-7 against alerts/thresholds.json.
+
+NEW  Tue 20 Oct  (day 1)
+   Where:   North Interior, Pilbara, Kimberley, South Interior  [centre -21.5, 122.8; 32 model points]
+   Window:  Tue 20 Oct 08:00 AWST to Wed 21 Oct 08:00 AWST  (model day is 00Z-24Z)
+   Why:     Severe fire danger (FFDI 50+)
+   Peak:    CAPE 1619, shear 49 kt, SCP 1.6, SHIP 0.5, DCAPE 1554, rain up to 10 mm; hail tier 1, wind tier 1
+   Your published map: up to MRGL over these points
+
+NEW  Wed 21 Oct  (day 2)
+   Where:   Channel Country  [centre -26.3, 143.3; 1 model points]
+   Window:  Wed 21 Oct 10:00 AEST to Thu 22 Oct 10:00 AEST  (model day is 00Z-24Z)
+   Why:     Large hail (3-6 cm)
+   Peak:    CAPE 2466, shear 44 kt, SCP 4.5, SHIP 1.2, DCAPE 834, rain up to 11 mm; hail tier 2, wind tier 1
+   Your published map: up to MDT over these points
+
+NEW  Wed 21 Oct  (day 2)
+   Where:   South Interior  [centre -24.5, 126.3; 2 model points]
+   Window:  Wed 21 Oct 08:00 AWST to Thu 22 Oct 08:00 AWST  (model day is 00Z-24Z)
+   Why:     Very destructive winds (160+ km/h); Destructive winds (125+ km/h); Severe storms (MDT)
+   Peak:    CAPE 2138, shear 44 kt, SCP 7.2, SHIP 0.7, DCAPE 1016, rain up to 6 mm; hail tier 1, wind tier 3
+   Your published map: up to MRGL over these points
+
+NEW  Wed 21 Oct  (day 2)
+   Where:   North Interior, Pilbara, South Interior  [centre -21.8, 122.7; 24 model points]
+   Window:  Wed 21 Oct 08:00 AWST to Thu 22 Oct 08:00 AWST  (model day is 00Z-24Z)
+   Why:     Severe fire danger (FFDI 50+)
+   Peak:    CAPE 1749, shear 36 kt, SCP 3.9, SHIP 0.5, DCAPE 1439, rain up to 0 mm; hail tier 0, wind tier 0
+   Your published map: up to none over these points
+
+NEW  Wed 21 Oct  (day 2)
+   Where:   North Interior  [centre -23.4, 127.4; 1 model points]
+   Window:  Wed 21 Oct 08:00 AWST to Thu 22 Oct 08:00 AWST  (model day is 00Z-24Z)
+   Why:     Very destructive winds (160+ km/h); Destructive winds (125+ km/h); Severe storms (MDT)
+   Peak:    CAPE 2218, shear 40 kt, SCP 8.8, SHIP 0.8, DCAPE 916, rain up to 2 mm; hail tier 1, wind tier 3
+   Your published map: up to MRGL over these points
+
+NEW  Wed 21 Oct  (day 2)
+   Where:   Central West  [centre -23.4, 143.3; 1 model points]
+   Window:  Wed 21 Oct 10:00 AEST to Thu 22 Oct 10:00 AEST  (model day is 00Z-24Z)
+   Why:     Destructive winds (125+ km/h); Severe storms (MDT)
+   Peak:    CAPE 2582, shear 41 kt, SCP 7.0, SHIP 0.7, DCAPE 891, rain up to 12 mm; hail tier 1, wind tier 2
+   Your published map: up to TSTM over these points
+
+NEW  Wed 21 Oct  (day 2)
+   Where:   Tanami  [centre -21.9, 129.6; 1 model points]
+   Window:  Wed 21 Oct 09:30 ACST to Thu 22 Oct 09:30 ACST  (model day is 00Z-24Z)
+   Why:     Destructive winds (125+ km/h); Severe storms (MDT)
+   Peak:    CAPE 3096, shear 31 kt, SCP 7.3, SHIP 0.9, DCAPE 949, rain up to 10 mm; hail tier 1, wind tier 2
+   Your published map: up to TSTM over these points
+
+NEW  Thu 22 Oct  (day 3)
+   Where:   North West Pastoral  [centre -27.0, 132.5; 1 model points]
+   Window:  Thu 22 Oct 10:30 ACDT to Fri 23 Oct 10:30 ACDT  (model day is 00Z-24Z)
+   Why:     Destructive winds (125+ km/h); Severe storms (MDT)
+   Peak:    CAPE 1996, shear 38 kt, SCP 6.6, SHIP 0.5, DCAPE 578, rain up to 10 mm; hail tier 1, wind tier 2
+   Your published map: up to MRGL over these points
+
+NEW  Thu 22 Oct  (day 3)
+   Where:   North Interior, Kimberley, Pilbara  [centre -20.6, 123.1; 15 model points]
+   Window:  Thu 22 Oct 08:00 AWST to Fri 23 Oct 08:00 AWST  (model day is 00Z-24Z)
+   Why:     Severe fire danger (FFDI 50+)
+   Peak:    CAPE 783, shear 22 kt, SCP 0.1, SHIP 0.0, DCAPE 1507, rain up to 0 mm; hail tier 0, wind tier 0
+   Your published map: up to none over these points
+
+NEW  Thu 22 Oct  (day 3)
+   Where:   Kimberley  [centre -15.1, 125.6; 2 model points]
+   Window:  Thu 22 Oct 08:00 AWST to Fri 23 Oct 08:00 AWST  (model day is 00Z-24Z)
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 3132, shear 31 kt, SCP 2.0, SHIP 0.2, DCAPE 802, rain up to 13 mm; hail tier 0, wind tier 1
+   Your published map: up to TSTM over these points
+
+NEW  Thu 22 Oct  (day 3)
+   Where:   Daly  [centre -14.7, 130.3; 1 model points]
+   Window:  Thu 22 Oct 09:30 ACST to Fri 23 Oct 09:30 ACST  (model day is 00Z-24Z)
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 3328, shear 30 kt, SCP 2.8, SHIP 0.3, DCAPE 971, rain up to 3 mm; hail tier 0, wind tier 1
+   Your published map: up to TSTM over these points
+
+NEW  Fri 23 Oct  (day 4)
+   Where:   North Interior, Pilbara, Kimberley  [centre -21.0, 122.9; 31 model points]
+   Window:  Fri 23 Oct 08:00 AWST to Sat 24 Oct 08:00 AWST  (model day is 00Z-24Z)
+   Why:     Severe fire danger (FFDI 50+)
+   Peak:    CAPE 1240, shear 21 kt, SCP 0.0, SHIP 0.2, DCAPE 1523, rain up to 0 mm; hail tier 0, wind tier 0
+   Your published map: up to none over these points
+
+NEW  Fri 23 Oct  (day 4)
+   Where:   Daly, Gregory  [centre -14.7, 130.1; 3 model points]
+   Window:  Fri 23 Oct 09:30 ACST to Sat 24 Oct 09:30 ACST  (model day is 00Z-24Z)
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 3703, shear 31 kt, SCP 1.0, SHIP 0.3, DCAPE 810, rain up to 5 mm; hail tier 0, wind tier 1
+   Your published map: up to MDT over these points
+
+NEW  Fri 23 Oct  (day 4)
+   Where:   Daly  [centre -12.6, 131.0; 1 model points]
+   Window:  Fri 23 Oct 09:30 ACST to Sat 24 Oct 09:30 ACST  (model day is 00Z-24Z)
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 3032, shear 27 kt, SCP 0.7, SHIP 0.2, DCAPE 776, rain up to 7 mm; hail tier 0, wind tier 1
+   Your published map: up to MDT over these points
+
+NEW  Sat 24 Oct  (day 5)
+   Where:   North Interior, Tanami, Lasseter, South Interior, Pilbara, Kimberley  [centre -22.0, 126.7; 88 model points]
+   Window:  Sat 24 Oct 08:00 AWST to Sun 25 Oct 08:00 AWST  (model day is 00Z-24Z)
+   Why:     Extreme fire danger (FFDI 100+); Severe fire danger (FFDI 50+)
+   Peak:    CAPE 1156, shear 43 kt, SCP 1.7, SHIP 0.4, DCAPE 1474, rain up to 0 mm; hail tier 0, wind tier 0
+   Your published map: up to none over these points
+
+NEW  Sat 24 Oct  (day 5)
+   Where:   Gregory  [centre -15.8, 130.3; 4 model points]
+   Window:  Sat 24 Oct 09:30 ACST to Sun 25 Oct 09:30 ACST  (model day is 00Z-24Z)
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 3873, shear 30 kt, SCP 3.2, SHIP 0.3, DCAPE 775, rain up to 15 mm; hail tier 0, wind tier 1
+   Your published map: up to none over these points
+
+This is an automatic detection from the raw model run. It is not a forecast and not an
+official warning. It does not know about your edits to the map.
