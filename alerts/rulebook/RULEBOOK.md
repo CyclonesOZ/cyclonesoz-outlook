@@ -166,31 +166,31 @@ Overlays applied on top of the zone value:
 - **Urban impervious:** capital cities and towns over 100,000 people: flash thresholds x 0.8 (drains and hard surfaces flood sooner).
 - **Alpine and high ranges** (elevation at least 1,200 m): use the `temperate` flash row, then x 1.3 (orographic rain is more efficient and expected).
 
-Numbers below are indicative (plus or minus about 30%). The proper source for the flash route is the **BoM Intensity-Frequency-Duration (IFD 2016) design rainfall data**, which is published for download as free design-rainfall depth grids (check the current terms before relying on it): for each cell take the **3-hour depth** at the target frequency, then multiply by an **areal reduction factor of 0.85** because the model gives a 0.25 degree (about 28 km) cell mean, not a point. The zone table is the fallback, and also the sanity check on the IFD values.
+Numbers below are indicative and were tripled on 19 Oct 2026 (the pre-tripling values were one third of those shown). The proper source for the flash route is the **BoM Intensity-Frequency-Duration (IFD 2016) design rainfall data**, which is published for download as free design-rainfall depth grids (check the current terms before relying on it): for each cell take the **3-hour depth** at the target frequency, then multiply by an **areal reduction factor of 0.85** because the model gives a 0.25 degree (about 28 km) cell mean, not a point. The zone table is the fallback, and also the sanity check on the IFD values.
 
-**Flash-flood 3-hour rain, point-equivalent mm** (before the 0.85 factor; the frequency each tier is meant to match is in brackets):
+**Flash-flood 3-hour rain, point-equivalent mm, tripled at Josh's request on 19 Oct 2026** (before the 0.85 factor). The original frequency labels (about 1 per year, 1-in-5, 1-in-20, 1-in-100) no longer apply: tripled depths are far rarer than those design rainfalls, and the Major values in the wet zones (600 mm in 3 hours) exceed anything observed in Australia, so those cells will effectively never fire at Major. Re-check against BoM IFD before using:
 
-| Zone | Minor (about 1 per year) | Moderate (1-in-5) | Significant (1-in-20) | Major (1-in-100) |
+| Zone | Minor | Moderate | Significant | Major |
 |---|---|---|---|---|
-| `tropical_wet` | 70 | 110 | 150 | 200 |
-| `tropical_dry` | 55 | 90 | 125 | 170 |
-| `subtropical_east` | 45 | 80 | 115 | 160 |
-| `temperate` | 18 | 32 | 45 | 65 |
-| `semi_arid` | 22 | 38 | 55 | 80 |
-| `arid` | 20 | 35 | 50 | 75 |
+| `tropical_wet` | 210 | 330 | 450 | 600 |
+| `tropical_dry` | 165 | 270 | 375 | 510 |
+| `subtropical_east` | 135 | 240 | 345 | 480 |
+| `temperate` | 54 | 96 | 135 | 195 |
+| `semi_arid` | 66 | 114 | 165 | 240 |
+| `arid` | 60 | 105 | 150 | 225 |
 
-These are impact-based on purpose (roughly drainage failing, flash flooding of low areas, serious flooding, very rare), so they sit much rarer than the daily-rain tiers. The alert-frequency targets in section 8 are met after gating, not by the raw depth.
+The original values were impact-based (roughly drainage failing, flash flooding of low areas, serious flooding, very rare). After tripling they are well above that, so expect very few flash prospects. The alert-frequency targets in section 8 are met after gating, not by the raw depth.
 
-**Daily-rain absolute floors and caps by zone** (24 h mm; scaled by the window factors in section 3; these replace the single national numbers):
+**Daily-rain absolute floors and caps by zone** (24 h mm, tripled at Josh's request on 19 Oct 2026; scaled by the window factors in section 3; these replace the single national numbers):
 
 | Zone | Floors: Minor / Moderate / Significant / Major | Caps: Minor / Moderate / Significant / Major |
 |---|---|---|
-| `tropical_wet` | 40 / 70 / 110 / 200 | 250 / 400 / 550 / 800 |
-| `tropical_dry` | 30 / 55 / 90 / 160 | 200 / 320 / 450 / 650 |
-| `subtropical_east` | 30 / 50 / 80 / 140 | 150 / 250 / 350 / 550 |
-| `temperate` | 20 / 30 / 45 / 80 | 80 / 130 / 200 / 320 |
-| `semi_arid` | 20 / 30 / 45 / 80 | 80 / 130 / 200 / 320 |
-| `arid` | 15 / 25 / 40 / 70 | 70 / 120 / 180 / 300 |
+| `tropical_wet` | 120 / 210 / 330 / 600 | 750 / 1200 / 1650 / 2400 |
+| `tropical_dry` | 90 / 165 / 270 / 480 | 600 / 960 / 1350 / 1950 |
+| `subtropical_east` | 90 / 150 / 240 / 420 | 450 / 750 / 1050 / 1650 |
+| `temperate` | 60 / 90 / 135 / 240 | 240 / 390 / 600 / 960 |
+| `semi_arid` | 60 / 90 / 135 / 240 | 240 / 390 / 600 / 960 |
+| `arid` | 45 / 75 / 120 / 210 | 210 / 360 / 540 / 900 |
 
 Other absolute numbers that are already regional: heat floors (temperate south vs tropical north), wave heights (east vs south/west), frost (crop zones by region), and fire (percentile first, region-specific fuels). Wind gust floors stay national (90 / 110 / 125 / 160 km/h) because they are damage thresholds for buildings, not climate-relative, and each is also gated by the cell's own gust percentile.
 

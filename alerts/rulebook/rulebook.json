@@ -262,49 +262,44 @@
    }
   },
   "flash_3h_mm_point_equivalent": {
-   "note": "indicative +-30%; replace with BoM IFD 2016 3-hour depths (free download; confirm terms). Compare model cell mean with value x areal_reduction_factor.",
+   "note": "x3 applied 19 Oct 2026 at Josh request (original indicative values were 1/3 of these). Compare model cell mean with value x areal_reduction_factor.",
    "areal_reduction_factor_025deg_cell": 0.85,
-   "target_frequency": {
-    "minor": "~1 per year (1 EY)",
-    "moderate": "1-in-5",
-    "significant": "1-in-20",
-    "major": "1-in-100"
-   },
+   "target_frequency": "NO LONGER matches 1/5/20/100-year design rainfall after x3: the tiers are now much rarer. Re-check against BoM IFD before use.",
    "tropical_wet": {
-    "minor": 70,
-    "moderate": 110,
-    "significant": 150,
-    "major": 200
+    "minor": 210,
+    "moderate": 330,
+    "significant": 450,
+    "major": 600
    },
    "tropical_dry": {
-    "minor": 55,
-    "moderate": 90,
-    "significant": 125,
-    "major": 170
+    "minor": 165,
+    "moderate": 270,
+    "significant": 375,
+    "major": 510
    },
    "subtropical_east": {
-    "minor": 45,
-    "moderate": 80,
-    "significant": 115,
-    "major": 160
+    "minor": 135,
+    "moderate": 240,
+    "significant": 345,
+    "major": 480
    },
    "temperate": {
-    "minor": 18,
-    "moderate": 32,
-    "significant": 45,
-    "major": 65
+    "minor": 54,
+    "moderate": 96,
+    "significant": 135,
+    "major": 195
    },
    "semi_arid": {
-    "minor": 22,
-    "moderate": 38,
-    "significant": 55,
-    "major": 80
+    "minor": 66,
+    "moderate": 114,
+    "significant": 165,
+    "major": 240
    },
    "arid": {
-    "minor": 20,
-    "moderate": 35,
-    "significant": 50,
-    "major": 75
+    "minor": 60,
+    "moderate": 105,
+    "significant": 150,
+    "major": 225
    }
   },
   "rain_floor_cap_mm_24h_by_zone": {
@@ -317,80 +312,86 @@
    },
    "floor": {
     "tropical_wet": {
-     "minor": 40,
-     "moderate": 70,
-     "significant": 110,
-     "major": 200
+     "minor": 120,
+     "moderate": 210,
+     "significant": 330,
+     "major": 600
     },
     "tropical_dry": {
-     "minor": 30,
-     "moderate": 55,
-     "significant": 90,
-     "major": 160
+     "minor": 90,
+     "moderate": 165,
+     "significant": 270,
+     "major": 480
     },
     "subtropical_east": {
-     "minor": 30,
-     "moderate": 50,
-     "significant": 80,
-     "major": 140
+     "minor": 90,
+     "moderate": 150,
+     "significant": 240,
+     "major": 420
     },
     "temperate": {
-     "minor": 20,
-     "moderate": 30,
-     "significant": 45,
-     "major": 80
+     "minor": 60,
+     "moderate": 90,
+     "significant": 135,
+     "major": 240
     },
     "semi_arid": {
-     "minor": 20,
-     "moderate": 30,
-     "significant": 45,
-     "major": 80
+     "minor": 60,
+     "moderate": 90,
+     "significant": 135,
+     "major": 240
     },
     "arid": {
-     "minor": 15,
-     "moderate": 25,
-     "significant": 40,
-     "major": 70
+     "minor": 45,
+     "moderate": 75,
+     "significant": 120,
+     "major": 210
     }
    },
    "cap": {
     "tropical_wet": {
-     "minor": 250,
-     "moderate": 400,
-     "significant": 550,
-     "major": 800
+     "minor": 750,
+     "moderate": 1200,
+     "significant": 1650,
+     "major": 2400
     },
     "tropical_dry": {
-     "minor": 200,
-     "moderate": 320,
-     "significant": 450,
-     "major": 650
+     "minor": 600,
+     "moderate": 960,
+     "significant": 1350,
+     "major": 1950
     },
     "subtropical_east": {
-     "minor": 150,
-     "moderate": 250,
-     "significant": 350,
-     "major": 550
+     "minor": 450,
+     "moderate": 750,
+     "significant": 1050,
+     "major": 1650
     },
     "temperate": {
-     "minor": 80,
-     "moderate": 130,
-     "significant": 200,
-     "major": 320
+     "minor": 240,
+     "moderate": 390,
+     "significant": 600,
+     "major": 960
     },
     "semi_arid": {
-     "minor": 80,
-     "moderate": 130,
-     "significant": 200,
-     "major": 320
+     "minor": 240,
+     "moderate": 390,
+     "significant": 600,
+     "major": 960
     },
     "arid": {
-     "minor": 70,
-     "moderate": 120,
-     "significant": 180,
-     "major": 300
+     "minor": 210,
+     "moderate": 360,
+     "significant": 540,
+     "major": 900
     }
    }
+  },
+  "tripled": {
+   "applied": "flash_3h_mm_point_equivalent, rain_floor_cap_mm_24h_by_zone (floors and caps)",
+   "not_applied": "wind, heat, frost, waves, snow, fire, ratios, percentiles",
+   "date": "2026-10-19",
+   "by": "Josh"
   }
  },
  "rules": [
