@@ -1,0 +1,252 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://cyclonesoz.com.au/schemas/front-line-prospect.json",
+ "title": "Front Line prospect alert (review queue record)",
+ "description": "One candidate warning produced by the sweep. Nothing is sent to subscribers until Josh approves; status moves only by human action except updated/cancelled which the sweep may set on pending prospects.",
+ "type": "object",
+ "required": [
+  "id",
+  "sweep_run_time",
+  "hazard",
+  "tier",
+  "confidence",
+  "valid_from",
+  "valid_to",
+  "postcodes",
+  "sectors",
+  "geometry",
+  "evidence",
+  "draft_message",
+  "status"
+ ],
+ "additionalProperties": false,
+ "properties": {
+  "id": {
+   "type": "string",
+   "description": "Stable across sweeps for the same prospect, e.g. 20261019-tc-0007"
+  },
+  "sweep_run_time": {
+   "type": "string",
+   "format": "date-time"
+  },
+  "hazard": {
+   "enum": [
+    "tropical_cyclone",
+    "severe_thunderstorm",
+    "flooding",
+    "heavy_rain",
+    "cold_front",
+    "damaging_wind_synoptic",
+    "heatwave",
+    "fire_weather",
+    "frost_cold",
+    "snow_blizzard",
+    "waves_surge"
+   ],
+   "description": "Headline hazard after merging"
+  },
+  "merged_hazards": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   },
+   "description": "All hazards merged into this prospect, headline first"
+  },
+  "tier": {
+   "enum": [
+    "minor",
+    "moderate",
+    "significant",
+    "major"
+   ]
+  },
+  "tier_before_lifts": {
+   "enum": [
+    "minor",
+    "moderate",
+    "significant",
+    "major"
+   ]
+  },
+  "escalations_applied": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   }
+  },
+  "confidence": {
+   "type": "number",
+   "minimum": 0,
+   "maximum": 100
+  },
+  "lead_day": {
+   "type": "integer",
+   "minimum": 1,
+   "maximum": 7
+  },
+  "ensemble_p": {
+   "type": [
+    "number",
+    "null"
+   ],
+   "minimum": 0,
+   "maximum": 1,
+   "description": "Null when only agreement is available"
+  },
+  "degraded": {
+   "type": [
+    "string",
+    "null"
+   ],
+   "description": "e.g. 'no ensemble' when a source failed"
+  },
+  "valid_from": {
+   "type": "string",
+   "format": "date-time"
+  },
+  "valid_to": {
+   "type": "string",
+   "format": "date-time"
+  },
+  "postcodes": {
+   "type": "object",
+   "description": "postcode -> tier, same shape the Postcode Alert tab loads",
+   "additionalProperties": {
+    "enum": [
+     "minor",
+     "moderate",
+     "significant",
+     "major"
+    ]
+   }
+  },
+  "sectors": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   }
+  },
+  "geometry": {
+   "type": "object",
+   "description": "GeoJSON Feature/FeatureCollection of the firing cells plus centroid and bbox"
+  },
+  "evidence": {
+   "type": "object",
+   "properties": {
+    "rules_fired": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "peak_values": {
+     "type": "object"
+    },
+    "models": {
+     "type": "object",
+     "description": "per-model values and agreement, e.g. IFS, GFS, ENS"
+    },
+    "climatology": {
+     "type": "object",
+     "description": "threshold, percentile or return period the value was compared against"
+    },
+    "n_cells": {
+     "type": "integer"
+    },
+    "exposed_population": {
+     "type": "integer"
+    },
+    "subscribers_in_footprint": {
+     "type": "integer"
+    }
+   },
+   "additionalProperties": true
+  },
+  "draft_message": {
+   "type": "object",
+   "required": [
+    "title",
+    "text"
+   ],
+   "properties": {
+    "title": {
+     "type": "string"
+    },
+    "text": {
+     "type": "string"
+    },
+    "image_headline": {
+     "type": "string"
+    },
+    "image_subtitle": {
+     "type": "string"
+    },
+    "place_labels": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "status": {
+   "enum": [
+    "pending",
+    "approved",
+    "edited",
+    "rejected",
+    "issued",
+    "updated",
+    "cancelled"
+   ]
+  },
+  "over_budget": {
+   "type": "boolean",
+   "default": false
+  },
+  "reviewer_notes": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "rejection_code": {
+   "enum": [
+    null,
+    "not_severe_enough",
+    "too_wide",
+    "wrong_timing",
+    "duplicate",
+    "low_confidence",
+    "already_covered",
+    "other"
+   ]
+  },
+  "edit_diff": {
+   "type": [
+    "object",
+    "null"
+   ],
+   "description": "what Josh changed: tier, postcodes, window, text"
+  },
+  "reviewed_by": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "reviewed_at": {
+   "type": [
+    "string",
+    "null"
+   ],
+   "format": "date-time"
+  },
+  "supersedes_id": {
+   "type": [
+    "string",
+    "null"
+   ]
+  }
+ }
+}
