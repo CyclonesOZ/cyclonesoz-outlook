@@ -33,7 +33,7 @@ Tiers follow Josh's definitions: Minor a few times a year, Moderate about twice 
 |---|---|---|---|---|---|
 | 1 | Tropical cyclone | Tropical low, 30%+ chance of gales, within 300 km of coast | Category 1 | Category 2-3 | Category 4-5 |
 | 2 | Severe thunderstorms | MDT category | Widespread MDT (6+ cells) or isolated HIGH | HIGH widespread (6+ cells), or hail 6 cm+, wind 160 km/h+, or STP 4+ | HIGH, 12+ cells, two top-tier hazards, 1M+ people |
-| 3 | Flooding (rain-based) | Rain at Minor level on soil 70th pct+, or 60 mm in 3 h | Rain at Moderate level on soil 85th pct+ | Rain at Significant level on wet soil, or Moderate on saturated soil | Major rain on wet soil, or Significant on saturated soil over 12+ cells |
+| 3 | Flooding (rain-based) | Rain at Minor level on soil 70th pct+, or the zone's 3-hour flash depth (3.1) | Rain at Moderate level on soil 85th pct+ | Rain at Significant level on wet soil, or Moderate on saturated soil | Major rain on wet soil, or Significant on saturated soil over 12+ cells |
 | 4 | Heavy rain | 10th-wettest day of a typical year | 2nd-wettest day | Median annual-maximum day | 10-year return level |
 | 5 | Cold front | 2 of 4 signals (gust 90, 12 C drop, 10 hPa fall, snow level) | Gust 100+ and 14 C drop, 6+ cells | Wind tier 2 (125 km/h) at 3+ cells with the front | Wind tier 3, or 1,000 km wide gale band |
 | 6 | Damaging wind (non-convective) | Gust 90+ and P99.5 | Gust 110+ and P99.8 | Gust 125+ and P99.95 | Gust 160+ coastal / 140+ inland and P99.99 |
@@ -143,11 +143,56 @@ Josh's framework, made computable:
    - Moderate: the median across years of the 2nd-largest total.
    - Significant: the median across years of the largest total (the median annual maximum, about a 1.4-year return period).
    - Major: the 10-year return level of the annual maximum series (GEV fitted by L-moments, 1900-2025).
-6. **Absolute floors** (24 h mm; scale 1.4x for 48 h, 1.7x for 72 h, 2.2x for 5 days, 2.7x for 7 days): Minor 25, Moderate 40, Significant 60, Major 100. Arid cells where the formula gives less than the floor use the floor and require a higher P gate (add 10 points) because model rain there is poorly constrained.
-7. **Absolute caps** (24 h mm), so very wet places stay reachable: Minor 120, Moderate 200, Significant 300, Major 500.
+6. **Absolute floors** (24 h mm, by climate zone, see 3.1; scale 1.4x for 48 h, 1.7x for 72 h, 2.2x for 5 days, 2.7x for 7 days). Arid and semi-arid cells where the formula gives less than the floor use the floor and require a higher P gate (add 10 points) because model rain there is poorly constrained.
+7. **Absolute caps** (24 h mm, by climate zone, see 3.1), so very wet places stay reachable.
 8. **Seasonal stratification:** north of 19 S, the statistic uses November-April only (the monsoon season); elsewhere it uses the full year.
 9. **Output file:** `data/rain_thresholds.json`, a table cell x window x tier, built offline once and rebuilt each decade. Floors and caps are applied when it is built, not when the sweep runs.
 10. **Forecast side:** the model rainfall (cell mean) is compared with the table. Ensemble probability is the fraction of members at or above the threshold.
+
+### 3.1 Climate zones (used wherever an absolute number appears)
+
+A flat national mm figure is wrong almost everywhere: 60 mm in 3 hours is routine in the Wet Tropics and a flash-flood event in Melbourne. Every absolute rainfall number in this rulebook (rain floors and caps, and the flash-flood route) is therefore looked up by **climate zone**, assigned once per model cell from latitude, longitude and SILO mean annual rainfall (`R`, 1991-2020).
+
+| Zone | Rule (first match wins) | Typical places |
+|---|---|---|
+| `tropical_wet` | north of 19.5 S and R at least 1,200 mm | Wet Tropics, Top End coast, Cape York east, Kimberley north |
+| `tropical_dry` | north of 23.5 S and R 400-1,199 mm | Gulf, Pilbara, dry savanna, Townsville dry belt, Mackay-Rockhampton hinterland |
+| `subtropical_east` | 23.5-37 S, east of 149 E, R at least 800 mm | South-east Queensland, Northern Rivers, Mid North Coast, Sydney, Illawarra |
+| `temperate` | south of 23.5 S, R at least 400 mm (anywhere not matched above) | Melbourne, Tasmania, Adelaide, south-west WA, Canberra, tablelands |
+| `semi_arid` | R 250-399 mm | Mallee, Riverina west, inland Queensland, WA wheatbelt east |
+| `arid` | R under 250 mm | Central Australia, Nullarbor, Lake Eyre |
+
+Overlays applied on top of the zone value:
+- **Urban impervious:** capital cities and towns over 100,000 people: flash thresholds x 0.8 (drains and hard surfaces flood sooner).
+- **Alpine and high ranges** (elevation at least 1,200 m): use the `temperate` flash row, then x 1.3 (orographic rain is more efficient and expected).
+
+Numbers below are indicative (plus or minus about 30%). The proper source for the flash route is the **BoM Intensity-Frequency-Duration (IFD 2016) design rainfall data**, which is published for download as free design-rainfall depth grids (check the current terms before relying on it): for each cell take the **3-hour depth** at the target frequency, then multiply by an **areal reduction factor of 0.85** because the model gives a 0.25 degree (about 28 km) cell mean, not a point. The zone table is the fallback, and also the sanity check on the IFD values.
+
+**Flash-flood 3-hour rain, point-equivalent mm** (before the 0.85 factor; the frequency each tier is meant to match is in brackets):
+
+| Zone | Minor (about 1 per year) | Moderate (1-in-5) | Significant (1-in-20) | Major (1-in-100) |
+|---|---|---|---|---|
+| `tropical_wet` | 70 | 110 | 150 | 200 |
+| `tropical_dry` | 55 | 90 | 125 | 170 |
+| `subtropical_east` | 45 | 80 | 115 | 160 |
+| `temperate` | 18 | 32 | 45 | 65 |
+| `semi_arid` | 22 | 38 | 55 | 80 |
+| `arid` | 20 | 35 | 50 | 75 |
+
+These are impact-based on purpose (roughly drainage failing, flash flooding of low areas, serious flooding, very rare), so they sit much rarer than the daily-rain tiers. The alert-frequency targets in section 8 are met after gating, not by the raw depth.
+
+**Daily-rain absolute floors and caps by zone** (24 h mm; scaled by the window factors in section 3; these replace the single national numbers):
+
+| Zone | Floors: Minor / Moderate / Significant / Major | Caps: Minor / Moderate / Significant / Major |
+|---|---|---|
+| `tropical_wet` | 40 / 70 / 110 / 200 | 250 / 400 / 550 / 800 |
+| `tropical_dry` | 30 / 55 / 90 / 160 | 200 / 320 / 450 / 650 |
+| `subtropical_east` | 30 / 50 / 80 / 140 | 150 / 250 / 350 / 550 |
+| `temperate` | 20 / 30 / 45 / 80 | 80 / 130 / 200 / 320 |
+| `semi_arid` | 20 / 30 / 45 / 80 | 80 / 130 / 200 / 320 |
+| `arid` | 15 / 25 / 40 / 70 | 70 / 120 / 180 / 300 |
+
+Other absolute numbers that are already regional: heat floors (temperate south vs tropical north), wave heights (east vs south/west), frost (crop zones by region), and fire (percentile first, region-specific fuels). Wind gust floors stay national (90 / 110 / 125 / 160 km/h) because they are damage thresholds for buildings, not climate-relative, and each is also gated by the cell's own gust percentile.
 
 ## 4. Per-hazard specification
 
@@ -201,23 +246,23 @@ For each hazard: variables, tier thresholds, floors/caps, duration and extent, l
 
 - **Variables:**
   - `rain_72h`, `rain_120h`, `rain_168h` (cell-mean model totals) as ratios to the section 3 table for the same window.
-  - `rain_peak_3h` (mm, the wettest 3 hours in the cell-mean forecast), for flash flooding.
+  - `rain_peak_3h` (mm, the wettest 3 hours in the cell-mean forecast) against the zone's 3-hour table in 3.1, for flash flooding.
   - `soil_moisture_percentile` (SILO or ERA5 top-layer soil moisture against that cell and calendar month, 1991-2020).
   - `api30_percentile`, the antecedent rainfall index: 30-day exponentially weighted rainfall (decay 0.85 a day) as a percentile for the cell and month, from SILO observed rain up to yesterday.
   - `basin_mean_rain_168h_ratio`, the area-weighted forecast rain over the whole upstream catchment, which is what drives slow inland rivers.
   - `catchment_response` flag per cell: steep and coastal (fast), urban impervious (fast), flat inland (slow), taken from the geofabric once and stored.
 - **Three routes, any one can fire a tier:**
-  - **Flash route (D1-3):** short, intense rain on a fast-responding catchment.
+  - **Flash route (D1-3):** short, intense rain on a fast-responding catchment, **using the zone and urban-overlay 3-hour table in 3.1, not one national number**.
   - **Event route (D1-7):** 72 h or 120 h rain against the section 3 thresholds, made worse by wet soil.
   - **Basin route (D2-7):** whole-catchment rain over 5-7 days for slow rivers (Murray-Darling, Fitzroy, Burdekin and similar), where the peak arrives days after the rain.
 - **Tiers:**
-  - **Minor:** flash route: `rain_peak_3h` at least 60 mm over 3 or more cells on fast catchments; or event route: `rain_72h` at or above the Minor threshold with `soil_moisture_percentile` at least 70; or basin route: basin mean 7-day rain at or above the Moderate threshold with `api30_percentile` at least 70.
-  - **Moderate:** event route: `rain_72h` at or above the Moderate threshold with soil at least 85; or `rain_120h` at or above Moderate with `api30_percentile` at least 85; or flash route: `rain_peak_3h` at least 90 mm on fast catchments.
+  - **Minor:** flash route: `rain_peak_3h` at or above the zone's Minor 3-hour value (3.1, after the 0.85 factor and urban overlay) over 3 or more cells on fast catchments; or event route: `rain_72h` at or above the Minor threshold with `soil_moisture_percentile` at least 70; or basin route: basin mean 7-day rain at or above the Moderate threshold with `api30_percentile` at least 70.
+  - **Moderate:** event route: `rain_72h` at or above the Moderate threshold with soil at least 85; or `rain_120h` at or above Moderate with `api30_percentile` at least 85; or flash route: `rain_peak_3h` at or above the zone's Moderate 3-hour value on fast catchments. Significant and Major also have flash routes: at or above the zone's Significant and Major values respectively.
   - **Significant:** event route: `rain_72h` at or above the Significant threshold with soil at least 85; or Moderate with soil at least 95 (saturated); or basin route: basin mean 7-day rain at or above Significant with `api30_percentile` at least 85.
   - **Major:** event route: `rain_72h` at or above the Major threshold with soil at least 85, over 2 or more cells; or Significant with soil at least 95 over 12 or more cells (outbreak scale); or 3 consecutive days each at Significant level on the same basin.
-- **Floors/caps:** inherits the rain floors and caps in section 3, so a dry-country cell cannot fire on a nuisance total. The flash route has its own absolute 60 / 90 mm 3-hour floors. A cell with no residents downstream (basin outlet with no subscriber postcodes or 1,000 residents) is not queued.
+- **Floors/caps:** inherits the rain floors and caps in section 3, so a dry-country cell cannot fire on a nuisance total. The flash route uses the zone table in 3.1 (IFD-based where available). A cell with no residents downstream (basin outlet with no subscriber postcodes or 1,000 residents) is not queued.
 - **Duration/extent:** the window runs from the first rain at the tier level to 36 hours after the last (slow catchments 5 days after). Minimum 3 cells for Minor and Moderate, 2 for Significant and Major.
-- **Lead/confidence:** the flash route is only D1-3 (hourly rain is not trusted beyond). Event route to D7 with the section 2.3 gates; basin route is more reliable at D3-7 than D1 because the basin average smooths model error. At D6-7 cap at Significant unless soil is at least 95.
+- **Lead/confidence:** the flash route is only D1-3 (hourly rain is not trusted beyond) and, because the model smooths bursts, it is a guide: it can underestimate, so it should fire rarely and be read with the event route. Event route to D7 with the section 2.3 gates; basin route is more reliable at D3-7 than D1 because the basin average smooths model error. At D6-7 cap at Significant unless soil is at least 95.
 - **Region/season:** tropical north, wet season (Nov-Apr) uses the monsoon-trough statistics from section 3. Southern cool-season soils run wetter, so the soil percentile is taken per calendar month, never annual. Urban areas on fast catchments use the lower flash floors.
 - **Compounds:** soil lift (2.5) already uses the same soil test, so do not count it twice: the soil conditions above replace the lift for flood, and the lift still applies to rain hazard. Cyclone rain (2.5) and surge tide (2.5) apply.
 - **Merge:** flood is the headline when it fires; heavy rain in the same cluster becomes evidence.
@@ -404,7 +449,8 @@ At 16:00 UTC (03:00 AEDT) these are available; everything else is slower.
 | Wind gusts | IFS `wind_gusts_10m` | add to cell fetch | Not in pipeline |
 | Snowfall, snow level | Open-Meteo `snowfall`, freezing level | already in `extra_hazards.py` | Built, not running |
 | Heat anomalies | forecast Tmax/Tmin plus SILO/ERA5 climatology table | `build_climatology.py` | Built, not run (needs the workflow) |
-| Rain climatology | SILO gridded daily rainfall (public S3 or Long Paddock API), averaged to cells | one-off build of `data/rain_thresholds.json` | Not built |
+| Rain climatology and zones | SILO gridded daily rainfall (public S3 or Long Paddock API), averaged to cells; mean annual rain to assign climate zones | one-off build of `data/rain_thresholds.json` and `data/climate_zones.json` | Not built |
+| Design rainfall (flash-flood depths) | BoM IFD 2016 3-hour depths, free download (confirm current terms); fallback is the zone table in 3.1 | one-off per-cell table | Not built |
 | Gust and wave climatology | ERA5 hourly (Copernicus CDS), CAWCR wave hindcast | one-off build | Not built |
 | Soil moisture | SILO / ERA5 `swvl1` percentile | daily from the model run or ERA5T | Partly in pipeline |
 | Tropical cyclones | App `TropicalSystem` (GEFS tracks, genesis), JTWC/ATCF | scanner reads from the app (private route) | App only |
@@ -432,11 +478,11 @@ At 16:00 UTC (03:00 AEDT) these are available; everything else is slower.
 
 1. Widespread is 6 cells, outbreak is 12.
 2. Gate probabilities by lead day (2.3) and the D6-7 Major cap.
-3. Rain floors and caps in section 3.
+3. Rain floors and caps (by climate zone, 3.1) and the zone boundaries.
 4. Heat floors and the 2-degree early-season relaxation; the rule that Major needs 3 days.
 5. Fire percentiles (P97 / P99 / P99.5) and the exposure floor of 5,000 residents.
 6. Wind percentiles (P99.5 to P99.99) and the inland versus coastal split for Major.
 7. Snow Minor and Major (my additions), and the 800 m snow-level line for Minor.
 8. Annual budgets per location (6 / 3 / 1.5) and the choice to auto-suppress only Minor.
 9. Running a 03:00 sweep on 00Z data plus an update after the nightly build.
-10. Flood thresholds: soil percentiles 70 / 85 / 95, the 60 and 90 mm 3-hour flash floors, and the basin-route windows. No flood-class or gauge data is used anywhere.
+10. Flood thresholds: soil percentiles 70 / 85 / 95, the zone-by-zone 3-hour flash depths and the 0.85 areal factor, the climate-zone boundaries, and the basin-route windows. No flood-class or gauge data is used anywhere.
