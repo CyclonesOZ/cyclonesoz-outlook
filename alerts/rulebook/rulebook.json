@@ -262,44 +262,49 @@
    }
   },
   "flash_3h_mm_point_equivalent": {
-   "note": "x3 applied 19 Oct 2026 at Josh request (original indicative values were 1/3 of these). Compare model cell mean with value x areal_reduction_factor.",
+   "note": "Original values restored 19 Oct 2026: Josh wants the DAILY rain numbers tripled, not this 3-hour flash route. indicative +-30%; replace with BoM IFD 2016 3-hour depths. Compare model cell mean with value x areal_reduction_factor.",
    "areal_reduction_factor_025deg_cell": 0.85,
-   "target_frequency": "NO LONGER matches 1/5/20/100-year design rainfall after x3: the tiers are now much rarer. Re-check against BoM IFD before use.",
+   "target_frequency": {
+    "minor": "~1 per year (1 EY)",
+    "moderate": "1-in-5",
+    "significant": "1-in-20",
+    "major": "1-in-100"
+   },
    "tropical_wet": {
-    "minor": 210,
-    "moderate": 330,
-    "significant": 450,
-    "major": 600
+    "minor": 70,
+    "moderate": 110,
+    "significant": 150,
+    "major": 200
    },
    "tropical_dry": {
-    "minor": 165,
-    "moderate": 270,
-    "significant": 375,
-    "major": 510
+    "minor": 55,
+    "moderate": 90,
+    "significant": 125,
+    "major": 170
    },
    "subtropical_east": {
-    "minor": 135,
-    "moderate": 240,
-    "significant": 345,
-    "major": 480
+    "minor": 45,
+    "moderate": 80,
+    "significant": 115,
+    "major": 160
    },
    "temperate": {
-    "minor": 54,
-    "moderate": 96,
-    "significant": 135,
-    "major": 195
+    "minor": 18,
+    "moderate": 32,
+    "significant": 45,
+    "major": 65
    },
    "semi_arid": {
-    "minor": 66,
-    "moderate": 114,
-    "significant": 165,
-    "major": 240
+    "minor": 22,
+    "moderate": 38,
+    "significant": 55,
+    "major": 80
    },
    "arid": {
-    "minor": 60,
-    "moderate": 105,
-    "significant": 150,
-    "major": 225
+    "minor": 20,
+    "moderate": 35,
+    "significant": 50,
+    "major": 75
    }
   },
   "rain_floor_cap_mm_24h_by_zone": {
@@ -388,8 +393,8 @@
    }
   },
   "tripled": {
-   "applied": "flash_3h_mm_point_equivalent, rain_floor_cap_mm_24h_by_zone (floors and caps)",
-   "not_applied": "wind, heat, frost, waves, snow, fire, ratios, percentiles",
+   "applied": "rain_floor_cap_mm_24h_by_zone (daily floors and caps)",
+   "not_applied": "flash 3-hour depths (restored), wind, heat, frost, waves, snow, fire, ratios, percentiles",
    "date": "2026-10-19",
    "by": "Josh"
   }
