@@ -1,0 +1,527 @@
+{
+  "_README": "DRAFT v2 (Claude, 19 Oct 2026) on Josh's tier scheme. 'level' = impact tier: 1 Minor (MDT-equivalent), 2 Moderate (widespread MDT or isolated HIGH), 3 Significant (HIGH). Major unused. Each hazard uses its own scale; 'widespread' = 6+ neighbouring ~80 km grid points (min_points). The model caps HIGH at days 1-3 and MDT at days 4-5 (MAX_CAT_BY_LEAD), so higher tiers cannot appear later. Hazards 7-9 (tropical cyclone, heatwave, snow/cold) need data not in the model run yet.",
+  "scan_days": [
+    1,
+    7
+  ],
+  "neighbour_deg": 1.1,
+  "rules": [
+    {
+      "id": "storms_minor",
+      "label": "Severe storms (MDT)",
+      "level": 1,
+      "days": [
+        1,
+        5
+      ],
+      "min_points": 1,
+      "when": [
+        {
+          "field": "cat",
+          "op": ">=",
+          "value": 3
+        }
+      ]
+    },
+    {
+      "id": "storms_mod_wide",
+      "label": "Widespread severe storms (MDT)",
+      "level": 2,
+      "days": [
+        1,
+        5
+      ],
+      "min_points": 6,
+      "when": [
+        {
+          "field": "cat",
+          "op": ">=",
+          "value": 3
+        }
+      ]
+    },
+    {
+      "id": "storms_mod_high",
+      "label": "Severe storms (isolated HIGH)",
+      "level": 2,
+      "days": [
+        1,
+        3
+      ],
+      "min_points": 1,
+      "when": [
+        {
+          "field": "cat",
+          "op": ">=",
+          "value": 4
+        }
+      ]
+    },
+    {
+      "id": "storms_sig",
+      "label": "Severe storms (HIGH, widespread)",
+      "level": 3,
+      "days": [
+        1,
+        3
+      ],
+      "min_points": 6,
+      "when": [
+        {
+          "field": "cat",
+          "op": ">=",
+          "value": 4
+        }
+      ]
+    },
+    {
+      "id": "hail_minor",
+      "label": "Large hail (3-6 cm)",
+      "level": 1,
+      "days": [
+        1,
+        3
+      ],
+      "min_points": 1,
+      "when": [
+        {
+          "field": "hail",
+          "op": ">=",
+          "value": 2
+        }
+      ]
+    },
+    {
+      "id": "hail_mod",
+      "label": "Widespread large hail, or very large hail",
+      "level": 2,
+      "days": [
+        1,
+        3
+      ],
+      "min_points": 6,
+      "when": [
+        {
+          "field": "hail",
+          "op": ">=",
+          "value": 2
+        }
+      ]
+    },
+    {
+      "id": "hail_mod_vl",
+      "label": "Very large hail (6 cm+)",
+      "level": 2,
+      "days": [
+        1,
+        3
+      ],
+      "min_points": 1,
+      "when": [
+        {
+          "field": "hail",
+          "op": ">=",
+          "value": 3
+        }
+      ]
+    },
+    {
+      "id": "hail_sig",
+      "label": "Widespread very large hail",
+      "level": 3,
+      "days": [
+        1,
+        3
+      ],
+      "min_points": 6,
+      "when": [
+        {
+          "field": "hail",
+          "op": ">=",
+          "value": 3
+        }
+      ]
+    },
+    {
+      "id": "wind_minor",
+      "label": "Damaging winds (90+ km/h)",
+      "level": 1,
+      "days": [
+        1,
+        3
+      ],
+      "min_points": 3,
+      "when": [
+        {
+          "field": "wind",
+          "op": ">=",
+          "value": 1
+        },
+        {
+          "field": "cat",
+          "op": ">=",
+          "value": 3
+        }
+      ]
+    },
+    {
+      "id": "wind_mod",
+      "label": "Destructive winds (125+ km/h)",
+      "level": 2,
+      "days": [
+        1,
+        3
+      ],
+      "min_points": 1,
+      "when": [
+        {
+          "field": "wind",
+          "op": ">=",
+          "value": 2
+        }
+      ]
+    },
+    {
+      "id": "wind_sig",
+      "label": "Very destructive winds (160+ km/h)",
+      "level": 3,
+      "days": [
+        1,
+        3
+      ],
+      "min_points": 1,
+      "when": [
+        {
+          "field": "wind",
+          "op": ">=",
+          "value": 3
+        }
+      ]
+    },
+    {
+      "id": "tor_minor",
+      "label": "Tornado environment",
+      "level": 1,
+      "days": [
+        1,
+        3
+      ],
+      "min_points": 2,
+      "when": [
+        {
+          "field": "stp",
+          "op": ">=",
+          "value": 1
+        },
+        {
+          "field": "cat",
+          "op": ">=",
+          "value": 3
+        }
+      ]
+    },
+    {
+      "id": "tor_mod",
+      "label": "Strong tornado environment",
+      "level": 2,
+      "days": [
+        1,
+        3
+      ],
+      "min_points": 1,
+      "when": [
+        {
+          "field": "stp",
+          "op": ">=",
+          "value": 2
+        },
+        {
+          "field": "cat",
+          "op": ">=",
+          "value": 3
+        }
+      ]
+    },
+    {
+      "id": "tor_sig",
+      "label": "Significant tornado environment",
+      "level": 3,
+      "days": [
+        1,
+        3
+      ],
+      "min_points": 1,
+      "when": [
+        {
+          "field": "stp",
+          "op": ">=",
+          "value": 4
+        },
+        {
+          "field": "cat",
+          "op": ">=",
+          "value": 4
+        }
+      ]
+    },
+    {
+      "id": "rain_minor",
+      "label": "Heavy rain (75+ mm/day)",
+      "level": 1,
+      "days": [
+        1,
+        5
+      ],
+      "min_points": 2,
+      "when": [
+        {
+          "field": "rain",
+          "op": ">=",
+          "value": 75
+        }
+      ]
+    },
+    {
+      "id": "rain_mod",
+      "label": "Widespread heavy rain, or 150+ mm isolated",
+      "level": 2,
+      "days": [
+        1,
+        5
+      ],
+      "min_points": 6,
+      "when": [
+        {
+          "field": "rain",
+          "op": ">=",
+          "value": 75
+        }
+      ]
+    },
+    {
+      "id": "rain_mod_hi",
+      "label": "Extreme rain (150+ mm/day)",
+      "level": 2,
+      "days": [
+        1,
+        5
+      ],
+      "min_points": 1,
+      "when": [
+        {
+          "field": "rain",
+          "op": ">=",
+          "value": 150
+        }
+      ]
+    },
+    {
+      "id": "rain_sig",
+      "label": "Widespread extreme rain (150+ mm/day)",
+      "level": 3,
+      "days": [
+        1,
+        5
+      ],
+      "min_points": 6,
+      "when": [
+        {
+          "field": "rain",
+          "op": ">=",
+          "value": 150
+        }
+      ]
+    },
+    {
+      "id": "fire_minor",
+      "label": "Severe fire danger (FFDI 50+)",
+      "level": 1,
+      "days": [
+        1,
+        5
+      ],
+      "min_points": 6,
+      "when": [
+        {
+          "field": "fire",
+          "op": ">=",
+          "value": 3
+        }
+      ]
+    },
+    {
+      "id": "fire_mod",
+      "label": "Extreme fire danger (FFDI 100+)",
+      "level": 2,
+      "days": [
+        1,
+        5
+      ],
+      "min_points": 1,
+      "when": [
+        {
+          "field": "fire",
+          "op": ">=",
+          "value": 4
+        }
+      ]
+    },
+    {
+      "id": "fire_sig",
+      "label": "Widespread extreme fire danger",
+      "level": 3,
+      "days": [
+        1,
+        5
+      ],
+      "min_points": 6,
+      "when": [
+        {
+          "field": "fire",
+          "op": ">=",
+          "value": 4
+        }
+      ]
+    },
+    {
+      "id": "heat_minor",
+      "label": "Heatwave (max +12C, warm nights)",
+      "level": 1,
+      "days": [
+        1,
+        7
+      ],
+      "min_points": 2,
+      "when": [
+        {
+          "field": "heat",
+          "op": ">=",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "id": "heat_mod",
+      "label": "Heatwave (max +14C)",
+      "level": 2,
+      "days": [
+        1,
+        7
+      ],
+      "min_points": 2,
+      "when": [
+        {
+          "field": "heat",
+          "op": ">=",
+          "value": 2
+        }
+      ]
+    },
+    {
+      "id": "heat_sig",
+      "label": "Heatwave (max +17C)",
+      "level": 3,
+      "days": [
+        1,
+        7
+      ],
+      "min_points": 2,
+      "when": [
+        {
+          "field": "heat",
+          "op": ">=",
+          "value": 3
+        }
+      ]
+    },
+    {
+      "id": "heat_major",
+      "label": "Heatwave (max +21C)",
+      "level": 4,
+      "days": [
+        1,
+        7
+      ],
+      "min_points": 2,
+      "when": [
+        {
+          "field": "heat",
+          "op": ">=",
+          "value": 4
+        }
+      ]
+    },
+    {
+      "id": "snow_mod",
+      "label": "Heavy snow (50+ cm in 72 h)",
+      "level": 2,
+      "days": [
+        1,
+        5
+      ],
+      "min_points": 1,
+      "when": [
+        {
+          "field": "snow72",
+          "op": ">=",
+          "value": 50
+        }
+      ]
+    },
+    {
+      "id": "snow_sig",
+      "label": "Very heavy snow (100+ cm in 72 h)",
+      "level": 3,
+      "days": [
+        1,
+        5
+      ],
+      "min_points": 1,
+      "when": [
+        {
+          "field": "snow72",
+          "op": ">=",
+          "value": 100
+        }
+      ]
+    }
+  ],
+  "escalation": {
+    "area_factor": 1.5,
+    "area_min_extra_points": 3,
+    "shift_deg": 1.5
+  },
+  "extra_hazards": {
+    "_note": "Heatwave and snow now run via pipeline/extra_hazards.py (heat needs data/climatology.json from pipeline/build_climatology.py; snow from Open-Meteo snowfall). Tropical cyclone is still to wire in (data lives in the app).",
+    "tropical_cyclone": {
+      "source": "Base44 TropicalSystem entity (peak_category, peak_vmax_kt, consensus_track, risk_geojson)",
+      "tiers": {
+        "minor": "tropical low",
+        "moderate": "cat 1",
+        "significant": "cat 2-3",
+        "major": "cat 4-5"
+      }
+    },
+    "snow": {
+      "source": "to add: Open-Meteo snowfall (cm), alpine grid points",
+      "window_hours": 72,
+      "tiers": {
+        "moderate_cm": 50,
+        "significant_cm": 100
+      },
+      "minor": null,
+      "major": null
+    },
+    "heatwave": {
+      "source": "temperature_2m in the model run + a per-point climatology (to build)",
+      "min_consecutive_days": 2,
+      "also_requires": "overnight minimum above average on those days",
+      "tmax_anomaly_c": {
+        "minor": 12,
+        "moderate": 14,
+        "significant": 17,
+        "major": 21
+      }
+    }
+  }
+}

@@ -1,0 +1,58 @@
+name: Alert scan
+
+# Step 1 of the postcode-alert system (shadow mode). After the nightly model run finishes, check the
+# RAW run against alerts/thresholds.json and email the forecaster. Publishes nothing to subscribers.
+# Runs whether the nightly run succeeded or failed, so a failed run produces a warning email
+# (pipeline/alert_scan.py refuses to scan a stale run) instead of silence.
+on:
+  workflow_run:
+    workflows: ["Daily storm outlook"]
+    types: [completed]
+  workflow_dispatch: {}
+
+concurrency:
+  group: alert-scan
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # commit docs/archive/alerts/ (what the forecaster was last told)
+
+jobs:
+  scan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Run tests
+        run: python3 pipeline/test_alert_scan.py && python3 pipeline/test_extra_hazards.py && python3 pipeline/test_proposals.py
+
+      - name: Scan and email
+        env:
+          OPENMETEO_KEY: ${{ secrets.OPENMETEO_KEY }}
+          ALERT_SMTP_HOST: ${{ secrets.ALERT_SMTP_HOST }}
+          ALERT_SMTP_PORT: ${{ secrets.ALERT_SMTP_PORT }}
+          ALERT_SMTP_USER: ${{ secrets.ALERT_SMTP_USER }}
+          ALERT_SMTP_PASS: ${{ secrets.ALERT_SMTP_PASS }}
+          ALERT_FROM: ${{ secrets.ALERT_FROM }}
+          ALERT_TO: ${{ secrets.ALERT_TO }}
+        run: python3 pipeline/alert_scan.py
+
+      - name: Commit alert state
+        run: |
+          git config user.name  "outlook-bot"
+          git config user.email "actions@github.com"
+          git add docs/archive/alerts
+          git commit -m "Alert scan state $(date -u +%Y-%m-%d)" || echo "no change"
+          for i in 1 2 3 4 5; do
+            git push && break
+            echo "push rejected (attempt $i/5) -- rebasing onto latest main and retrying"
+            git fetch origin main
+            git rebase origin/main
+            if [ "$i" -eq 5 ]; then
+              echo "::error::push still failing after 5 rebase attempts"
+              exit 1
+            fi
+          done
