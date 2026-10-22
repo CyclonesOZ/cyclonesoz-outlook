@@ -1,154 +1,214 @@
-[Front Line] ACTION: 23 alert(s) to look at (model run Thu 22 Oct 04:07 AWST)
+[Front Line] ACTION: 33 alert(s) to look at (model run Fri 23 Oct 04:02 AWST)
 
 LIVE scan. Shadow mode: this goes only to you, nothing is published to subscribers.
 
-Model: ecmwf_ifs025, second opinion GFS. Run 2026-10-21T20:07:05Z UTC. Scanned days 1-7 against alerts/thresholds.json.
+Model: ecmwf_ifs025, second opinion GFS. Run 2026-10-22T20:02:11Z UTC. Scanned days 1-7 against alerts/thresholds.json.
 
-NEW  Thu 22 Oct  (day 1)
-   Where:   Kimberley  [centre -14.7, 126.0; 1 model points]
-   Window:  Thu 22 Oct 08:00 AWST to Fri 23 Oct 08:00 AWST  (model day is 00Z-24Z)
+NEW  Sat 24 Oct  (day 2)
+   Where:   Darling Downs and Granite Belt  [centre -27.0, 150.5; 1 model points]
+   Window:  Sat 24 Oct 10:00 AEST to Sun 25 Oct 10:00 AEST  (model day is 00Z-24Z)
    Why:     Severe storms (MDT)
-   Peak:    CAPE 3146, shear 30 kt, SCP 1.7, SHIP 0.2, DCAPE 843, rain up to 8 mm; hail tier 0, wind tier 1
+   Peak:    CAPE 543, shear 26 kt, SCP 0.8, SHIP 0.0, DCAPE 231, rain up to 81 mm; hail tier 0, wind tier 0
    Your published map: up to MRGL over these points
 
-NEW  Sat 24 Oct  (day 3)
-   Where:   Barkly  [centre -19.8, 133.2; 1 model points]
-   Window:  Sat 24 Oct 09:30 ACST to Sun 25 Oct 09:30 ACST  (model day is 00Z-24Z)
-   Why:     Destructive winds (125+ km/h); Severe storms (MDT)
-   Peak:    CAPE 3001, shear 41 kt, SCP 3.9, SHIP 0.5, DCAPE 1014, rain up to 4 mm; hail tier 1, wind tier 2
-   Your published map: up to none over these points
-
-NEW  Sat 24 Oct  (day 3)
-   Where:   Carpentaria  [centre -15.5, 132.5; 1 model points]
-   Window:  Sat 24 Oct 09:30 ACST to Sun 25 Oct 09:30 ACST  (model day is 00Z-24Z)
-   Why:     Severe storms (MDT)
-   Peak:    CAPE 3272, shear 27 kt, SCP 0.7, SHIP 0.3, DCAPE 743, rain up to 13 mm; hail tier 0, wind tier 1
-   Your published map: up to none over these points
-
-NEW  Sun 25 Oct  (day 4)
-   Where:   East Gippsland  [centre -37.1, 148.3; 1 model points]
-   Window:  Sun 25 Oct 11:00 AEDT to Mon 26 Oct 11:00 AEDT  (model day is 00Z-24Z)
-   Why:     Severe storms (MDT)
-   Peak:    CAPE 1929, shear 49 kt, SCP 6.5, SHIP 0.9, DCAPE 297, rain up to 37 mm; hail tier 1, wind tier 2
-   Your published map: up to none over these points
-
-NEW  Sun 25 Oct  (day 4)
-   Where:   Riverina  [centre -35.6, 147.6; 1 model points]
-   Window:  Sun 25 Oct 11:00 AEDT to Mon 26 Oct 11:00 AEDT  (model day is 00Z-24Z)
-   Why:     Severe storms (MDT)
-   Peak:    CAPE 1820, shear 44 kt, SCP 6.0, SHIP 0.8, DCAPE 389, rain up to 38 mm; hail tier 1, wind tier 2
+NEW  Sun 25 Oct  (day 3)
+   Where:   Channel Country  [centre -24.8, 141.8; 1 model points]
+   Window:  Sun 25 Oct 10:00 AEST to Mon 26 Oct 10:00 AEST  (model day is 00Z-24Z)
+   Why:     Very destructive winds (160+ km/h); Destructive winds (125+ km/h); Severe storms (MDT)
+   Peak:    CAPE 2691, shear 43 kt, SCP 7.7, SHIP 0.8, DCAPE 1003, rain up to 25 mm; hail tier 1, wind tier 3
    Your published map: up to MDT over these points
 
-NEW  Sun 25 Oct  (day 4)
-   Where:   Barkly  [centre -19.1, 135.3; 1 model points]
-   Window:  Sun 25 Oct 09:30 ACST to Mon 26 Oct 09:30 ACST  (model day is 00Z-24Z)
-   Why:     Severe storms (MDT)
-   Peak:    CAPE 3277, shear 39 kt, SCP 1.3, SHIP 0.4, DCAPE 879, rain up to 2 mm; hail tier 0, wind tier 2
-   Your published map: up to none over these points
-
-NEW  Sun 25 Oct  (day 4)
-   Where:   Barkly  [centre -18.3, 132.5; 1 model points]
-   Window:  Sun 25 Oct 09:30 ACST to Mon 26 Oct 09:30 ACST  (model day is 00Z-24Z)
-   Why:     Severe storms (MDT)
-   Peak:    CAPE 3264, shear 35 kt, SCP 0.4, SHIP 0.4, DCAPE 1117, rain up to 5 mm; hail tier 0, wind tier 2
-   Your published map: up to none over these points
-
-NEW  Sun 25 Oct  (day 4)
-   Where:   Carpentaria  [centre -16.9, 136.1; 1 model points]
-   Window:  Sun 25 Oct 09:30 ACST to Mon 26 Oct 09:30 ACST  (model day is 00Z-24Z)
-   Why:     Severe storms (MDT)
-   Peak:    CAPE 3054, shear 32 kt, SCP 1.4, SHIP 0.3, DCAPE 715, rain up to 7 mm; hail tier 0, wind tier 1
-   Your published map: up to MDT over these points
-
-NEW  Sun 25 Oct  (day 4)
-   Where:   Carpentaria  [centre -16.2, 133.9; 1 model points]
-   Window:  Sun 25 Oct 09:30 ACST to Mon 26 Oct 09:30 ACST  (model day is 00Z-24Z)
-   Why:     Severe storms (MDT)
-   Peak:    CAPE 3084, shear 29 kt, SCP 0.5, SHIP 0.3, DCAPE 793, rain up to 7 mm; hail tier 0, wind tier 1
-   Your published map: up to MDT over these points
-
-NEW  Mon 26 Oct  (day 5)
-   Where:   North Interior, Pilbara, Tanami  [centre -21.7, 124.5; 29 model points]
-   Window:  Mon 26 Oct 08:00 AWST to Tue 27 Oct 08:00 AWST  (model day is 00Z-24Z)
+NEW  Sun 25 Oct  (day 3)
+   Where:   Channel Country, Simpson, North West  [centre -23.3, 138.5; 8 model points]
+   Window:  Sun 25 Oct 10:00 AEST to Mon 26 Oct 10:00 AEST  (model day is 00Z-24Z)
    Why:     Severe fire danger (FFDI 50+)
-   Peak:    CAPE 790, shear 45 kt, SCP 0.9, SHIP 0.2, DCAPE 1289, rain up to 0 mm; hail tier 0, wind tier 0
+   Peak:    CAPE 1260, shear 33 kt, SCP 0.5, SHIP 0.2, DCAPE 1131, rain up to 2 mm; hail tier 0, wind tier 0
    Your published map: up to none over these points
 
-NEW  Mon 26 Oct  (day 5)
-   Where:   Barkly  [centre -19.4, 135.3; 6 model points]
-   Window:  Mon 26 Oct 09:30 ACST to Tue 27 Oct 09:30 ACST  (model day is 00Z-24Z)
-   Why:     Widespread severe storms (MDT); Severe storms (MDT)
-   Peak:    CAPE 3496, shear 60 kt, SCP 4.5, SHIP 0.8, DCAPE 956, rain up to 25 mm; hail tier 1, wind tier 2
-   Your published map: up to MRGL over these points
+NEW  Sun 25 Oct  (day 3)
+   Where:   North West  [centre -22.7, 141.1; 1 model points]
+   Window:  Sun 25 Oct 10:00 AEST to Mon 26 Oct 10:00 AEST  (model day is 00Z-24Z)
+   Why:     Destructive winds (125+ km/h); Severe storms (MDT)
+   Peak:    CAPE 2171, shear 42 kt, SCP 8.4, SHIP 0.4, DCAPE 822, rain up to 21 mm; hail tier 1, wind tier 2
+   Your published map: up to none over these points
 
-NEW  Mon 26 Oct  (day 5)
-   Where:   North West  [centre -19.8, 140.4; 3 model points]
+NEW  Sun 25 Oct  (day 3)
+   Where:   Central West  [centre -21.9, 143.3; 1 model points]
+   Window:  Sun 25 Oct 10:00 AEST to Mon 26 Oct 10:00 AEST  (model day is 00Z-24Z)
+   Why:     Destructive winds (125+ km/h); Severe storms (MDT)
+   Peak:    CAPE 3145, shear 41 kt, SCP 2.2, SHIP 0.7, DCAPE 873, rain up to 10 mm; hail tier 1, wind tier 2
+   Your published map: up to none over these points
+
+NEW  Sun 25 Oct  (day 3)
+   Where:   Barkly  [centre -18.3, 134.1; 3 model points]
+   Window:  Sun 25 Oct 09:30 ACST to Mon 26 Oct 09:30 ACST  (model day is 00Z-24Z)
+   Why:     Destructive winds (125+ km/h); Severe storms (MDT); Damaging winds (90+ km/h)
+   Peak:    CAPE 3500, shear 40 kt, SCP 1.7, SHIP 0.5, DCAPE 991, rain up to 4 mm; hail tier 1, wind tier 2
+   Your published map: up to none over these points
+
+NEW  Sun 25 Oct  (day 3)
+   Where:   Barkly  [centre -17.6, 132.5; 1 model points]
+   Window:  Sun 25 Oct 09:30 ACST to Mon 26 Oct 09:30 ACST  (model day is 00Z-24Z)
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 3012, shear 31 kt, SCP 1.5, SHIP 0.3, DCAPE 911, rain up to 2 mm; hail tier 0, wind tier 1
+   Your published map: up to none over these points
+
+NEW  Sun 25 Oct  (day 3)
+   Where:   Carpentaria  [centre -15.5, 133.2; 1 model points]
+   Window:  Sun 25 Oct 09:30 ACST to Mon 26 Oct 09:30 ACST  (model day is 00Z-24Z)
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 3196, shear 26 kt, SCP 0.4, SHIP 0.2, DCAPE 778, rain up to 11 mm; hail tier 0, wind tier 1
+   Your published map: up to MDT over these points
+
+NEW  Mon 26 Oct  (day 4)
+   Where:   Northern Rivers  [centre -28.4, 153.3; 1 model points]
    Window:  Mon 26 Oct 10:00 AEST to Tue 27 Oct 10:00 AEST  (model day is 00Z-24Z)
    Why:     Severe storms (MDT)
-   Peak:    CAPE 3192, shear 41 kt, SCP 1.3, SHIP 0.5, DCAPE 783, rain up to 8 mm; hail tier 1, wind tier 1
-   Your published map: up to MRGL over these points
+   Peak:    CAPE 2221, shear 40 kt, SCP 6.1, SHIP 1.0, DCAPE 978, rain up to 3 mm; hail tier 1, wind tier 3
+   Your published map: up to MDT over these points
 
-NEW  Mon 26 Oct  (day 5)
-   Where:   Barkly, Gregory  [centre -17.9, 132.5; 6 model points]
+NEW  Mon 26 Oct  (day 4)
+   Where:   Barkly  [centre -19.1, 137.5; 1 model points]
    Window:  Mon 26 Oct 09:30 ACST to Tue 27 Oct 09:30 ACST  (model day is 00Z-24Z)
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 3175, shear 44 kt, SCP 0.9, SHIP 0.5, DCAPE 768, rain up to 12 mm; hail tier 1, wind tier 1
+   Your published map: up to none over these points
+
+NEW  Mon 26 Oct  (day 4)
+   Where:   Gregory  [centre -16.9, 130.3; 1 model points]
+   Window:  Mon 26 Oct 09:30 ACST to Tue 27 Oct 09:30 ACST  (model day is 00Z-24Z)
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 3277, shear 36 kt, SCP 1.3, SHIP 0.4, DCAPE 1061, rain up to 4 mm; hail tier 0, wind tier 2
+   Your published map: up to none over these points
+
+NEW  Mon 26 Oct  (day 4)
+   Where:   Carpentaria  [centre -16.2, 134.6; 1 model points]
+   Window:  Mon 26 Oct 09:30 ACST to Tue 27 Oct 09:30 ACST  (model day is 00Z-24Z)
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 3129, shear 26 kt, SCP 1.4, SHIP 0.2, DCAPE 717, rain up to 10 mm; hail tier 0, wind tier 1
+   Your published map: up to MDT over these points
+
+NEW  Mon 26 Oct  (day 4)
+   Where:   Gregory  [centre -15.5, 131.4; 2 model points]
+   Window:  Mon 26 Oct 09:30 ACST to Tue 27 Oct 09:30 ACST  (model day is 00Z-24Z)
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 3252, shear 27 kt, SCP 1.7, SHIP 0.2, DCAPE 1090, rain up to 8 mm; hail tier 0, wind tier 1
+   Your published map: up to MDT over these points
+
+NEW  Tue 27 Oct  (day 5)
+   Where:   North West Pastoral, Simpson, Lasseter  [centre -26.6, 133.1; 11 model points]
+   Window:  Tue 27 Oct 10:30 ACDT to Wed 28 Oct 10:30 ACDT  (model day is 00Z-24Z)
    Why:     Widespread severe storms (MDT); Severe storms (MDT)
-   Peak:    CAPE 3532, shear 47 kt, SCP 2.2, SHIP 0.5, DCAPE 1120, rain up to 6 mm; hail tier 1, wind tier 2
-   Your published map: up to MRGL over these points
+   Peak:    CAPE 1238, shear 53 kt, SCP 12.2, SHIP 0.7, DCAPE 806, rain up to 17 mm; hail tier 1, wind tier 3
+   Your published map: up to none over these points
 
-NEW  Mon 26 Oct  (day 5)
-   Where:   Carpentaria  [centre -16.9, 136.1; 1 model points]
+NEW  Tue 27 Oct  (day 5)
+   Where:   North Interior, South Interior, Lasseter, Pilbara  [centre -23.2, 126.9; 56 model points]
+   Window:  Tue 27 Oct 08:00 AWST to Wed 28 Oct 08:00 AWST  (model day is 00Z-24Z)
+   Why:     Severe fire danger (FFDI 50+); Severe storms (MDT)
+   Peak:    CAPE 2167, shear 58 kt, SCP 9.3, SHIP 0.9, DCAPE 1289, rain up to 22 mm; hail tier 1, wind tier 3
+   Your published map: up to none over these points
+
+NEW  Tue 27 Oct  (day 5)
+   Where:   Barkly, Tanami, Simpson  [centre -19.7, 133.3; 15 model points]
+   Window:  Tue 27 Oct 09:30 ACST to Wed 28 Oct 09:30 ACST  (model day is 00Z-24Z)
+   Why:     Widespread severe storms (MDT); Severe storms (MDT)
+   Peak:    CAPE 4065, shear 53 kt, SCP 8.5, SHIP 0.9, DCAPE 1056, rain up to 10 mm; hail tier 1, wind tier 3
+   Your published map: up to none over these points
+
+NEW  Tue 27 Oct  (day 5)
+   Where:   North West  [centre -21.2, 140.4; 1 model points]
+   Window:  Tue 27 Oct 10:00 AEST to Wed 28 Oct 10:00 AEST  (model day is 00Z-24Z)
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 3047, shear 47 kt, SCP 1.7, SHIP 0.8, DCAPE 790, rain up to 4 mm; hail tier 1, wind tier 1
+   Your published map: up to none over these points
+
+NEW  Tue 27 Oct  (day 5)
+   Where:   North West  [centre -19.8, 139.7; 1 model points]
+   Window:  Tue 27 Oct 10:00 AEST to Wed 28 Oct 10:00 AEST  (model day is 00Z-24Z)
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 3071, shear 35 kt, SCP 0.4, SHIP 0.4, DCAPE 725, rain up to 5 mm; hail tier 0, wind tier 1
+   Your published map: up to none over these points
+
+NEW  Tue 27 Oct  (day 5)
+   Where:   North West  [centre -19.8, 141.1; 1 model points]
+   Window:  Tue 27 Oct 10:00 AEST to Wed 28 Oct 10:00 AEST  (model day is 00Z-24Z)
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 3115, shear 33 kt, SCP 0.9, SHIP 0.3, DCAPE 792, rain up to 4 mm; hail tier 0, wind tier 1
+   Your published map: up to none over these points
+
+NEW  Tue 27 Oct  (day 5)
+   Where:   Gregory  [centre -16.9, 130.3; 1 model points]
+   Window:  Tue 27 Oct 09:30 ACST to Wed 28 Oct 09:30 ACST  (model day is 00Z-24Z)
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 3109, shear 28 kt, SCP 1.3, SHIP 0.3, DCAPE 999, rain up to 4 mm; hail tier 0, wind tier 1
+   Your published map: up to none over these points
+
+WEAKENED  Fri 23 Oct  (day 1)
+   Where:   Pilbara, North Interior, Kimberley  [centre -21.0, 122.0; 16 model points]
+   Window:  Fri 23 Oct 08:00 AWST to Sat 24 Oct 08:00 AWST  (model day is 00Z-24Z)
+   Why:     Severe fire danger (FFDI 50+)
+   Peak:    CAPE 1205, shear 17 kt, SCP 0.0, SHIP 0.2, DCAPE 1463, rain up to 0 mm; hail tier 0, wind tier 0
+   Your published map: up to none over these points
+   Was:     31 points, level 1  ->  now 16 points, level 1
+
+WEAKENED  Mon 26 Oct  (day 4)
+   Where:   Barkly, Carpentaria  [centre -16.8, 132.9; 5 model points]
    Window:  Mon 26 Oct 09:30 ACST to Tue 27 Oct 09:30 ACST  (model day is 00Z-24Z)
    Why:     Severe storms (MDT)
-   Peak:    CAPE 3042, shear 30 kt, SCP 1.5, SHIP 0.3, DCAPE 773, rain up to 4 mm; hail tier 0, wind tier 1
-   Your published map: up to MRGL over these points
+   Peak:    CAPE 3710, shear 37 kt, SCP 2.9, SHIP 0.4, DCAPE 1141, rain up to 6 mm; hail tier 1, wind tier 2
+   Your published map: up to MDT over these points
+   Was:     6 points, level 2  ->  now 5 points, level 1
 
-SHIFTED  Sat 24 Oct  (day 3)
-   Where:   North Interior, Kimberley, South Interior, Lasseter, Pilbara, Tanami  [centre -21.8, 126.4; 82 model points]
-   Window:  Sat 24 Oct 08:00 AWST to Sun 25 Oct 08:00 AWST  (model day is 00Z-24Z)
-   Why:     Severe fire danger (FFDI 50+)
-   Peak:    CAPE 960, shear 43 kt, SCP 0.8, SHIP 0.2, DCAPE 1499, rain up to 0 mm; hail tier 0, wind tier 0
-   Your published map: up to none over these points
-   Was:     78 points, level 1  ->  now 82 points, level 1
-
-WEAKENED  Sat 24 Oct  (day 3)
-   Where:   Gregory  [centre -15.8, 130.3; 2 model points]
-   Window:  Sat 24 Oct 09:30 ACST to Sun 25 Oct 09:30 ACST  (model day is 00Z-24Z)
-   Why:     Severe storms (MDT)
-   Peak:    CAPE 3820, shear 30 kt, SCP 1.2, SHIP 0.4, DCAPE 818, rain up to 12 mm; hail tier 0, wind tier 1
-   Your published map: up to none over these points
-   Was:     4 points, level 1  ->  now 2 points, level 1
-
-CLEARED  Thu 22 Oct  (day 2)
-   No longer triggered by the latest run. Last told: 15 points, fire_minor.
-   Was in: North Interior, Kimberley, Pilbara
-
-CLEARED  Thu 22 Oct  (day 2)
+CLEARED  Sat 24 Oct  (day 3)
    No longer triggered by the latest run. Last told: 1 points, wind_mod, storms_minor.
-   Was in: North West Pastoral
+   Was in: Barkly
 
-CLEARED  Sat 24 Oct  (day 4)
+CLEARED  Sat 24 Oct  (day 3)
+   No longer triggered by the latest run. Last told: 1 points, storms_minor.
+   Was in: Carpentaria
+
+CLEARED  Sun 25 Oct  (day 4)
+   No longer triggered by the latest run. Last told: 1 points, storms_minor.
+   Was in: Carpentaria
+
+CLEARED  Sun 25 Oct  (day 4)
+   No longer triggered by the latest run. Last told: 1 points, storms_minor.
+   Was in: East Gippsland
+
+CLEARED  Sun 25 Oct  (day 4)
+   No longer triggered by the latest run. Last told: 1 points, storms_minor.
+   Was in: Riverina
+
+CLEARED  Sun 25 Oct  (day 4)
    No longer triggered by the latest run. Last told: 1 points, storms_minor.
    Was in: Barkly
 
-CLEARED  Sun 25 Oct  (day 5)
+CLEARED  Sun 25 Oct  (day 4)
    No longer triggered by the latest run. Last told: 1 points, storms_minor.
    Was in: Barkly
 
-CLEARED  Sun 25 Oct  (day 5)
-   No longer triggered by the latest run. Last told: 2 points, storms_minor.
-   Was in: Barkly, Gulf Country
-
-CLEARED  Sun 25 Oct  (day 5)
+CLEARED  Sun 25 Oct  (day 4)
    No longer triggered by the latest run. Last told: 1 points, storms_minor.
-   Was in: Barkly
+   Was in: Carpentaria
 
-CLEARED  Sun 25 Oct  (day 5)
+CLEARED  Mon 26 Oct  (day 5)
    No longer triggered by the latest run. Last told: 6 points, storms_mod_wide, storms_minor.
-   Was in: Barkly, Carpentaria
+   Was in: Barkly
 
-Still open, unchanged since you were last told (2):
-   20261023-2  2026-10-23  1 pts  Daly
-   20261023-1  2026-10-23  22 pts  North Interior, Pilbara, Kimberley
+CLEARED  Mon 26 Oct  (day 5)
+   No longer triggered by the latest run. Last told: 3 points, storms_minor.
+   Was in: North West
+
+CLEARED  Mon 26 Oct  (day 5)
+   No longer triggered by the latest run. Last told: 1 points, storms_minor.
+   Was in: Carpentaria
+
+Still open, unchanged since you were last told (4):
+   20261023-2  2026-10-23  2 pts  Daly
+   20261024-1  2026-10-24  78 pts  North Interior, Kimberley, South Interior
+   20261026-1  2026-10-26  37 pts  North Interior, Pilbara
+   20261024-2  2026-10-24  2 pts  Gregory
 
 This is an automatic detection from the raw model run. It is not a forecast and not an
 official warning. It does not know about your edits to the map.
