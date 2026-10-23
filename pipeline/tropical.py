@@ -20,12 +20,15 @@ its RLS said `"read": {}`. That open rule was the leak that also handed the Fron
 product to anyone with the URL, so it was closed on 23 Oct 2026 and reads now go through the
 function, which gates by entitlement.
 
-  - WITHOUT a token the function returns the FREE shape, whose consensus_track is clipped to
-    lead_days <= 3. So the cyclone rules only see days 1-3, not the full 7 the rest of the scan
-    covers. A cyclone inside three days is the actionable window, so this is useful rather than
-    useless, but it IS a reduction and it is deliberate, not an oversight.
-  - WITH BASE44_TOKEN set to an admin token the function returns the full set and the cyclone
-    rules cover the whole 7 days like every other hazard.
+  - WITHOUT a credential the function returns the FREE shape, whose consensus_track is clipped
+    to lead_days <= 3. Measured against the four live systems on 23 Oct 2026 that drops 32 of 69
+    track points, 46%: Vance had guidance to day 8, Champi to 4.8, Agueda to 4.3. Days 3-5 are
+    real lead time for a cyclone, so this is a meaningful reduction, not a rounding error.
+  - WITH SCAN_SHARED_SECRET set to the same value as the app's SCAN_SHARED_SECRET secret, the
+    function returns the full set and the cyclone rules cover the whole 7 days like every other
+    hazard. This is the one that works unattended: Base44's app API takes a user bearer token
+    and issues no service tokens, so there is nothing durable to put in BASE44_TOKEN.
+    BASE44_TOKEN is still honoured if someone sets a session token by hand.
 
 Either way a failed read returns no systems, the tc_ fields are never set, no cyclone rule fires,
 and the rest of the scan is untouched. The run never fails because of this.
@@ -93,7 +96,13 @@ def fetch_systems(app_id="", token="", url=None):
     url = url or ("https://cyclonesoz.com.au/api/apps/%s/functions/tropicalSystems" % app_id)
     headers = {"Accept": "application/json", "Content-Type": "application/json",
                "User-Agent": "CyclonesOZ-alert-scan/1.0"}
-    if token:  # an admin token lifts the free day-3 clip; see the module docstring
+    # Either lifts the free day-3 clip; see the module docstring. The shared secret is the one
+    # that actually works unattended — Base44's app API takes a user bearer token and issues no
+    # service tokens, so BASE44_TOKEN only helps if someone pastes a live session token in.
+    secret = os.environ.get("SCAN_SHARED_SECRET", "")
+    if secret:
+        headers["X-Scan-Secret"] = secret
+    if token:
         headers["Authorization"] = "Bearer %s" % token
     try:
         req = urllib.request.Request(url, data=b"{}", headers=headers, method="POST")
