@@ -104,11 +104,14 @@ class TAugment(unittest.TestCase):
     def test_no_systems_is_a_no_op_not_a_crash(self):
         run = run_with([(-17.0, 146.0)], self.DATES)
         msg = t.augment_run(run, systems=[])
-        self.assertIn("no Australian-region systems", msg)
+        self.assertIn("no systems in the Australian region", msg)
         self.assertNotIn("tc_cat", run["points"][0]["d"][0])
 
-    def test_no_token_returns_no_systems_rather_than_raising(self):
-        self.assertEqual(t.fetch_systems(app_id="", token=""), [])
+    def test_a_failed_fetch_returns_no_systems_rather_than_raising(self):
+        # Offline and deterministic: an unroutable host must come back as [], not an exception.
+        # A cyclone feed that cannot be read has to leave the scan alone, not break the run.
+        self.assertEqual(
+            t.fetch_systems(url="http://127.0.0.1:1/entities/TropicalSystem"), [])
 
     def test_cone_never_shrinks_below_the_floor(self):
         tiny = dict(AU_SYSTEM, consensus_track=[

@@ -14,10 +14,11 @@ Source is the Base44 TropicalSystem entity, written 00Z and 12Z by the app's own
 Tracks" workflows. Each row carries `consensus_track`: per forecast hour, the ensemble mean
 position, `member_fraction`, cone radii at the 50th/70th/90th percentiles, and `vmax_mean`.
 
-ACCESS. The scan needs read access to that entity, which needs a Base44 token in
-BASE44_TOKEN (plus BASE44_APP_ID). Without it this module returns no systems, the tc_ fields are
-never set, and no cyclone rule fires - the rest of the scan is untouched, exactly as
-extra_hazards.py behaves without an Open-Meteo key. It never fails the run.
+ACCESS. No credential is needed. TropicalSystem declares `"read": {}` in its RLS, so the entity
+endpoint answers an unauthenticated GET - verified against production on 23 Oct 2026. A token is
+still used if BASE44_TOKEN is set, in case that read rule is ever tightened; if the read fails for
+any reason this module returns no systems, the tc_ fields are never set, and no cyclone rule
+fires. The rest of the scan is untouched and the run never fails because of this.
 
 The entity is GLOBAL: on 22 Oct 2026 the four active systems were in the Indian Ocean, the east
 Pacific, the Atlantic and the west Pacific, none of them near Australia. AU_REGION filters to
@@ -33,6 +34,9 @@ import urllib.request
 
 # BoM's area of responsibility, widened a little to catch systems still approaching it.
 AU_REGION = {"lat": (-45.0, 0.0), "lon": (90.0, 170.0)}
+
+# Public: this id is in the app's committed .env.native, it is not a secret.
+DEFAULT_APP_ID = "69fbea2b450e42a3a7c55ce9"
 
 # Australian category is defined on the 10-minute mean wind; ATCF vmax is the 1-minute mean.
 # 0.88 is the standard conversion. Verified against the entity's own peak_category for four real
@@ -71,22 +75,18 @@ def km_between(lat1, lon1, lat2, lon2):
 def fetch_systems(app_id="", token="", url=None):
     """Active TropicalSystem rows that are in or heading for the Australian region.
 
-    Returns [] on any failure - no token, network error, bad payload. A cyclone hazard that
-    cannot be evaluated must leave the scan alone, not break it.
+    Returns [] on any failure - network error, bad payload, a tightened read rule. A cyclone
+    hazard that cannot be evaluated must leave the scan alone, not break it.
     """
-    app_id = app_id or os.environ.get("BASE44_APP_ID", "")
+    app_id = app_id or os.environ.get("BASE44_APP_ID", "") or DEFAULT_APP_ID
     token = token or os.environ.get("BASE44_TOKEN", "")
-    if not (app_id and token):
-        return []
     url = url or ("https://cyclonesoz.com.au/api/apps/%s/entities/TropicalSystem"
                   "?status=active&limit=50" % app_id)
-    req = urllib.request.Request(url, headers={
-        "Authorization": "Bearer %s" % token,
-        "Accept": "application/json",
-        "User-Agent": "CyclonesOZ-alert-scan/1.0",
-    })
+    headers = {"Accept": "application/json", "User-Agent": "CyclonesOZ-alert-scan/1.0"}
+    if token:  # not required today; sent if present so a tightened read rule keeps working
+        headers["Authorization"] = "Bearer %s" % token
     try:
-        with urllib.request.urlopen(req, timeout=20) as r:
+        with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=30) as r:
             rows = json.loads(r.read().decode())
     except Exception:
         return []
@@ -144,7 +144,7 @@ def augment_run(run, systems=None, app_id="", token=""):
     if systems is None:
         systems = fetch_systems(app_id, token)
     if not systems:
-        return "tropical: no Australian-region systems (or no Base44 token: cyclone rules idle)"
+        return "tropical: no systems in the Australian region (cyclone rules idle)"
 
     dates = run["dates"]
     per_system = [(s, track_by_date(s, dates)) for s in systems]
