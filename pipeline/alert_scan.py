@@ -33,6 +33,8 @@ from email.message import EmailMessage
 from zoneinfo import ZoneInfo
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from regions import Regions, resolve_value  # noqa: E402  (needs the sys.path line above)
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RAW = os.path.join(ROOT, "docs", "archive", "raw", "outlook.json")
 PUBLISHED = os.path.join(ROOT, "docs", "outlook.json")
@@ -69,11 +71,20 @@ def load_run(path):
     return run
 
 
-def rule_fires(rule, rec):
-    """True if every condition holds. A missing field never fires (no guessing)."""
+def rule_fires(rule, rec, region=None, bars=None):
+    """True if every condition holds. A missing field never fires (no guessing).
+
+    `region` is the climate region of the point being evaluated, so a condition value may be
+    a per-region bar instead of one national number — 40 mm is a significant day in the arid
+    interior and an ordinary one on the tropical Queensland coast. A plain numeric value and
+    region=None behave exactly as before.
+    """
     for c in rule["when"]:
         v = rec.get(c["field"])
-        if v is None or not OPS[c["op"]](v, c["value"]):
+        if v is None:
+            return False
+        limit = resolve_value(c["value"], region, bars)
+        if not OPS[c["op"]](v, limit):
             return False
     return True
 
@@ -82,18 +93,29 @@ def point_key(p):
     return "%.2f,%.2f" % (p["lat"], p["lon"])
 
 
-def triggered_points(run, th):
-    """{day_index: {point_index: [rule ids]}} for the days the scan covers."""
+def triggered_points(run, th, regions=None):
+    """{day_index: {point_index: [rule ids]}} for the days the scan covers.
+
+    Each point is resolved to a climate region once and that region is handed to every rule,
+    so region-relative bars (thresholds.json region_bars) apply per point. With regions=None
+    every rule falls back to its national default, which is the pre-region behaviour.
+    """
     lo, hi = th["scan_days"]
+    bars = th.get("region_bars")
     out = {}
+    point_region = {}
+    if regions is not None:
+        for pi, p in enumerate(run["points"]):
+            point_region[pi] = regions.region_for(p.get("lat"), p.get("lon"))
     for di in range(lo - 1, min(hi, len(run["dates"]))):
         hits = {}
         for pi, p in enumerate(run["points"]):
             if di >= len(p["d"]):
                 continue
             rec = p["d"][di]
+            reg = point_region.get(pi)
             ids = [r["id"] for r in th["rules"]
-                   if r["days"][0] - 1 <= di <= r["days"][1] - 1 and rule_fires(r, rec)]
+                   if r["days"][0] - 1 <= di <= r["days"][1] - 1 and rule_fires(r, rec, reg, bars)]
             if ids:
                 hits[pi] = ids
         if hits:
@@ -196,13 +218,13 @@ def local_window(date_str, lat, lon):
 
 # --------------------------------------------------------------------------- events
 
-def build_events(run, th, districts, published=None):
+def build_events(run, th, districts, published=None, regions=None):
     """One event per (date, connected cluster) that satisfies some rule's min_points."""
     pts = run["points"]
     rules = {r["id"]: r for r in th["rules"]}
     pub_idx = {d: i for i, d in enumerate(published["dates"])} if published else {}
     events = []
-    for di, hits in sorted(triggered_points(run, th).items()):
+    for di, hits in sorted(triggered_points(run, th, regions).items()):
         date = run["dates"][di]
         for group in clusters(pts, hits, th["neighbour_deg"]):
             per_rule = {}
@@ -227,6 +249,8 @@ def build_events(run, th, districts, published=None):
                 "rules": sorted(live, key=lambda r: (-rules[r]["level"], r)),
                 "level": max(rules[r]["level"] for r in live),
                 "districts": districts.names_for([(pts[pi]["lat"], pts[pi]["lon"]) for pi in members])[:6],
+                "regions": (sorted({regions.region_for(pts[pi]["lat"], pts[pi]["lon"]) for pi in members})
+                            if regions is not None else []),
                 "peak": {f: max(r.get(f, 0) for r in recs) for f in
                          ("cape", "shear", "scp", "ship", "dcape", "rain", "hail", "wind", "cat", "heat", "snow72")},
                 "window_local": local_window(date, lat, lon),
@@ -279,9 +303,9 @@ def told_snapshot(ev):
     return {k: ev[k] for k in ("level", "n_points", "centroid", "rules")}
 
 
-def scan(run, th, state, districts, published=None):
+def scan(run, th, state, districts, published=None, regions=None):
     """Returns (report, new_state). report = {'changes': [...], 'quiet': [...], 'events': [...]}"""
-    events = build_events(run, th, districts, published)
+    events = build_events(run, th, districts, published, regions)
     today = run["dates"][0]
     old = [e for e in state.get("events", []) if e["date"] >= today]
     pairs, fresh, gone = match_events(events, old)
@@ -462,7 +486,14 @@ def main():
     except Exception as e:
         extra_note = "heat+snow SKIPPED (%s)" % e
     print("[extra hazards] " + extra_note)
-    report, new_state = scan(run, th, state, districts, published)
+    try:  # region-relative bars; a bad regions file must not silently revert to national ones
+        regions = Regions.load()
+        print("[regions] %d climate regions loaded, default %s" % (len(regions.regions), regions.default))
+    except Exception as e:
+        print("[regions] FAILED to load (%s) — refusing to scan on national bars instead" % e,
+              file=sys.stderr)
+        raise
+    report, new_state = scan(run, th, state, districts, published, regions)
     live = not args.dry_run
     note = ("TEST (dry run, nothing sent or saved)" if args.dry_run else
             "LIVE scan. Shadow mode: this goes only to you, nothing is published to subscribers.")

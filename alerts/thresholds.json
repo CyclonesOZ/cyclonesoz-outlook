@@ -5,6 +5,45 @@
     7
   ],
   "neighbour_deg": 1.1,
+  "_REGION_BARS": "Named thresholds that mean different things in different parts of Australia. A rule refers to one with {\"$ref_region_bar\": \"<name>\"} instead of a bare number, so a bar is tuned in ONE place rather than in every rule that uses it. 'default' is the old national number, so a region missing from by_region behaves exactly as the scan did before. Regions are defined in alerts/regions.json. FIRST PASS: these mm values come from each region's rainfall character, not from fitted climatology - there is no SILO/ERA5 percentile data in this repo yet (RULEBOOK.md section 0 makes the same admission). Replace with per-cell percentiles when pipeline/build_climatology.py grows rainfall, keeping these as the absolute floor.",
+  "region_bars": {
+    "rain_heavy": {
+      "default": 75,
+      "by_region": {
+        "tropical_qld_coast": 120,
+        "tropical_north": 100,
+        "nsw_qld_coast": 90,
+        "alpine": 80,
+        "tasmania": 70,
+        "qld_inland": 60,
+        "vic_south": 55,
+        "southwest_wa": 50,
+        "murray_darling": 50,
+        "pilbara_gascoyne": 50,
+        "sa_southeast": 45,
+        "nullarbor_goldfields": 40,
+        "interior_arid": 40
+      }
+    },
+    "rain_extreme": {
+      "default": 150,
+      "by_region": {
+        "tropical_qld_coast": 250,
+        "tropical_north": 200,
+        "nsw_qld_coast": 180,
+        "alpine": 160,
+        "tasmania": 150,
+        "qld_inland": 140,
+        "vic_south": 120,
+        "pilbara_gascoyne": 120,
+        "southwest_wa": 110,
+        "murray_darling": 110,
+        "sa_southeast": 100,
+        "nullarbor_goldfields": 90,
+        "interior_arid": 90
+      }
+    }
+  },
   "rules": [
     {
       "id": "storms_minor",
@@ -266,7 +305,7 @@
     },
     {
       "id": "rain_minor",
-      "label": "Heavy rain (75+ mm/day)",
+      "label": "Heavy rain (region heavy bar)",
       "level": 1,
       "days": [
         1,
@@ -277,13 +316,13 @@
         {
           "field": "rain",
           "op": ">=",
-          "value": 75
+          "value": { "$ref_region_bar": "rain_heavy" }
         }
       ]
     },
     {
       "id": "rain_mod",
-      "label": "Widespread heavy rain, or 150+ mm isolated",
+      "label": "Widespread heavy rain",
       "level": 2,
       "days": [
         1,
@@ -294,13 +333,13 @@
         {
           "field": "rain",
           "op": ">=",
-          "value": 75
+          "value": { "$ref_region_bar": "rain_heavy" }
         }
       ]
     },
     {
       "id": "rain_mod_hi",
-      "label": "Extreme rain (150+ mm/day)",
+      "label": "Extreme rain (region extreme bar)",
       "level": 2,
       "days": [
         1,
@@ -311,13 +350,13 @@
         {
           "field": "rain",
           "op": ">=",
-          "value": 150
+          "value": { "$ref_region_bar": "rain_extreme" }
         }
       ]
     },
     {
       "id": "rain_sig",
-      "label": "Widespread extreme rain (150+ mm/day)",
+      "label": "Widespread extreme rain",
       "level": 3,
       "days": [
         1,
@@ -328,7 +367,7 @@
         {
           "field": "rain",
           "op": ">=",
-          "value": 150
+          "value": { "$ref_region_bar": "rain_extreme" }
         }
       ]
     },
