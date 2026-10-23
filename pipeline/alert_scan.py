@@ -267,8 +267,14 @@ def build_events(run, th, districts, published=None, regions=None):
                 "districts": districts.names_for([(pts[pi]["lat"], pts[pi]["lon"]) for pi in members])[:6],
                 "regions": (sorted({regions.region_for(pts[pi]["lat"], pts[pi]["lon"]) for pi in members})
                             if regions is not None else []),
-                "peak": {f: max(r.get(f, 0) for r in recs) for f in
-                         ("cape", "shear", "scp", "ship", "dcape", "rain", "hail", "wind", "cat", "heat", "snow72")},
+                "peak": dict(
+                    {f: max(r.get(f, 0) for r in recs) for f in
+                     ("cape", "shear", "scp", "ship", "dcape", "rain", "hail", "wind", "cat", "heat", "snow72")},
+                    # Largest 3-day rain total opening on this day, across the cluster's points.
+                    rain3=max((sum((pts[pi]["d"][i].get("rain") or 0)
+                                   for i in range(di, min(di + 3, len(pts[pi]["d"]))))
+                               for pi in members), default=0),
+                ),
                 "window_local": local_window(date, lat, lon),
             }
             if date in pub_idx:
@@ -368,8 +374,14 @@ def scan(run, th, state, districts, published=None, regions=None):
 # --------------------------------------------------------------------------- email
 
 def fmt_peak(p):
-    return "CAPE %d, shear %d kt, SCP %.1f, SHIP %.1f, DCAPE %d, rain up to %.0f mm; hail tier %d, wind tier %d" % (
-        p["cape"], p["shear"], p["scp"], p["ship"], p["dcape"], p["rain"], p["hail"], p["wind"])
+    # rain3 is shown beside the single-day figure because a 3-day rule fires on the window that
+    # STARTS at this day: a day with 0 mm of its own can legitimately open a wet 3-day window, and
+    # "Persistent rain ... rain up to 0 mm" reads like a bug when it is not.
+    rain = "rain up to %.0f mm" % p["rain"]
+    if p.get("rain3"):
+        rain += " (%.0f mm over 3 days from this one)" % p["rain3"]
+    return "CAPE %d, shear %d kt, SCP %.1f, SHIP %.1f, DCAPE %d, %s; hail tier %d, wind tier %d" % (
+        p["cape"], p["shear"], p["scp"], p["ship"], p["dcape"], rain, p["hail"], p["wind"])
 
 
 def describe(status, ev, rule_labels):
