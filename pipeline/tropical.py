@@ -10,15 +10,25 @@ can use them:
     tc_prob   0-1   ensemble member_fraction for that track point - the share of members that
                     still have the system there. The probability gate the rulebook asks for.
 
-Source is the Base44 TropicalSystem entity, written 00Z and 12Z by the app's own "Fetch TC
-Tracks" workflows. Each row carries `consensus_track`: per forecast hour, the ensemble mean
-position, `member_fraction`, cone radii at the 50th/70th/90th percentiles, and `vmax_mean`.
+Source is the app's `tropicalSystems` function, which serves the TropicalSystem rows written 00Z
+and 12Z by its own "Fetch TC Tracks" workflows. Each row carries `consensus_track`: per forecast
+hour, the ensemble mean position, `member_fraction`, cone radii at the 50th/70th/90th percentiles,
+and `vmax_mean`.
 
-ACCESS. No credential is needed. TropicalSystem declares `"read": {}` in its RLS, so the entity
-endpoint answers an unauthenticated GET - verified against production on 23 Oct 2026. A token is
-still used if BASE44_TOKEN is set, in case that read rule is ever tightened; if the read fails for
-any reason this module returns no systems, the tc_ fields are never set, and no cyclone rule
-fires. The rest of the scan is untouched and the run never fails because of this.
+ACCESS, and a real limitation. This used to read the entity directly and unauthenticated, because
+its RLS said `"read": {}`. That open rule was the leak that also handed the Front Line forecast
+product to anyone with the URL, so it was closed on 23 Oct 2026 and reads now go through the
+function, which gates by entitlement.
+
+  - WITHOUT a token the function returns the FREE shape, whose consensus_track is clipped to
+    lead_days <= 3. So the cyclone rules only see days 1-3, not the full 7 the rest of the scan
+    covers. A cyclone inside three days is the actionable window, so this is useful rather than
+    useless, but it IS a reduction and it is deliberate, not an oversight.
+  - WITH BASE44_TOKEN set to an admin token the function returns the full set and the cyclone
+    rules cover the whole 7 days like every other hazard.
+
+Either way a failed read returns no systems, the tc_ fields are never set, no cyclone rule fires,
+and the rest of the scan is untouched. The run never fails because of this.
 
 The entity is GLOBAL: on 22 Oct 2026 the four active systems were in the Indian Ocean, the east
 Pacific, the Atlantic and the west Pacific, none of them near Australia. AU_REGION filters to
@@ -80,18 +90,20 @@ def fetch_systems(app_id="", token="", url=None):
     """
     app_id = app_id or os.environ.get("BASE44_APP_ID", "") or DEFAULT_APP_ID
     token = token or os.environ.get("BASE44_TOKEN", "")
-    url = url or ("https://cyclonesoz.com.au/api/apps/%s/entities/TropicalSystem"
-                  "?status=active&limit=50" % app_id)
-    headers = {"Accept": "application/json", "User-Agent": "CyclonesOZ-alert-scan/1.0"}
-    if token:  # not required today; sent if present so a tightened read rule keeps working
+    url = url or ("https://cyclonesoz.com.au/api/apps/%s/functions/tropicalSystems" % app_id)
+    headers = {"Accept": "application/json", "Content-Type": "application/json",
+               "User-Agent": "CyclonesOZ-alert-scan/1.0"}
+    if token:  # an admin token lifts the free day-3 clip; see the module docstring
         headers["Authorization"] = "Bearer %s" % token
     try:
-        with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=30) as r:
-            rows = json.loads(r.read().decode())
+        req = urllib.request.Request(url, data=b"{}", headers=headers, method="POST")
+        with urllib.request.urlopen(req, timeout=30) as r:
+            body = json.loads(r.read().decode())
     except Exception:
         return []
-    if isinstance(rows, dict):
-        rows = rows.get("data") or rows.get("entities") or []
+    rows = body.get("systems") if isinstance(body, dict) else body
+    if not isinstance(rows, list):
+        return []
     return [s for s in rows if relevant(s)]
 
 
