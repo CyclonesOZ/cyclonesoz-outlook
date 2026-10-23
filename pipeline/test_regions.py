@@ -101,6 +101,139 @@ class TRuleFiresRegional(unittest.TestCase):
         self.assertFalse(a.rule_fires(self.RULE, {}, "interior_arid", self.BARS))
 
 
+class TAccumulation(unittest.TestCase):
+    BARS = {"rain_3day": {"default": 60, "by_region": {"interior_arid": 40}}}
+    RULE = {"id": "r3", "when": [{"field": "rain", "op": ">=", "accumulate_days": 3,
+                                  "value": {"$ref_region_bar": "rain_3day"}}]}
+
+    def series(self, *rains):
+        return [{"rain": r} for r in rains]
+
+    def test_sums_three_consecutive_days(self):
+        s = self.series(20, 20, 20, 0, 0)
+        self.assertTrue(a.rule_fires(self.RULE, s[0], None, self.BARS, s, 0))
+
+    def test_single_big_day_alone_is_not_enough_below_the_bar(self):
+        s = self.series(50, 0, 0)
+        self.assertFalse(a.rule_fires(self.RULE, s[0], None, self.BARS, s, 0))
+
+    def test_window_starts_at_the_evaluated_day(self):
+        s = self.series(0, 0, 30, 30, 30)
+        self.assertFalse(a.rule_fires(self.RULE, s[0], None, self.BARS, s, 0))
+        self.assertTrue(a.rule_fires(self.RULE, s[2], None, self.BARS, s, 2))
+
+    def test_partial_window_at_the_end_never_fires(self):
+        # Two days left and a 3-day window: a partial sum must not pass as a small total.
+        s = self.series(100, 100)
+        self.assertFalse(a.rule_fires(self.RULE, s[0], None, self.BARS, s, 0))
+
+    def test_without_series_an_accumulating_rule_cannot_fire(self):
+        s = self.series(50, 50, 50)
+        self.assertFalse(a.rule_fires(self.RULE, s[0], None, self.BARS))
+
+    def test_missing_days_count_as_zero_not_as_a_crash(self):
+        s = [{"rain": 30}, {}, {"rain": 30}]
+        self.assertTrue(a.rule_fires(self.RULE, s[0], "interior_arid", self.BARS, s, 0))
+
+    def test_region_bar_applies_to_the_accumulated_total(self):
+        s = self.series(15, 15, 15)  # 45 total
+        self.assertTrue(a.rule_fires(self.RULE, s[0], "interior_arid", self.BARS, s, 0))  # bar 40
+        self.assertFalse(a.rule_fires(self.RULE, s[0], None, self.BARS, s, 0))            # bar 60
+
+
+class TFrost(unittest.TestCase):
+    """Frost had no rules at all before 23 Oct 2026. It is absolute, not an anomaly, so the
+    region gate is what stops a 0 C rule being meaningless in the tropics."""
+
+    def setUp(self):
+        import extra_hazards as eh
+        self.eh = eh
+        with open(os.path.join(ROOT, "alerts", "thresholds.json")) as f:
+            self.th = json.load(f)
+        self.bars = self.th["region_bars"]
+        self.rules = {r["id"]: r for r in self.th["rules"]}
+
+    def test_streak_needs_two_consecutive_nights(self):
+        self.assertEqual(self.eh.frost_nights([-1, 2, -1]), [0, 0, 0])
+        self.assertEqual(self.eh.frost_nights([-1, -1, -1]), [0, 2, 3])
+
+    def test_a_missing_night_breaks_the_streak_rather_than_counting_as_mild(self):
+        self.assertEqual(self.eh.frost_nights([-1, None, -1]), [0, 0, 0])
+
+    def test_zero_counts_as_frost(self):
+        self.assertEqual(self.eh.frost_nights([0, 0]), [0, 2])
+
+    def _fires(self, rule_id, tmin, nights, region):
+        rec = {"tmin": tmin, "frost_nights": nights}
+        return a.rule_fires(self.rules[rule_id], rec, region, self.bars)
+
+    def test_cropping_country_fires_at_zero_on_the_second_night(self):
+        self.assertTrue(self._fires("frost_minor", -0.5, 2, "murray_darling"))
+        self.assertFalse(self._fires("frost_minor", -0.5, 1, "murray_darling"))
+
+    def test_the_tropics_never_fire_frost(self):
+        for reg in ("tropical_north", "tropical_qld_coast", "pilbara_gascoyne"):
+            self.assertFalse(self._fires("frost_minor", -3, 3, reg),
+                             "%s should not report frost" % reg)
+
+    def test_alpine_needs_a_genuinely_cold_night(self):
+        self.assertFalse(self._fires("frost_minor", -2, 3, "alpine"))
+        self.assertTrue(self._fires("frost_minor", -6, 3, "alpine"))
+
+    def test_severe_tier_needs_a_colder_night_than_minor(self):
+        self.assertTrue(self._fires("frost_minor", -1, 2, "sa_southeast"))
+        self.assertFalse(self._fires("frost_mod", -1, 2, "sa_southeast"))
+        self.assertTrue(self._fires("frost_mod", -4, 2, "sa_southeast"))
+
+    def test_severe_bar_is_colder_than_the_frost_bar_in_every_region(self):
+        R = Regions.load()
+        mild = self.bars["frost_tmin"]["by_region"]
+        sev = self.bars["frost_tmin_severe"]["by_region"]
+        for rid in [r["id"] for r in R.regions]:
+            self.assertLessEqual(sev[rid], mild[rid],
+                                 "%s: severe frost bar is not at or below the frost bar" % rid)
+
+
+class TIssuedAlertRecall(unittest.TestCase):
+    """Every Front Line alert Josh has issued must still be surfaced by the thresholds.
+
+    This is the regression guard on Josh's instruction of 23 Oct 2026: compare against what he
+    has actually issued. If a threshold change drops one of his real alerts, this fails.
+    """
+
+    def test_all_issued_alerts_with_an_archived_run_still_fire(self):
+        import calibrate_against_issued as cali
+        cal, pcs, th, R = cali.load()
+        bars = th.get("region_bars")
+        missed = []
+        for al in cal["alerts"]:
+            run = cali.run_for(al["issued_at"][:10])
+            coords = [(pcs[p]["lat"], pcs[p]["lon"]) for p in al["anchors"]
+                      if p in pcs and pcs[p].get("lat") is not None]
+            if run is None or not coords:
+                continue
+            fired = False
+            for p in run["points"]:
+                if not any(cali.km(p["lat"], p["lon"], la, lo) <= cali.RADIUS_KM
+                           for la, lo in coords):
+                    continue
+                reg = R.region_for(p["lat"], p["lon"])
+                for di in range(min(5, len(p["d"]))):
+                    for r in th["rules"]:
+                        if (r["days"][0] - 1 <= di <= r["days"][1] - 1
+                                and a.rule_fires(r, p["d"][di], reg, bars, p["d"], di)):
+                            fired = True
+                            break
+                    if fired:
+                        break
+                if fired:
+                    break
+            if not fired:
+                missed.append(al["alert_no"])
+        self.assertEqual(missed, [], "thresholds would no longer surface these issued alerts: %s"
+                                     % missed)
+
+
 class TRealConfig(unittest.TestCase):
     """The shipped regions.json and thresholds.json must agree with each other."""
 

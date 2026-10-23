@@ -6,6 +6,7 @@
   ],
   "neighbour_deg": 1.1,
   "_REGION_BARS": "Named thresholds that mean different things in different parts of Australia. A rule refers to one with {\"$ref_region_bar\": \"<name>\"} instead of a bare number, so a bar is tuned in ONE place rather than in every rule that uses it. 'default' is the old national number, so a region missing from by_region behaves exactly as the scan did before. Regions are defined in alerts/regions.json. FIRST PASS: these mm values come from each region's rainfall character, not from fitted climatology - there is no SILO/ERA5 percentile data in this repo yet (RULEBOOK.md section 0 makes the same admission). Replace with per-cell percentiles when pipeline/build_climatology.py grows rainfall, keeping these as the absolute floor.",
+  "_RAIN_3DAY_CALIBRATION": "The rain_3day bars are calibrated, not guessed. Against the 13 alerts in alerts/issued-calibration.json, the model's single-day peak over the area Josh alerted was 25-46 mm while the 3-day total was 43-86 mm; his validity windows run 4-7 days and the titles say 'persistent'. A single-day bar low enough to see those events would be ~25 mm, which fires constantly. These bars surface 10 of 10 issued alerts that have an archived run, at ~23 events per run. Two looser sets were tested and rejected: +10 mm caught 3 of 6 heavy-rainfall alerts, +25 mm caught 1 of 6. qld_inland is 40 rather than 45 because SWPA045's 3-day total was 43 mm, and that change cost +0.7 events per run. Re-run pipeline/calibrate_against_issued.py after any change - test_regions.py fails if a change drops one of Josh's issued alerts.",
   "region_bars": {
     "rain_heavy": {
       "default": 75,
@@ -23,6 +24,60 @@
         "sa_southeast": 45,
         "nullarbor_goldfields": 40,
         "interior_arid": 40
+      }
+    },
+    "frost_tmin": {
+      "default": 0,
+      "by_region": {
+        "murray_darling": 0,
+        "sa_southeast": 0,
+        "vic_south": 0,
+        "southwest_wa": 0,
+        "qld_inland": 0,
+        "tasmania": -1,
+        "interior_arid": -2,
+        "nullarbor_goldfields": -2,
+        "alpine": -5,
+        "nsw_qld_coast": -1,
+        "pilbara_gascoyne": -99,
+        "tropical_north": -99,
+        "tropical_qld_coast": -99
+      }
+    },
+    "frost_tmin_severe": {
+      "default": -3,
+      "by_region": {
+        "murray_darling": -3,
+        "sa_southeast": -3,
+        "vic_south": -3,
+        "southwest_wa": -3,
+        "qld_inland": -3,
+        "tasmania": -4,
+        "interior_arid": -5,
+        "nullarbor_goldfields": -5,
+        "alpine": -10,
+        "nsw_qld_coast": -3,
+        "pilbara_gascoyne": -99,
+        "tropical_north": -99,
+        "tropical_qld_coast": -99
+      }
+    },
+    "rain_3day": {
+      "default": 60,
+      "by_region": {
+        "tropical_qld_coast": 110,
+        "tropical_north": 90,
+        "tasmania": 60,
+        "alpine": 60,
+        "nsw_qld_coast": 50,
+        "qld_inland": 40,
+        "murray_darling": 45,
+        "sa_southeast": 45,
+        "southwest_wa": 45,
+        "vic_south": 45,
+        "pilbara_gascoyne": 45,
+        "interior_arid": 40,
+        "nullarbor_goldfields": 40
       }
     },
     "rain_extreme": {
@@ -300,6 +355,108 @@
           "field": "cat",
           "op": ">=",
           "value": 4
+        }
+      ]
+    },
+    {
+      "id": "frost_minor",
+      "label": "Frost (2+ nights at or below the region's frost point)",
+      "level": 1,
+      "days": [
+        1,
+        7
+      ],
+      "min_points": 2,
+      "when": [
+        {
+          "field": "frost_nights",
+          "op": ">=",
+          "value": 2
+        },
+        {
+          "field": "tmin",
+          "op": "<=",
+          "value": { "$ref_region_bar": "frost_tmin" }
+        }
+      ]
+    },
+    {
+      "id": "frost_mod",
+      "label": "Severe frost (2+ nights, region severe point)",
+      "level": 2,
+      "days": [
+        1,
+        7
+      ],
+      "min_points": 2,
+      "when": [
+        {
+          "field": "frost_nights",
+          "op": ">=",
+          "value": 2
+        },
+        {
+          "field": "tmin",
+          "op": "<=",
+          "value": { "$ref_region_bar": "frost_tmin_severe" }
+        }
+      ]
+    },
+    {
+      "id": "frost_sig",
+      "label": "Widespread severe frost",
+      "level": 3,
+      "days": [
+        1,
+        7
+      ],
+      "min_points": 6,
+      "when": [
+        {
+          "field": "frost_nights",
+          "op": ">=",
+          "value": 2
+        },
+        {
+          "field": "tmin",
+          "op": "<=",
+          "value": { "$ref_region_bar": "frost_tmin_severe" }
+        }
+      ]
+    },
+    {
+      "id": "rain3_minor",
+      "label": "Persistent rain (3-day region bar)",
+      "level": 1,
+      "days": [
+        1,
+        5
+      ],
+      "min_points": 2,
+      "when": [
+        {
+          "field": "rain",
+          "op": ">=",
+          "accumulate_days": 3,
+          "value": { "$ref_region_bar": "rain_3day" }
+        }
+      ]
+    },
+    {
+      "id": "rain3_mod",
+      "label": "Widespread persistent rain (3-day region bar)",
+      "level": 2,
+      "days": [
+        1,
+        5
+      ],
+      "min_points": 6,
+      "when": [
+        {
+          "field": "rain",
+          "op": ">=",
+          "accumulate_days": 3,
+          "value": { "$ref_region_bar": "rain_3day" }
         }
       ]
     },

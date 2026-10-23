@@ -71,18 +71,33 @@ def load_run(path):
     return run
 
 
-def rule_fires(rule, rec, region=None, bars=None):
+def rule_fires(rule, rec, region=None, bars=None, series=None, di=None):
     """True if every condition holds. A missing field never fires (no guessing).
 
     `region` is the climate region of the point being evaluated, so a condition value may be
     a per-region bar instead of one national number — 40 mm is a significant day in the arid
     interior and an ordinary one on the tropical Queensland coast. A plain numeric value and
     region=None behave exactly as before.
+
+    A condition with `accumulate_days: N` sums its field over N consecutive model days starting
+    at this one, instead of testing the single day. Josh's own heavy-rainfall alerts are issued
+    over 4-7 day validity windows on multi-day totals: measured against the 13 alerts in
+    alerts/issued-calibration.json, the model's single-day peak over the alerted area was only
+    25-46 mm, so no single-day bar that is not absurdly low can see the events he actually calls.
+    The 3-day totals for the same events were 49-86 mm, which is separable. Needs `series` (the
+    point's day list) and `di`; a window running past the end of the run does not fire, so a
+    partial window can never look like a small total.
     """
     for c in rule["when"]:
-        v = rec.get(c["field"])
-        if v is None:
-            return False
+        window = c.get("accumulate_days")
+        if window:
+            if series is None or di is None or di + window > len(series):
+                return False
+            v = sum((series[i].get(c["field"]) or 0) for i in range(di, di + window))
+        else:
+            v = rec.get(c["field"])
+            if v is None:
+                return False
         limit = resolve_value(c["value"], region, bars)
         if not OPS[c["op"]](v, limit):
             return False
@@ -115,7 +130,8 @@ def triggered_points(run, th, regions=None):
             rec = p["d"][di]
             reg = point_region.get(pi)
             ids = [r["id"] for r in th["rules"]
-                   if r["days"][0] - 1 <= di <= r["days"][1] - 1 and rule_fires(r, rec, reg, bars)]
+                   if r["days"][0] - 1 <= di <= r["days"][1] - 1
+                   and rule_fires(r, rec, reg, bars, p["d"], di)]
             if ids:
                 hits[pi] = ids
         if hits:

@@ -74,8 +74,30 @@ def fetch_daily(points, key=""):
     return res
 
 
+def frost_nights(mins, consecutive=2):
+    """Per-day count of consecutive nights at or below 0 C ending that day.
+
+    Frost damage is cumulative: one cold night after a warm week does far less than two or three
+    in a row, which is why the rulebook asks for 2+ nights at every tier. The count lets a rule
+    say "this is the Nth night in a row", and `consecutive` is the minimum before any day reports.
+    A missing night breaks the run rather than being treated as mild.
+    """
+    out, streak = [], 0
+    for v in mins:
+        streak = streak + 1 if (v is not None and v <= 0) else 0
+        out.append(streak if streak >= consecutive else 0)
+    return out
+
+
 def augment_run(run, th, daily=None, climate=None, key=""):
-    """Add 'heat' and 'snow72' to every point-day. Returns a one-line status for the email."""
+    """Add 'heat', 'snow72', 'tmin' and 'frost_nights' to every point-day.
+
+    Returns a one-line status for the email. 'tmin' and 'frost_nights' need only the Open-Meteo
+    forecast, not the climatology, so frost works even while heatwave is waiting on
+    data/climatology.json. Heat is an anomaly against each point's own 1991-2020 average, so it is
+    already region-relative by construction; frost is absolute and is gated per region in
+    thresholds.json instead.
+    """
     cfg = th.get("extra_hazards", {}).get("heatwave", {})
     thr = [cfg["tmax_anomaly_c"][k] for k in ("minor", "moderate", "significant", "major")] if cfg else None
     if climate is None:
@@ -86,10 +108,11 @@ def augment_run(run, th, daily=None, climate=None, key=""):
     for p in run["points"]:
         k = "%.2f,%.2f" % (p["lat"], p["lon"])
         obs, cl = daily.get(k, {}), climate.get(k)
-        levels, snow = [], []
+        levels, snow, mins = [], [], []
         for di, date in enumerate(dates):
             tmax, tmin, sn = obs.get(date, (None, None, None))
             snow.append(sn)
+            mins.append(tmin)
             lvl = 0
             if cl and thr and tmax is not None and tmin is not None:
                 i = climate_index(int(date[5:7]), int(date[8:10]))
@@ -97,7 +120,11 @@ def augment_run(run, th, daily=None, climate=None, key=""):
                 if am is not None and an is not None:
                     lvl = day_level(tmax - am / 10, tmin - an / 10, thr)
             levels.append(lvl)
-        tiers, s72 = heat_tiers(levels), rolling_sum(snow)
+        tiers, s72, frosts = heat_tiers(levels), rolling_sum(snow), frost_nights(mins)
         for di, rec in enumerate(p["d"][:len(dates)]):
             rec["heat"], rec["snow72"] = tiers[di], s72[di]
-    return "heat+snow checked" + ("" if climate else " (no climatology yet: heat skipped)")
+            rec["frost_nights"] = frosts[di]
+            if mins[di] is not None:
+                rec["tmin"] = mins[di]
+    return ("heat+snow+frost checked"
+            + ("" if climate else " (no climatology yet: heat skipped, frost unaffected)"))
