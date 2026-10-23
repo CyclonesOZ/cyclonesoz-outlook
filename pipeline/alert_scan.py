@@ -514,6 +514,12 @@ def main():
     except Exception as e:
         extra_note = "heat+snow SKIPPED (%s)" % e
     print("[extra hazards] " + extra_note)
+    try:  # tropical cyclone / low; no Base44 token just means the cyclone rules stay idle
+        import tropical
+        tc_note = tropical.augment_run(run)
+    except Exception as e:
+        tc_note = "tropical SKIPPED (%s)" % e
+    print("[tropical] " + tc_note)
     try:  # region-relative bars; a bad regions file must not silently revert to national ones
         regions = Regions.load()
         print("[regions] %d climate regions loaded, default %s" % (len(regions.regions), regions.default))

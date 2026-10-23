@@ -9,7 +9,38 @@ python3 pipeline/alert_scan.py --backtest    # replay every archived raw run, co
 python3 pipeline/test_alert_scan.py          # unit tests
 ```
 
-**Thresholds are placeholders** until the real ones are supplied. Edit `alerts/thresholds.json`:
+## Thresholds are region-relative, and calibrated against Josh's own alerts
+
+Rainfall and frost mean different things in different parts of Australia, so a rule's value can be a
+**region bar** (`{"$ref_region_bar": "rain_3day"}`) resolved per point against the 13 climate regions
+in `alerts/regions.json`. Storms, hail, wind, tornado and fire already ride dimensionless model
+tiers, and heat is an anomaly against each point's own climatology, so those need no region gate.
+
+`pipeline/calibrate_against_issued.py` checks the thresholds against **every Front Line alert Josh
+has actually issued** (`alerts/issued-calibration.json`, the complete PostcodeAlert history). Run it
+after any threshold change:
+
+```bash
+python3 pipeline/calibrate_against_issued.py   # currently: fired 13, missed 0, of 13
+```
+
+`pipeline/test_regions.py` fails if a change stops surfacing one of those alerts.
+
+**Why rain accumulates.** Measured against that history, the model's single-day peak over the areas
+Josh alerted was 25-46 mm while the bar was 75 mm, so single-day rules missed 8 of 10. His validity
+windows run 4-7 days. The `accumulate_days` condition sums a field over N consecutive days;
+`rain3_minor` / `rain3_mod` use it.
+
+## Two hazards are built but idle, each waiting on one thing
+
+| Hazard | Waiting on |
+|---|---|
+| **heatwave** | `data/climatology.json`, which has never been built, so heat has been silently skipped on every run to date. The rules and the anomaly maths are already there. Run the one-off: `gh workflow run "Build climatology"`. |
+| **tropical cyclone / low** | A Base44 read token. Add repo secrets `BASE44_APP_ID` and `BASE44_TOKEN` and pass them through in `alert-scan.yml`. `pipeline/tropical.py` then reads the `TropicalSystem` entity (ensemble consensus track, cone radii, member fraction) and sets `tc_cat` / `tc_prob`. Without the token it returns no systems and the four `tc_*` rules stay idle. |
+
+Both degrade silently and safely: a missing field never fires a rule, so neither can half-work.
+
+**Remaining thresholds are placeholders** until the real ones are supplied. Edit `alerts/thresholds.json`:
 a rule fires at a grid point/day when all its `when` conditions hold; neighbouring firing points form
 an event once some rule has `min_points` inside the cluster. `level` only drives escalation detection;
 it is not an impact rating.

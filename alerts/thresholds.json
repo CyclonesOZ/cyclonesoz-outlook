@@ -359,6 +359,94 @@
       ]
     },
     {
+      "id": "tc_minor",
+      "label": "Tropical low in range",
+      "level": 1,
+      "days": [
+        1,
+        7
+      ],
+      "min_points": 1,
+      "when": [
+        {
+          "field": "tc_cat",
+          "op": ">=",
+          "value": 0
+        },
+        {
+          "field": "tc_prob",
+          "op": ">=",
+          "value": 0.4
+        }
+      ]
+    },
+    {
+      "id": "tc_mod",
+      "label": "Tropical cyclone, category 1",
+      "level": 2,
+      "days": [
+        1,
+        7
+      ],
+      "min_points": 1,
+      "when": [
+        {
+          "field": "tc_cat",
+          "op": ">=",
+          "value": 1
+        },
+        {
+          "field": "tc_prob",
+          "op": ">=",
+          "value": 0.4
+        }
+      ]
+    },
+    {
+      "id": "tc_sig",
+      "label": "Severe tropical cyclone, category 2-3",
+      "level": 3,
+      "days": [
+        1,
+        7
+      ],
+      "min_points": 1,
+      "when": [
+        {
+          "field": "tc_cat",
+          "op": ">=",
+          "value": 2
+        },
+        {
+          "field": "tc_prob",
+          "op": ">=",
+          "value": 0.3
+        }
+      ]
+    },
+    {
+      "id": "tc_major",
+      "label": "Severe tropical cyclone, category 4-5",
+      "level": 4,
+      "days": [
+        1,
+        7
+      ],
+      "min_points": 1,
+      "when": [
+        {
+          "field": "tc_cat",
+          "op": ">=",
+          "value": 4
+        },
+        {
+          "field": "tc_prob",
+          "op": ">=",
+          "value": 0.25
+        }
+      ]
+    },
+    {
       "id": "frost_minor",
       "label": "Frost (2+ nights at or below the region's frost point)",
       "level": 1,
