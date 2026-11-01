@@ -12,6 +12,16 @@ squares with a category or Upgrade/Downgrade; days 5-8 use the public map's coar
 Preview to see the public page itself drawing your draft: anything you changed that its smoothing
 would remove is outlined red. Then Publish.
 
+**Squares (from 1 Nov 2026):** the squares are 0.36 degrees, about four times as many as the model's own
+0.72 degree points (about 5,200 in all). The model run is unchanged. `pipeline/manual_compose.py`
+(`densify`) keeps every model point exactly as it is and adds a point halfway between neighbours, flagged
+`interp`, taking its tiers from the public map's own test so unedited shapes stay put (shapes overlap
+92-94%; the odd borderline patch of a square or two can drop off, and Preview outlines any you changed in
+red). Publish writes all of them, so `outlook.json` is about four times the size. The **7x7** brush covers
+what 3x3 did before. An edit made on the old squares carries onto the new ones by the same test.
+`pipeline/verify.py` skips the added points. To go back, revert the commit: edits and files on the finer
+squares still read fine, and the next publish or nightly run is back to the model's own points.
+
 **Publishing is live (from 8 Oct 2026):** Publish checks the outlook (every point and day present,
 day 1 is today, every member summary agrees with your map), commits it to main with the Mac's
 GitHub login and pushes; the editor then watches the website until it serves your outlook. The app

@@ -34,6 +34,7 @@ Standard library only (it runs on the GitHub runner and on macOS's bundled pytho
 """
 import datetime as _dt
 import json
+import math
 import os
 import re
 import subprocess
@@ -153,6 +154,321 @@ def pkey(lat, lon):
     return "%.2f,%.2f" % (lat, lon)
 
 
+# ---------------------------------------------------------------- finer lattice -------------
+# Post-production only. build_outlook.R still runs its soundings on the 0.72 degree lattice and
+# archive/raw keeps that run untouched. The edit room, and what it publishes, work on a lattice
+# twice as fine each way -- about four times the squares -- made here from the model's own points:
+#   * every model point is kept exactly as the model has it, first and in its original order;
+#   * a point is added halfway between each pair of neighbouring model points, and in the middle
+#     of each cell of four (three, where the cell touches the edge of the model's coverage);
+#   * an added point is flagged "interp": true, so scoring and alert scans can leave it out, and
+#     takes its numbers from the points around it (the mean of its neighbours) and its tiers from
+#     the public map's own test (below), then is made coherent with the pipeline's rules.
+# Nothing is re-run. The nightly pipeline and the edit room both go through densify(), and it is a
+# no-op on a run that is already on the finer lattice.
+BASE_STEP = 0.72
+GRID_STEP = 0.36
+ORDINAL_KEYS = {"cat", "pregate", "hail", "wind", "flood", "fire", "hatch"}   # tiers: never averaged
+
+# The public map (docs/index.html, src/lib/stormOutlookField.js) draws a tier wherever the
+# Gaussian-weighted share of nearby model points that reach it is at least that tier's level. An
+# added point takes the highest tier the map would shade at ITS position, measured over the model's
+# own points -- so a map drawn from the finer lattice lands where the old one did, instead of
+# growing or shrinking a halo around every point. These are the map's own constants: if they change
+# there, change them here.
+KERNEL_SIGMA, KERNEL_RADIUS = 0.60, 2.0          # degrees
+TIER_LEVEL = [0.35, 0.48, 0.58, 0.68]            # one per tier, lowest tier first
+# Each added point is one more full-weight sample at its own spot, so the map's smoothing comes out a
+# little sharper than it was. Held to the map's own levels (1.0) that grows shaded areas by 3-7% and
+# thins out the odd borderline patch of a square or two: up to four a run, each about 1 square degree
+# (measured over six runs with the app's own polygon code; shapes overlap 92-94%). Asking more of an
+# added point (1.1) cancels the growth but loses more of those patches; asking less (0.8) keeps them
+# and grows areas 8-16%. The edit room flags any patch you changed that the map would drop.
+NODE_LEVEL_SCALE = 1.0
+LADDER = {                                       # tier key -> the value each tier needs to reach
+    "cat": [1, 2, 3, 4], "hail": [1, 2, 3], "wind": [1, 2, 3], "flood": [1, 2, 3], "fire": [1, 2, 3, 4],
+}
+COARSE_CAT_LADDER = [1, 4]                       # cat on days 5-8: chance of storm / of severe storm
+TPROB_LADDER = [20, 80]                          # Chance / Likely
+
+
+def _is_tier(key):
+    return key in ORDINAL_KEYS or key.endswith("cat")
+
+
+def ordinal(vals):
+    """A tier that has no ladder (pregate, hatch ...): the neighbours' mean, rounded half up."""
+    return int(math.floor(sum(vals) / float(len(vals)) + 0.5))
+
+
+def _num(vals):
+    """Mean of numbers: an int when every neighbour's is an int, else one decimal like the run's."""
+    m = sum(vals) / float(len(vals))
+    if all(isinstance(v, int) for v in vals):
+        return int(math.floor(m + 0.5))
+    return round(m, 1)
+
+
+def _rungs(vals_w, ladder):
+    """How many tiers of a ladder the public map shades at a spot, from [(value, weight)] of the
+    model points around it: tier k is shaded when the weighted share of points at or above
+    ladder[k] reaches TIER_LEVEL[k]."""
+    tot, acc = 0.0, [0.0] * len(ladder)
+    for v, w in vals_w:
+        tot += w
+        for k, t in enumerate(ladder):
+            if v < t:
+                break
+            acc[k] += w
+    n = 0
+    if tot > 1e-9:
+        for k in range(len(ladder)):
+            if acc[k] / tot < TIER_LEVEL[min(k, len(TIER_LEVEL) - 1)] * NODE_LEVEL_SCALE:
+                break
+            n = k + 1
+    return n
+
+
+def _kernel_nbrs(pts, lay, lat, lon):
+    """[(model point index, weight)] for the model points the public map's kernel reaches from here."""
+    lat_max, lon_min, at, _, _ = lay
+    inv = -1.0 / (2 * KERNEL_SIGMA ** 2)
+    rf, cf = (lat_max - lat) / BASE_STEP, (lon - lon_min) / BASE_STEP
+    reach = int(math.ceil(KERNEL_RADIUS / BASE_STEP))
+    out = []
+    for r in range(int(math.floor(rf)) - reach, int(math.ceil(rf)) + reach + 1):
+        for c in range(int(math.floor(cf)) - reach, int(math.ceil(cf)) + reach + 1):
+            i = at.get((r, c))
+            if i is None:
+                continue
+            d2 = (pts[i]["lat"] - lat) ** 2 + (pts[i]["lon"] - lon) ** 2
+            if d2 <= KERNEL_RADIUS ** 2:
+                out.append((i, math.exp(d2 * inv)))
+    return out
+
+
+def _held(vals, ladder):
+    """How many tiers of a ladder every one of these values reaches."""
+    lo = min(vals)
+    return sum(1 for t in ladder if lo >= t)
+
+
+def _field_tiers(recs_w, fine, keys, parents):
+    """{key: tier value} the map shades at a spot on one day, from [(record dict, weight)] and the
+    spot's own neighbours (parents, a list of records); tprob comes back as "tprob_band" (0 below
+    Chance, 1 Chance, 2 Likely). A point between squares that both reach a tier is never below
+    it: that is what keeps a two-square patch from being thinned out of existence."""
+    out = {}
+    for k in keys:
+        if k == "tprob":
+            n = _rungs([(r.get("tprob", 0) or 0, w) for r, w in recs_w], TPROB_LADDER)
+            out["tprob_band"] = max(n, _held([r.get("tprob", 0) or 0 for r in parents], TPROB_LADDER))
+            continue
+        ladder = COARSE_CAT_LADDER if (k == "cat" and not fine) else LADDER[k]
+        n = max(_rungs([(r.get(k, 0) or 0, w) for r, w in recs_w], ladder),
+                _held([r.get(k, 0) or 0 for r in parents], ladder))
+        out[k] = ladder[n - 1] if n else 0
+    return out
+
+
+def _cohere(r, fine):
+    """Brings one point-day (a dict) in line with the rules every model record already obeys:
+    thunderstorm chance at least the tier's floor, hail no higher than the category, no damaging
+    wind below Marginal and no more than 1 below Moderate, no hatching below Marginal. Where the
+    map shades a hazard the category lifts to carry it on days 1-4, which show the hazard maps;
+    on days 5-8 (category only) the hazard is cut back instead."""
+    c = r.get("cat", 0)
+    if fine and "cat" in r:
+        need = max(r.get("hail", 0), 2 if r.get("wind", 0) > 0 else 0, 3 if r.get("wind", 0) > 1 else 0)
+        c = r["cat"] = max(c, need)
+    if "tprob" in r:
+        r["tprob"] = tprob_floor(r["tprob"], c)
+    if "hail" in r:
+        r["hail"] = min(r["hail"], c)
+    if "wind" in r:
+        r["wind"] = 0 if c < 2 else (min(r["wind"], 1) if c < 3 else r["wind"])
+    if "hatch" in r and c < 2:
+        r["hatch"] = 0
+
+
+def _band(tp, band):
+    """A thunderstorm chance held inside the band the map shades it in."""
+    return min(tp, 19) if band == 0 else (max(tp, 80) if band == 2 else min(max(tp, 20), 79))
+
+
+def _blend_day(recs, nbr_recs, j):
+    """One day's record for an added point: recs are its neighbours' records for the day, nbr_recs
+    [(record, weight)] the model points the public map's kernel reaches from it."""
+    fine = j < FINE_DAYS
+    keys = [k for k in list(LADDER) + ["tprob"] if k in recs[0]]
+    tiers = _field_tiers(nbr_recs, fine, keys, recs)
+    out = {}
+    for k, v0 in recs[0].items():
+        vals = [r[k] for r in recs if k in r]
+        if len(vals) < len(recs):
+            continue                                  # a flag only some neighbours carry: not inherited
+        if isinstance(v0, bool):
+            if k != "conditional":
+                out[k] = any(vals)
+        elif isinstance(v0, (int, float)):
+            if k in tiers:
+                out[k] = tiers[k]
+            else:
+                out[k] = ordinal(vals) if _is_tier(k) else _num(vals)
+        else:
+            out[k] = v0
+    if "tprob_band" in tiers and "tprob" in out:
+        out["tprob"] = _band(out["tprob"], tiers["tprob_band"])
+    _cohere(out, fine)
+    # "conditional": the category waits on a trigger. It carries over where a neighbour holds the
+    # same category; otherwise there is nothing for it to wait on.
+    if "conditional" in recs[0]:
+        out["conditional"] = any(r.get("conditional") and r.get("cat", 0) == out.get("cat", 0) for r in recs)
+    return out
+
+
+def _blend_frame(par_rows, nbr_rows, cols, fine):
+    """One 3-hour frame row for an added point (columns as the frame file's "cols"); par_rows are
+    its neighbours' rows for the slot, nbr_rows [(row, weight)] the kernel's."""
+    ix = {c: i for i, c in enumerate(cols)}
+    recs_w = [(dict(zip(cols, r)), w) for r, w in nbr_rows]
+    tiers = _field_tiers(recs_w, fine, [k for k in list(LADDER) + ["tprob"] if k in ix],
+                         [dict(zip(cols, r)) for r in par_rows])
+    rec = {}
+    for ci, name in enumerate(cols):
+        vals = [r[ci] for r in par_rows]
+        rec[name] = tiers[name] if name in tiers else _num(vals)
+    if "tprob_band" in tiers and "tprob" in rec:
+        rec["tprob"] = _band(rec["tprob"], tiers["tprob_band"])
+    _cohere(rec, fine)
+    return [rec[c] for c in cols]
+
+
+def _base_layout(pts):
+    """(lat_max, lon_min, {(row, col): index}, {row: lat}, {col: lon}) for points on one regular
+    BASE_STEP lattice, or None when they are not (then nothing is densified)."""
+    if not pts:
+        return None
+    lat_max = max(p["lat"] for p in pts)
+    lon_min = min(p["lon"] for p in pts)
+    at, row_lat, col_lon = {}, {}, {}
+    for i, p in enumerate(pts):
+        r = int(round((lat_max - p["lat"]) / BASE_STEP))
+        c = int(round((p["lon"] - lon_min) / BASE_STEP))
+        if (r, c) in at or abs(lat_max - r * BASE_STEP - p["lat"]) > 0.02 or abs(lon_min + c * BASE_STEP - p["lon"]) > 0.02:
+            return None
+        at[(r, c)] = i
+        if abs(row_lat.setdefault(r, p["lat"]) - p["lat"]) > 0.011 or abs(col_lon.setdefault(c, p["lon"]) - p["lon"]) > 0.011:
+            return None
+    return lat_max, lon_min, at, row_lat, col_lon
+
+
+def model_layout(pts):
+    """_base_layout of a finer-lattice run's own model points (they come first, in their order, so
+    the indices match the whole list), or None."""
+    n = 0
+    while n < len(pts) and not pts[n].get("interp"):
+        n += 1
+    if any(not p.get("interp") for p in pts[n:]):
+        return None
+    return _base_layout(pts[:n])
+
+
+def densify(raw, frames=None):
+    """(raw, frames) on the finer lattice. Returns them unchanged when they already are, or when
+    the points are not on a regular lattice."""
+    if raw.get("grid_step") == GRID_STEP:
+        return raw, frames
+    pts = raw.get("points") or []
+    lay = _base_layout(pts)
+    if lay is None:
+        return raw, frames
+    _, _, at, row_lat, col_lon = lay
+    maxr = max(r for r, _ in at)
+    maxc = max(c for _, c in at)
+    added, meta = [], []
+    for r2 in range(2 * maxr + 1):
+        for c2 in range(2 * maxc + 1):
+            if r2 % 2 == 0 and c2 % 2 == 0:
+                continue
+            r, c = r2 // 2, c2 // 2
+            if r2 % 2 == 0:
+                cand = [(r, c), (r, c + 1)]
+            elif c2 % 2 == 0:
+                cand = [(r, c), (r + 1, c)]
+            else:
+                cand = [(r, c), (r + 1, c), (r, c + 1), (r + 1, c + 1)]
+            par = [at[k] for k in cand if k in at]
+            if len(par) < (3 if len(cand) == 4 else 2):
+                continue
+            rows = sorted({k[0] for k in cand})
+            cols = sorted({k[1] for k in cand})
+            lat = round(sum(row_lat[x] for x in rows) / len(rows), 2)
+            lon = round(sum(col_lon[x] for x in cols) / len(cols), 2)
+            nbrs = _kernel_nbrs(pts, lay, lat, lon)
+            nd = min(len(pts[i]["d"]) for i in par)
+            days = []
+            for j in range(nd):
+                days.append(_blend_day([pts[i]["d"][j] for i in par],
+                                       [(pts[i]["d"][j], w) for i, w in nbrs if j < len(pts[i]["d"])], j))
+            added.append({"lat": lat, "lon": lon,
+                          "tropical": sum(1 for i in par if pts[i].get("tropical")) * 2 >= len(par),
+                          "d": days, "interp": True})
+            meta.append((lat, lon, [pkey(pts[i]["lat"], pts[i]["lon"]) for i in par],
+                         [(pkey(pts[i]["lat"], pts[i]["lon"]), w) for i, w in nbrs]))
+    out = dict(raw)
+    out["points"] = list(pts) + added
+    out["grid_step"] = GRID_STEP
+    out_frames = frames
+    if frames:
+        out_frames = {}
+        for dn, fd in frames.items():
+            cols = fd.get("cols") or []
+            by = {pkey(fp["lat"], fp["lon"]): fp["f"] for fp in fd.get("points", [])}
+            extra = []
+            if "cat" in cols:
+                fine = int(dn) <= FINE_DAYS
+                for lat, lon, pkeys, nkeys in meta:
+                    if any(k not in by for k in pkeys):
+                        continue
+                    n = min(len(by[k]) for k in pkeys)
+                    extra.append({"lat": lat, "lon": lon, "f": [
+                        _blend_frame([by[k][s] for k in pkeys],
+                                     [(by[k][s], w) for k, w in nkeys if k in by and s < len(by[k])], cols, fine)
+                        for s in range(n)]})
+            g = dict(fd)
+            g["points"] = list(fd.get("points", [])) + extra
+            out_frames[dn] = g
+    return out, out_frames
+
+
+def node_parents(pts):
+    """{index: [indices of the model points an added point was blended from]} for a run on the
+    finer lattice (empty for a run that is not)."""
+    if not pts or not any(p.get("interp") for p in pts):
+        return {}
+    lat_max = max(p["lat"] for p in pts)
+    lon_min = min(p["lon"] for p in pts)
+    cell, pos = {}, []
+    for i, p in enumerate(pts):
+        k = (int(round((lat_max - p["lat"]) / GRID_STEP)), int(round((p["lon"] - lon_min) / GRID_STEP)))
+        cell[k] = i
+        pos.append(k)
+    out = {}
+    for i, p in enumerate(pts):
+        if not p.get("interp"):
+            continue
+        r, c = pos[i]
+        if r % 2 == 0:
+            cand = [(r, c - 1), (r, c + 1)]
+        elif c % 2 == 0:
+            cand = [(r - 1, c), (r + 1, c)]
+        else:
+            cand = [(r - 1, c - 1), (r - 1, c + 1), (r + 1, c - 1), (r + 1, c + 1)]
+        out[i] = [cell[k] for k in cand if k in cell and not pts[cell[k]].get("interp")]
+    return out
+
+
 # ---------------------------------------------------------------- compose -------------------
 def edited_cats(raw, edits):
     """The category grid that will be published for each day, before harmonising.
@@ -167,6 +483,8 @@ def edited_cats(raw, edits):
     idx = {}
     if edits and edits.get("points"):
         idx = {pkey(a, b): i for i, (a, b) in enumerate(edits["points"])}
+    parents = node_parents(pts)
+    lay = model_layout(pts) if parents else None
     for j, d in enumerate(dates):
         e = by_date.get(d)
         fine_now = j < FINE_DAYS
@@ -177,12 +495,25 @@ def edited_cats(raw, edits):
         coarse_edit = e.get("scale") == "coarse"
         rebased = coarse_edit and fine_now
         changed = missing = 0
-        for i, p in enumerate(pts):
+        row = []
+        for p in pts:
             k = idx.get(pkey(p["lat"], p["lon"]))
-            if k is None or k >= len(ecat) or ecat[k] is None:
+            row.append(int(ecat[k]) if k is not None and k < len(ecat) and ecat[k] is not None else None)
+        # an edit made before the finer lattice has no call for the added points: each takes the
+        # tier the public map would shade there from the edited model points, the same test that
+        # filled the model's own tiers (so an untouched region comes out as the raw run's)
+        for i, par in parents.items():
+            if row[i] is None and par and all(row[q] is not None for q in par) and lay:
+                ladder = COARSE_CAT_LADDER if coarse_edit else LADDER["cat"]
+                nb = _kernel_nbrs(pts, lay, pts[i]["lat"], pts[i]["lon"])
+                n = max(_rungs([(row[q], w) for q, w in nb if row[q] is not None], ladder),
+                        _held([row[q] for q in par], ladder))
+                row[i] = ladder[n - 1] if n else 0
+        for i, p in enumerate(pts):
+            if row[i] is None:
                 missing += 1                      # a point the edit didn't cover keeps raw
                 continue
-            c = int(ecat[k])
+            c = row[i]
             if rebased:
                 c = rebase_coarse(c, raw_cats[j][i])
             c = max(0, min(4, c))
@@ -196,7 +527,9 @@ def edited_cats(raw, edits):
 
 def compose(raw, raw_frames=None, edits=None, published_at=None):
     """Returns (outlook, frames, report). raw_frames is {day_number: frame file dict} or None.
-    With no edits the outlook and frames come back equal to the raw ones."""
+    The run is first put on the finer lattice (densify). With no edits the outlook and frames come
+    back equal to that run's."""
+    raw, raw_frames = densify(raw, raw_frames)
     cats, raw_cats, info = edited_cats(raw, edits)
     out = dict(raw)
     out["dates"] = run_dates(raw)

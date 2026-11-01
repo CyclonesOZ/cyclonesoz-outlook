@@ -109,6 +109,24 @@ def raw_sources():
     return os.path.join(rd, "outlook.json"), os.path.join(rd, "frames"), "raw"
 
 
+_dense = {}            # the densified raw run, kept until the run changes (building it takes seconds)
+
+
+def dense_run():
+    """(raw run, its frames, the run as JSON bytes) on the finer lattice. The model's own run stays
+    on its 0.72 degree lattice (docs/archive/raw); the editor, the preview and the publish all work
+    on the lattice pipeline/manual_compose.densify makes from it -- about four times the squares."""
+    m = mc()
+    raw_path, frames_dir, _ = raw_sources()
+    st = os.stat(raw_path)
+    key = (raw_path, st.st_mtime_ns, st.st_size, os.stat(frames_dir).st_mtime_ns if os.path.isdir(frames_dir) else 0)
+    if _dense.get("key") != key:
+        raw, frames = m.densify(m.read_json(raw_path), m.load_frames(frames_dir))
+        _dense.clear()
+        _dense.update(key=key, raw=raw, frames=frames, bytes=dumps(raw))
+    return _dense["raw"], _dense["frames"], _dense["bytes"]
+
+
 def current_edits():
     """The last published edit: the live one, or the sandbox one in sandbox mode."""
     p = os.path.join(SANDBOX, "edits.json") if mode() == "sandbox" else \
@@ -159,7 +177,7 @@ def previous_raw(m, edits, raw):
         pth = os.path.join(DOCS, "archive", "raw", d.isoformat() + ".json")
         if not os.path.exists(pth):
             continue
-        old = m.read_json(pth)
+        old = m.densify(m.read_json(pth))[0]
         if old.get("run_date") != base:
             continue
         idx = {m.pkey(p["lat"], p["lon"]): p for p in old["points"]}
@@ -242,10 +260,8 @@ def run_checks(out, raw, frames):
 def build(edit_dates, published_at=None):
     """Composes the raw run with the editor's grids. Returns (out, frames, report, raw)."""
     m = mc()
-    raw_path, frames_dir, _ = raw_sources()
-    raw = m.read_json(raw_path)
-    frames = m.load_frames(frames_dir)
-    edits = {"version": 1, "points": [[p["lat"], p["lon"]] for p in raw["points"]],
+    raw, frames, _ = dense_run()
+    edits = {"version": 1, "grid_step": raw.get("grid_step"), "points": [[p["lat"], p["lon"]] for p in raw["points"]],
              "base_run": raw.get("run_date"), "published_at": published_at, "dates": edit_dates}
     out, fo, rep = m.compose(raw, frames, edits, published_at=published_at)
     return out, fo, rep, raw, edits
@@ -374,7 +390,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 got = live_published_at()
                 return self._send(200, {"live": bool(want) and got == want, "serving": got})
             if p == "/data/raw.json":
-                return self._file(raw_sources()[0])
+                return self._send(200, dense_run()[2])
             if p in ("/data/coastline.geo.json", "/data/states.geo.json"):
                 return self._file(os.path.join(DOCS, p.split("/")[-1]))
             if p.startswith("/preview/") or p.startswith("/sandbox/"):
@@ -412,8 +428,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         with _lock:
             sync_note = sync_repo(force=force)
         m = mc()
-        raw_path, _, raw_kind = raw_sources()
-        raw = m.read_json(raw_path)
+        raw_kind = raw_sources()[2]
+        raw = dense_run()[0]
         edits = current_edits()
         cats, raw_cats, info = m.edited_cats(raw, edits)
         review = review_flags(m, raw, edits, cats, raw_cats, info)

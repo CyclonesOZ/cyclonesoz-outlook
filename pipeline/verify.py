@@ -225,6 +225,8 @@ def score_entries(runs, obs_by_date):
                  "conv": {"hit": 0, "miss": 0, "fa": 0, "cn": 0},
                  "sev_fc": 0, "sev_obs_conv": 0}
             for p in run.get("points", []):
+                if p.get("interp"):
+                    continue    # blended in after the run (manual_compose.densify): not a forecast of its own
                 d = p.get("d", [])
                 if lead >= len(d):
                     continue

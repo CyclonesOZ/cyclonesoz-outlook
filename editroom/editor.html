@@ -147,6 +147,7 @@
   <div class="group" id="sizeBtns"><span class="glabel">Brush</span>
     <button class="tool" data-size="1" title="One square">1</button>
     <button class="tool" data-size="3" title="3 × 3 squares">3×3</button>
+    <button class="tool" data-size="7" title="7 × 7 squares: about the area 3 × 3 covered before the squares were halved in size">7×7</button>
   </div>
   <div class="sep"></div>
   <label class="chk"><input type="checkbox" id="showHi" checked><span class="key" style="border:2px solid var(--review)"></span>Needs review</label>
@@ -189,7 +190,7 @@
   var FINE=[null,{abbr:'TSTM',name:'General storm',c:[150,205,150]},{abbr:'MRGL',name:'Marginal',c:[86,158,86]},
             {abbr:'MDT',name:'Moderate',c:[248,220,90]},{abbr:'HIGH',name:'High',c:[214,44,44]}];
   var COARSE=[null,{abbr:'Storm',name:'Chance of storm',c:[120,192,120]},{abbr:'Severe',name:'Chance of severe storm',c:[228,120,86]}];
-  var FINE_DAYS=4, STEP=0.72;
+  var FINE_DAYS=4, STEP=0.72;                          // STEP becomes the run's grid_step (0.36) once it loads
   var S={st:null,raw:null,pts:[],nd:8,raw0:[],start:[],cats:[],saved:[],hi:[],gone:[],day:0,
          brush:{kind:'set',val:1},tool:'paint',size:1,hist:[],redo:[],op:null,previewOpen:false,
          pvSeq:0,pvFresh:false,pvDay:-1,dirtyTimer:null,pvTimer:null};
@@ -220,7 +221,7 @@
       S.st=st; syncMode();
       return fetch('/data/raw.json').then(function(r){return r.json();});
     }).then(function(raw){
-      S.raw=raw; S.pts=raw.points; S.nd=S.st.dates.length;
+      S.raw=raw; S.pts=raw.points; S.nd=S.st.dates.length; STEP=raw.grid_step||0.72;
       S.raw0=[]; for(var j=0;j<S.nd;j++){ S.raw0.push(S.pts.map(function(p){return p.d[j]?p.d[j].cat:0;})); }
       S.start=S.st.start.map(function(r){return r.slice();});
       S.cats=S.start.map(function(r){return r.slice();});
@@ -386,8 +387,8 @@
   function touchAround(i){
     if(i==null) return;
     if(S.size===1) return touch(i);
-    var p=S.pts[i];
-    for(var dr=-1;dr<=1;dr++) for(var dc=-1;dc<=1;dc++){
+    var p=S.pts[i], h=(S.size-1)/2;
+    for(var dr=-h;dr<=h;dr++) for(var dc=-h;dc<=h;dc++){
       touch(look[(Math.round((p.lat-LAT0)/STEP)+dr)+','+(Math.round((p.lon-LON0)/STEP)+dc)]);
     }
   }
