@@ -115,7 +115,29 @@
   .dlg .row{display:flex;justify-content:flex-end;gap:8px;padding-top:6px}
   #help{position:fixed;right:14px;bottom:14px;z-index:1200}
   .leaflet-container{font:inherit;background:var(--sea)}
-  .lbl-pane{pointer-events:none}
+  .lbl-pane,.model-pane{pointer-events:none}
+  /* town names: dark on a white edge, a dot on the town, bigger for bigger places */
+  .tn-wrap{background:none;border:0}
+  .tn{position:absolute;left:0;top:0;white-space:nowrap;padding-left:9px;transform:translateY(-50%);line-height:1;
+    color:#0f1923;font-weight:600;font-size:12px;letter-spacing:.005em;
+    text-shadow:0 0 2px #fff,0 0 2px #fff,0 0 3px #fff,1.5px 0 0 #fff,-1.5px 0 0 #fff,0 1.5px 0 #fff,0 -1.5px 0 #fff,1px 1px 0 #fff,-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff}
+  .tn::before{content:"";position:absolute;left:0;top:50%;width:5px;height:5px;margin-top:-2.5px;border-radius:50%;background:#0f1923;box-shadow:0 0 0 1.5px #fff}
+  .tn.t1{font-size:14.5px;font-weight:700}
+  .tn.t1::before{width:7px;height:7px;margin-top:-3.5px}
+  .tn.t2{font-size:13px}
+  .tn.l{padding-left:0;padding-right:9px;transform:translate(-100%,-50%)}
+  .tn.l::before{left:auto;right:0}
+  /* model overlay controls and legend */
+  #mvBtns select{font:inherit;border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:5px 6px;width:118px}
+  #mvBtns select:disabled,#mvBtns input:disabled{opacity:.45}
+  #mvBtns input[type=range]{width:56px;accent-color:var(--accent)}
+  .mvlegend{background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:8px;padding:8px 10px 6px;width:268px;
+    box-shadow:0 4px 16px rgba(23,33,43,.12);font-variant-numeric:tabular-nums}
+  .mvlegend .h{font-weight:700;font-size:12.5px}
+  .mvlegend .s{color:var(--muted);font-size:11px;margin:1px 0 6px}
+  .mvlegend canvas{display:block;width:100%;height:11px;border-radius:2px;border:1px solid rgba(0,0,0,.18)}
+  .mvlegend .tk{position:relative;height:14px;margin-top:2px;font-size:10.5px;color:var(--muted)}
+  .mvlegend .tk span{position:absolute;transform:translateX(-50%)}
   @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -152,6 +174,15 @@
   <div class="sep"></div>
   <label class="chk"><input type="checkbox" id="showHi" checked><span class="key" style="border:2px solid var(--review)"></span>Needs review</label>
   <label class="chk"><input type="checkbox" id="showDiff" checked><span class="key" style="border:1.5px dashed #1d2a38"></span>Changed from model</label>
+  <label class="chk"><input type="checkbox" id="showNames" checked>Town names</label>
+  <div class="sep"></div>
+  <div class="group" id="mvBtns"><span class="glabel">Model</span>
+    <button class="tool" data-mv="scp" title="Supercell composite parameter, ECMWF, as in the model viewer (click again to hide)">SCP</button>
+    <button class="tool" data-mv="ship" title="Significant hail parameter, ECMWF, as in the model viewer (click again to hide)">SHIP</button>
+    <button class="tool" data-mv="sweat" title="Severe weather threat index, ECMWF, as in the model viewer (click again to hide)">SWEAT</button>
+    <select id="mvTime" disabled title="Outlook days run 00Z to 00Z. Day max is the highest value in the day."></select>
+    <input type="range" id="mvOp" min="15" max="100" value="60" disabled title="How strongly the model colours show over the squares">
+  </div>
   <button class="btn" id="resetDay" title="Put this day back to the model's categories">Reset day to model</button>
   <span class="spacer"></span>
   <span id="dayStatus"></span>
@@ -252,10 +283,10 @@
   // ---------------------------------------------------------------- map and cells
   var map=L.map('map',{zoomControl:true,attributionControl:false,minZoom:3,maxZoom:9,boxZoom:false,doubleClickZoom:false,zoomSnap:0.25});
   map.createPane('lbl'); map.getPane('lbl').style.zIndex=650; map.getPane('lbl').classList.add('lbl-pane');
-  // Esri light grey base + its place-name layer above the squares (free, no key; the public map
-  // already uses Esri's hillshade service)
+  map.createPane('model'); map.getPane('model').style.zIndex=430; map.getPane('model').classList.add('model-pane');   // over the squares (400), under the names
+  // Esri light grey base (free, no key; the public map already uses Esri's hillshade service). Its
+  // place-name layer is not used: the town names are drawn below, where they can be read.
   L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',{maxZoom:9}).addTo(map);
-  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}',{maxZoom:9,pane:'lbl',opacity:0.9}).addTo(map);
   map.fitBounds([[-44,112],[-10,154]]);
   fetch('/data/states.geo.json').then(function(r){return r.ok?r.json():null;}).then(function(g){
     if(g) L.geoJSON(g,{interactive:false,style:{color:'#7d8a97',weight:1,opacity:.55,fill:false,dashArray:'4 3'}}).addTo(map);
@@ -285,6 +316,260 @@
     cells[i].setStyle(st);
   }
   function styleAll(){ for(var i=0;i<cells.length;i++) styleCell(i); }
+  function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');}
+
+  // ---------------------------------------------------------------- town names
+  // The website's town list, drawn here instead of Esri's own place layer: dark type on a white edge,
+  // a dot on the town, bigger for bigger places. More towns appear as you zoom in; where two would
+  // overlap the bigger place wins, and a name moves to the left of its dot when the right is taken.
+  var TN={list:[],markers:[],widths:{},on:true};
+  var TN_ZOOM={1:3,2:4.5,3:5.25,4:6.25};
+  var TN_FONT={1:'700 14.5px',2:'600 13px',3:'600 12px',4:'600 12px'};
+  var tnCtx=document.createElement('canvas').getContext('2d');
+  function tnWidth(t){
+    var k=t.tier+t.name;
+    if(TN.widths[k]==null){ tnCtx.font=TN_FONT[t.tier]+' system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif'; TN.widths[k]=tnCtx.measureText(t.name).width; }
+    return TN.widths[k];
+  }
+  function updateNames(){
+    if(!TN.markers.length) return;
+    var z=map.getZoom(), size=map.getSize(), pad=40, cand=[], keep={}, placed=[];
+    if(TN.on) TN.list.forEach(function(t,i){
+      if(z<TN_ZOOM[t.tier]) return;
+      var pt=map.latLngToContainerPoint([t.lat,t.lon]);
+      if(pt.x<-pad||pt.x>size.x+pad||pt.y<-pad||pt.y>size.y+pad) return;
+      cand.push({i:i,t:t,x:pt.x,y:pt.y});
+    });
+    cand.sort(function(a,b){return a.t.tier-b.t.tier||a.i-b.i;});
+    cand.forEach(function(c){
+      var w=tnWidth(c.t)+13, h=c.t.tier===1?19:16, opts=[{s:'',x:c.x-4},{s:'l',x:c.x+4-w}];
+      for(var k=0;k<2;k++){
+        var b={x:opts[k].x,y:c.y-h/2,w:w,h:h};
+        if(!placed.some(function(p){return b.x<p.x+p.w&&b.x+b.w>p.x&&b.y<p.y+p.h&&b.y+b.h>p.y;})){ placed.push(b); keep[c.i]=opts[k].s; break; }
+      }
+    });
+    TN.markers.forEach(function(m,i){
+      if(keep[i]!=null){
+        if(!map.hasLayer(m)) m.addTo(map);
+        var el=m.getElement(); if(el&&el.firstChild) el.firstChild.classList.toggle('l',keep[i]==='l');
+      } else if(map.hasLayer(m)) map.removeLayer(m);
+    });
+  }
+  fetch('/data/towns.json').then(function(r){return r.ok?r.json():[];}).then(function(rows){
+    TN.list=rows.map(function(r){return {name:r[0],lat:r[1],lon:r[2],tier:r[3]};});
+    TN.markers=TN.list.map(function(t){
+      return L.marker([t.lat,t.lon],{pane:'lbl',interactive:false,keyboard:false,
+        icon:L.divIcon({className:'tn-wrap',iconSize:[0,0],html:'<span class="tn t'+t.tier+'">'+esc(t.name)+'</span>'})});
+    });
+    updateNames();
+  }).catch(function(){});
+  map.on('zoomend moveend resize',updateNames);
+  $('showNames').onchange=function(){TN.on=this.checked;updateNames();};
+
+  // ---------------------------------------------------------------- model overlay (SCP, SHIP, SWEAT)
+  // The model viewer's own fields, so a square can be judged against them. They come from the viewer's
+  // data (models.cyclonesoz.com) through this server, because that bucket only answers the website.
+  // Same ECMWF run and the same colour tables as the viewer (src/components/modelViewer/palettes.js
+  // there is the source: keep these in step with it). A frame is a 16-bit PNG on a lat/lon grid (high
+  // byte in R, low in G; value = q * scale + offset; 65535 = no data). Here it is smoothed up and
+  // painted on the map's own projection. Outlook days run 00Z to 00Z, so "Day max" is the highest
+  // value among the run's steps inside that window.
+  var MV_PAL={
+    scp:{label:'SCP',min:0,max:20,floor:0.5,ticks:[1,2,4,6,8,12,16,20],
+      stops:[[0.5,'#cfe8ff'],[1,'#8fd3ff'],[2,'#ffe324'],[4,'#ffa21a'],[6,'#ff4d1a'],[8,'#d6127a'],[12,'#8b3cf0'],[16,'#4b1c9c'],[20,'#e9d5ff']],
+      note:'Supercell composite parameter: MUCAPE, 0–3 km helicity, 0–6 km shear'},
+    ship:{label:'SHIP',min:0,max:4,floor:0.25,ticks:[0.5,1,1.5,2,2.5,3,4],
+      stops:[[0.25,'#cfe8ff'],[0.5,'#8fd3ff'],[1,'#ffe324'],[1.5,'#ffa21a'],[2,'#ff4d1a'],[2.5,'#d6127a'],[3,'#8b3cf0'],[4,'#e9d5ff']],
+      note:'Significant hail parameter (SPC)'},
+    sweat:{label:'SWEAT',min:140,max:440,floor:140,steps:true,ticks:[160,200,240,280,320,360,400,440],
+      stops:[[140,'#f2ecd5'],[160,'#f3e2a0'],[180,'#fbe97f'],[200,'#f6c05a'],[220,'#f07a2e'],[240,'#e8472a'],[260,'#b42619'],[280,'#9b1d14'],[300,'#7d1610'],[320,'#5c0c0a'],[340,'#7c1aa0'],[360,'#a040c8'],[380,'#c462e6'],[400,'#df9af7'],[420,'#f0cbf9']],
+      note:'Severe weather threat index'}
+  };
+  var MV_LUT=1024;
+  // the viewer takes every palette 10% less saturated (its tone()); the same here so the colours agree
+  function mvTone(hex){
+    var h=hex.replace('#',''), c=[0,2,4].map(function(i){return parseInt(h.slice(i,i+2),16)/255;});
+    var r=c[0],g=c[1],b=c[2], max=Math.max(r,g,b), min=Math.min(r,g,b), l=(max+min)/2;
+    if(max===min) return hex;
+    var d=max-min, sat=(l>0.5?d/(2-max-min):d/(max+min))*0.9;
+    var hue=max===r?((g-b)/d+(g<b?6:0))/6:max===g?((b-r)/d+2)/6:((r-g)/d+4)/6;
+    var q=l<0.5?l*(1+sat):l+sat-l*sat, p=2*l-q;
+    function ch(t){ t=(t+1)%1; var v=t<1/6?p+(q-p)*6*t:t<1/2?q:t<2/3?p+(q-p)*(2/3-t)*6:p; return ('0'+Math.round(v*255).toString(16)).slice(-2); }
+    return '#'+ch(hue+1/3)+ch(hue)+ch(hue-1/3);
+  }
+  function mvRgb(hex){ var h=hex.replace('#',''); return [0,2,4].map(function(i){return parseInt(h.slice(i,i+2),16);}); }
+  function mvColourAt(p,v){                           // RGB at a display value (the floor is the caller's job)
+    var s=p.stops, i;
+    if(p.steps){ var c=s[0][1]; for(i=0;i<s.length;i++) if(s[i][0]<=v) c=s[i][1]; return c; }
+    if(v<=s[0][0]) return s[0][1];
+    for(i=1;i<s.length;i++) if(v<=s[i][0]){
+      var f=(v-s[i-1][0])/(s[i][0]-s[i-1][0]), a=s[i-1][1], b=s[i][1];
+      return [Math.round(a[0]+(b[0]-a[0])*f),Math.round(a[1]+(b[1]-a[1])*f),Math.round(a[2]+(b[2]-a[2])*f)];
+    }
+    return s[s.length-1][1];
+  }
+  Object.keys(MV_PAL).forEach(function(k){
+    var p=MV_PAL[k];
+    p.stops=p.stops.map(function(s){return [s[0],mvRgb(mvTone(s[1]))];});
+    p.lut=[]; for(var i=0;i<MV_LUT;i++) p.lut.push(mvColourAt(p,p.min+i/(MV_LUT-1)*(p.max-p.min)));
+  });
+
+  var MV={prod:null,time:'max',op:0.6,idx:null,idxAt:0,man:{},arrs:{},seq:0,layer:null,blobUrl:null,cur:null};
+  var MV_BOX={w:105,e:165,s:-48,n:-5}, MV_PPD=24;                  // what is painted: degrees and pixels per degree
+  function mvJSON(path){
+    return fetch(path).then(function(r){
+      if(!r.ok) throw new Error(r.status===502?'The model viewer\'s data couldn\'t be reached':'Model data answered '+r.status);
+      return r.json();
+    });
+  }
+  // the newest complete 0.25 degree ECMWF run that has this field
+  function mvRun(prod){
+    var ix=(MV.idx&&Date.now()-MV.idxAt<300000)?Promise.resolve(MV.idx):mvJSON('/models/index.json').then(function(x){MV.idx=x;MV.idxAt=Date.now();return x;});
+    return ix.then(function(x){
+      var keys=x.runs.filter(function(r){return r.status==='complete'&&/^ifs-0p25\/\d{10}$/.test(r.key);}).map(function(r){return r.key;}).sort().reverse(), i=0;
+      function next(){
+        if(i>=keys.length) throw new Error('No model run has '+MV_PAL[prod].label+' yet');
+        var k=keys[i++];
+        return (MV.man[k]?Promise.resolve(MV.man[k]):mvJSON('/models/'+k+'/manifest.json').then(function(m){m.key=k;MV.man[k]=m;return m;}))
+          .then(function(m){return m.fields&&m.fields[prod]?m:next();});
+      }
+      return next();
+    });
+  }
+  function mvValid(man,s){return new Date(Date.parse(man.run)+s*3600e3);}
+  function mvSteps(man,prod,day){                     // this field's steps inside the outlook day (00Z to 00Z)
+    var t0=Date.parse(S.st.dates[day]+'T00:00:00Z'), out=[];
+    man.fields[prod].steps.forEach(function(s){ var v=mvValid(man,s).getTime(); if(v>=t0&&v<t0+86400e3) out.push(s); });
+    return out;
+  }
+  function mvFrame(man,prod,step){
+    var f=man.fields[prod], url='/models/'+man.key+'/'+prod+'/'+('000'+step).slice(-3)+'.png?g='+man.width+'x'+man.height;
+    if(MV.arrs[url]) return MV.arrs[url];
+    var ks=Object.keys(MV.arrs); if(ks.length>40) delete MV.arrs[ks[0]];
+    var p=fetch(url).then(function(r){ if(!r.ok) throw new Error('A model frame answered '+r.status); return r.blob(); })
+      .then(function(b){return createImageBitmap(b,{colorSpaceConversion:'none',premultiplyAlpha:'none'});})
+      .then(function(bmp){
+        var w=bmp.width, h=bmp.height, cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+        var ctx=cv.getContext('2d',{willReadFrequently:true,colorSpace:'srgb'}); ctx.drawImage(bmp,0,0); if(bmp.close) bmp.close();
+        var px=ctx.getImageData(0,0,w,h).data, data=new Float32Array(w*h);
+        for(var i=0,j=0;i<data.length;i++,j+=4){ var q=(px[j]<<8)|px[j+1]; data[i]=q===man.nodata?NaN:q*f.scale+f.offset; }
+        return {data:data,w:w,h:h};
+      });
+    p.catch(function(){ delete MV.arrs[url]; });
+    return (MV.arrs[url]=p);
+  }
+  function mvMax(frames){
+    var a=frames[0], out=new Float32Array(a.data.length);
+    for(var i=0;i<out.length;i++){
+      var m=NaN; for(var k=0;k<frames.length;k++){ var v=frames[k].data[i]; if(v===v && (m!==m||v>m)) m=v; }
+      out[i]=m;
+    }
+    return {data:out,w:a.w,h:a.h};
+  }
+  function mvAt(grid,man,lat,lon){                    // bilinear value at a point, NaN outside or over no data
+    var bb=man.bbox, x=(lon-bb[0])/(bb[2]-bb[0])*(grid.w-1), y=(bb[3]-lat)/(bb[3]-bb[1])*(grid.h-1);
+    if(x<0||y<0||x>grid.w-1||y>grid.h-1) return NaN;
+    var x0=Math.floor(x), y0=Math.floor(y), x1=Math.min(x0+1,grid.w-1), y1=Math.min(y0+1,grid.h-1), tx=x-x0, ty=y-y0, d=grid.data;
+    return (d[y0*grid.w+x0]*(1-tx)+d[y0*grid.w+x1]*tx)*(1-ty)+(d[y1*grid.w+x0]*(1-tx)+d[y1*grid.w+x1]*tx)*ty;
+  }
+  function mercY(lat){return Math.log(Math.tan(Math.PI/4+lat*Math.PI/360));}
+  function unmercY(y){return (2*Math.atan(Math.exp(y))-Math.PI/2)*180/Math.PI;}
+  function mvPaint(grid,man,prod){                    // smooth the grid up onto the map's projection
+    var p=MV_PAL[prod], B=MV_BOX, W=Math.round((B.e-B.w)*MV_PPD), ya=mercY(B.n), yb=mercY(B.s);
+    var H=Math.round((ya-yb)/((B.e-B.w)*Math.PI/180)*W);
+    var cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+    var ctx=cv.getContext('2d'), img=ctx.createImageData(W,H), o=img.data, bb=man.bbox, gw=grid.w, gh=grid.h, g=grid.data;
+    var fxs=new Float32Array(W); for(var c=0;c<W;c++) fxs[c]=((B.w+(c+0.5)/W*(B.e-B.w))-bb[0])/(bb[2]-bb[0])*(gw-1);
+    var span=p.max-p.min;
+    for(var r=0;r<H;r++){
+      var fy=(bb[3]-unmercY(ya-(r+0.5)/H*(ya-yb)))/(bb[3]-bb[1])*(gh-1);
+      if(fy<0||fy>gh-1) continue;
+      var y0=Math.floor(fy), y1=Math.min(y0+1,gh-1), ty=fy-y0, r0=y0*gw, r1=y1*gw;
+      for(var cc=0;cc<W;cc++){
+        var fx=fxs[cc]; if(fx<0||fx>gw-1) continue;
+        var x0=Math.floor(fx), x1=Math.min(x0+1,gw-1), tx=fx-x0;
+        var v=(g[r0+x0]*(1-tx)+g[r0+x1]*tx)*(1-ty)+(g[r1+x0]*(1-tx)+g[r1+x1]*tx)*ty;
+        if(!(v>=p.floor)) continue;                   // no data, or under the floor: leave it clear
+        var li=Math.round((v-p.min)/span*(MV_LUT-1)); li=li<0?0:(li>MV_LUT-1?MV_LUT-1:li);
+        var col=p.lut[li], q=(r*W+cc)*4;
+        o[q]=col[0]; o[q+1]=col[1]; o[q+2]=col[2]; o[q+3]=255;
+      }
+    }
+    ctx.putImageData(img,0,0);
+    return cv;
+  }
+  function mvSetLayer(cv){
+    cv.toBlob(function(blob){
+      var url=URL.createObjectURL(blob), old=MV.blobUrl, B=MV_BOX; MV.blobUrl=url;
+      if(MV.layer){ MV.layer.setUrl(url); if(!map.hasLayer(MV.layer)) MV.layer.addTo(map); }
+      else MV.layer=L.imageOverlay(url,[[B.s,B.w],[B.n,B.e]],{pane:'model',opacity:MV.op,interactive:false}).addTo(map);
+      if(old) setTimeout(function(){URL.revokeObjectURL(old);},4000);
+    });
+  }
+  var mvLegendCtl=L.control({position:'topright'});
+  mvLegendCtl.onAdd=function(){ this._d=L.DomUtil.create('div','mvlegend'); L.DomEvent.disableClickPropagation(this._d); return this._d; };
+  function mvLegend(prod,title,sub){
+    if(!mvLegendCtl._map) mvLegendCtl.addTo(map);
+    var p=MV_PAL[prod], d=mvLegendCtl._d, ticks=p.ticks.map(function(t){return '<span style="left:'+((t-p.min)/(p.max-p.min)*100)+'%">'+t+'</span>';}).join('');
+    d.innerHTML='<div class="h">'+esc(title)+'</div><div class="s">'+esc(sub)+'</div><canvas width="256" height="1"></canvas><div class="tk">'+ticks+'</div>';
+    var cv=d.querySelector('canvas'), ctx=cv.getContext('2d'), img=ctx.createImageData(256,1);
+    for(var x=0;x<256;x++){
+      var v=p.min+x/255*(p.max-p.min), col=v<p.floor?[255,255,255]:p.lut[Math.round(x/255*(MV_LUT-1))];
+      img.data.set([col[0],col[1],col[2],255],x*4);
+    }
+    ctx.putImageData(img,0,0);
+  }
+  function mvNote(msg,warn){ if(warn) toast(msg); }       // the legend carries the run; only trouble needs saying
+  function mvClear(){
+    if(MV.layer&&map.hasLayer(MV.layer)) map.removeLayer(MV.layer);
+    if(mvLegendCtl._map) mvLegendCtl.remove();
+    MV.cur=null;
+  }
+  function mvSyncUI(){
+    [].forEach.call(document.querySelectorAll('[data-mv]'),function(b){b.classList.toggle('active',b.dataset.mv===MV.prod);});
+    $('mvTime').disabled=!MV.prod; $('mvOp').disabled=!MV.prod;
+    if(!MV.prod) $('mvTime').innerHTML='';
+  }
+  function mvFillTimes(man,prod,steps){
+    var sel=$('mvTime'), want=MV.time, h='<option value="max">Day max</option>';
+    steps.forEach(function(s){
+      var v=mvValid(man,s), hr=v.getUTCHours();
+      h+='<option value="'+hr+'">'+('0'+hr).slice(-2)+'Z · '+v.toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit',timeZoneName:'short'})+'</option>';
+    });
+    sel.innerHTML=h; sel.value=want; if(sel.value!==want){ sel.value='max'; MV.time='max'; }
+  }
+  function mvShow(){
+    var seq=++MV.seq, prod=MV.prod;
+    if(!prod){ mvClear(); return; }
+    var P=MV_PAL[prod];
+    if(!$('mvTime').options.length) $('mvTime').innerHTML='<option>Loading…</option>';
+    mvRun(prod).then(function(man){
+      if(seq!==MV.seq) return;
+      var steps=mvSteps(man,prod,S.day);
+      mvFillTimes(man,prod,steps);
+      if(!steps.length){
+        mvClear(); mvNote('No '+P.label+' for '+dayLabel(S.day)+' in the newest run (it covers up to '+mvValid(man,man.fields[prod].steps[man.fields[prod].steps.length-1]).toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'})+').',true);
+        return;
+      }
+      var one=MV.time!=='max'?steps.filter(function(s){return mvValid(man,s).getUTCHours()===+MV.time;}):[];
+      var use=one.length?one:steps;
+      return Promise.all(use.map(function(s){return mvFrame(man,prod,s);})).then(function(fr){
+        if(seq!==MV.seq) return;
+        var grid=fr.length===1?fr[0]:mvMax(fr), run=new Date(man.run);
+        var runTxt=run.toLocaleString('en-AU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'UTC',hour12:false}).replace(/(\d\d):(\d\d)/,'$1$2')+'Z';
+        MV.cur={grid:grid,man:man,prod:prod,one:one.length>0,label:one.length?$('mvTime').selectedOptions[0].textContent:'day max'};
+        mvSetLayer(mvPaint(grid,man,prod));
+        if(S.ll&&$('hover').style.display==='block') showHover(cellAt(S.ll));       // a card left open reads the new field
+        mvLegend(prod,P.label+' · '+(one.length?$('mvTime').selectedOptions[0].textContent:'day max'),
+          dayLabel(S.day)+' · ECMWF 0.25°, '+runTxt+' run'+(!one.length&&use.length<8?' · '+use.length+' of 8 times in the run':''));
+      });
+    }).catch(function(e){ if(seq===MV.seq){ mvClear(); MV.prod=null; mvSyncUI(); mvNote(e.message,true); } });
+  }
+  [].forEach.call(document.querySelectorAll('[data-mv]'),function(b){ b.onclick=function(){
+    MV.prod=(MV.prod===b.dataset.mv)?null:b.dataset.mv; mvSyncUI(); mvShow();
+  }; });
+  $('mvTime').onchange=function(){ MV.time=this.value; mvShow(); };
+  $('mvOp').oninput=function(){ MV.op=this.value/100; if(MV.layer) MV.layer.setOpacity(MV.op); };
 
   // ---------------------------------------------------------------- days
   function buildTabs(){
@@ -318,6 +603,7 @@
     S.day=j; styleAll(); syncTabs();
     if(scaleChanged||!$('brushes').dataset.built) buildBrushes();
     syncStatus();
+    if(MV.prod) mvShow();
     if(S.previewOpen) previewShowDay();
   }
   function syncStatus(){
@@ -433,6 +719,7 @@
     else if(S.tool==='lasso'){ drag={ring:[e.latlng],shape:L.polyline([e.latlng],{color:'#1a56c4',weight:1.8,dashArray:'5 4',interactive:false}).addTo(map)}; }
   });
   map.on('mousemove',function(e){
+    S.ll=e.latlng;
     showHover(cellAt(e.latlng));
     if(!drag) return;
     if(S.tool==='paint'){ stepLine(drag.last,e.latlng,touchAround); drag.last=e.latlng; }
@@ -465,6 +752,11 @@
 
   // ---------------------------------------------------------------- hover card
   function fmt(v,d){ if(v==null) return '–'; return d?(+v).toFixed(d):Math.round(v); }
+  function mvHoverLine(){                              // the model viewer's value under the pointer, when an overlay is on
+    var c=MV.cur; if(!c||!S.ll) return '';
+    var v=mvAt(c.grid,c.man,S.ll.lat,S.ll.lng);
+    return '<div class="num"><span>Model viewer '+MV_PAL[c.prod].label+' ('+c.label+'):</span> '+(v!==v?'–':fmt(v,c.prod==='sweat'?0:1))+'</div>';
+  }
   function showHover(i){
     var el=$('hover'); if(i==null){ el.style.display='none'; return; }
     var j=S.day, p=S.pts[i], r=p.d[j]||{}, mine=S.cats[j][i], model=S.raw0[j][i];
@@ -475,13 +767,13 @@
       '<div class="num">CAPE '+fmt(r.cape)+' <span>J/kg</span> · Shear '+fmt(r.shear)+' <span>kt</span> · CIN '+fmt(r.cin)+'</div>'+
       '<div class="num">SCP '+fmt(r.scp,1)+' · STP '+fmt(r.stp,1)+' · SHIP '+fmt(r.ship,1)+' · DCAPE '+fmt(r.dcape)+'</div>'+
       '<div class="num">Rain '+fmt(r.rain,1)+' <span>mm</span>'+(r.rain_ecmwf!=null?' (GFS '+fmt(r.rain_ecmwf,1)+')':'')+' · Thunder '+fmt(r.tprob)+'%</div>'+
-      '<div class="num"><span>Model hazards:</span> hail '+hail+' · wind '+wind+'</div>';
+      '<div class="num"><span>Model hazards:</span> hail '+hail+' · wind '+wind+'</div>'+mvHoverLine();
     el.style.display='block';
   }
 
   // ---------------------------------------------------------------- keyboard
   document.addEventListener('keydown',function(e){
-    if(e.target.tagName==='INPUT'||document.querySelector('dialog[open]')) return;
+    if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT'||document.querySelector('dialog[open]')) return;
     var k=e.key.toLowerCase();
     if((e.metaKey||e.ctrlKey)&&k==='z'){ e.preventDefault(); if(e.shiftKey) redo(); else undo(); return; }
     if((e.metaKey||e.ctrlKey)&&k==='y'){ e.preventDefault(); redo(); return; }

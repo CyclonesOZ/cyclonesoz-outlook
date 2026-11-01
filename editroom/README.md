@@ -26,6 +26,18 @@ the same test.
 `pipeline/verify.py` skips the added points. To go back, revert the commit: edits and files on the finer
 squares still read fine, and the next publish is back to the model's own points.
 
+**Town names and the model overlay (from 1 Nov 2026):** the map draws its own town names (`towns.json`, the
+website's list with duplicates removed: dark type on a white edge, a dot on each town, bigger for bigger
+places, more as you zoom, a name moves to the left of its dot rather than overlap another). Esri's own place
+layer is no longer used; its base map still is. The **Town names** tick hides them. The **Model** buttons
+(SCP, SHIP, SWEAT) paint the model viewer's field under the names and over the squares, with its legend and
+its colour tables (tone and all) and the value under the pointer in the hover card. The time list is **Day max**
+(the highest value in the outlook day, 00Z to 00Z) or one of the run's 3-hourly steps, in this Mac's time zone;
+the slider is how strongly it shows. It follows the day tabs, uses the newest complete 0.25 degree ECMWF run
+that has the field, and reads it through this server (`/models/...`, which only passes the run list, manifests
+and ECMWF frames), because the bucket answers only the website's own origins. If a viewer palette changes,
+update `MV_PAL` in `editor.html` (source: `src/components/modelViewer/palettes.js` in the website repo).
+
 **Publishing is live (from 8 Oct 2026):** Publish checks the outlook (every point and day present,
 day 1 is today, every member summary agrees with your map), commits it to main with the Mac's
 GitHub login and pushes; the editor then watches the website until it serves your outlook. The app
