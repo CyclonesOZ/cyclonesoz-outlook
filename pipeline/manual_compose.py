@@ -164,8 +164,9 @@ def pkey(lat, lon):
 #   * an added point is flagged "interp": true, so scoring and alert scans can leave it out, and
 #     takes its numbers from the points around it (the mean of its neighbours) and its tiers from
 #     the public map's own test (below), then is made coherent with the pipeline's rules.
-# Nothing is re-run. The nightly pipeline and the edit room both go through densify(), and it is a
-# no-op on a run that is already on the finer lattice.
+# Nothing is re-run. Only the edit room's preview and publish put a run on the finer lattice (it is
+# a no-op on a run already there). The overnight run stays on the model's own points, as it always
+# has (Josh, 1 Nov 2026): it reads edits made on either lattice and publishes the old one.
 BASE_STEP = 0.72
 GRID_STEP = 0.36
 ORDINAL_KEYS = {"cat", "pregate", "hail", "wind", "flood", "fire", "hatch"}   # tiers: never averaged
@@ -525,11 +526,14 @@ def edited_cats(raw, edits):
     return cats, raw_cats, info
 
 
-def compose(raw, raw_frames=None, edits=None, published_at=None):
+def compose(raw, raw_frames=None, edits=None, published_at=None, fine=True):
     """Returns (outlook, frames, report). raw_frames is {day_number: frame file dict} or None.
-    The run is first put on the finer lattice (densify). With no edits the outlook and frames come
-    back equal to that run's."""
-    raw, raw_frames = densify(raw, raw_frames)
+    With fine (the edit room's way) the run is first put on the finer lattice (densify); the
+    overnight run passes fine=False and stays on the model's own points, taking an edit made on
+    either lattice at those points. With no edits the outlook and frames come back equal to the
+    run's."""
+    if fine:
+        raw, raw_frames = densify(raw, raw_frames)
     cats, raw_cats, info = edited_cats(raw, edits)
     out = dict(raw)
     out["dates"] = run_dates(raw)
@@ -652,7 +656,9 @@ def pipeline_main():
     edits = latest_edits(".")
     if not edits:
         print("manual outlook: no published edits yet -- publishing the raw run unchanged")
-    out, frames, report = compose(raw, raw_frames, edits)
+    # fine=False: overnight publishes the model's own points; only a Publish from the edit room
+    # writes the finer squares
+    out, frames, report = compose(raw, raw_frames, edits, fine=False)
     write_json_atomic(OUTLOOK_PATH, out)
     if frames:
         write_frames(FRAME_DIR, frames)

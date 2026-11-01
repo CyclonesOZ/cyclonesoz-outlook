@@ -282,7 +282,8 @@ def sandbox_carry_forward():
         if json.load(f).get("run_date") == raw.get("run_date"):
             return
     with _lock:
-        out, fo, rep = m.compose(raw, m.load_frames(frames_dir), edits)
+        # fine=False, as the overnight run: only a Publish writes the finer squares
+        out, fo, rep = m.compose(raw, m.load_frames(frames_dir), edits, fine=False)
         m.write_json_atomic(sp, out)
         if fo:
             m.write_frames(os.path.join(SANDBOX, "frames"), fo)

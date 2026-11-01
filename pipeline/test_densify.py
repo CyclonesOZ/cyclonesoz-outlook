@@ -192,5 +192,46 @@ class ComposeOnTheFinerLattice(unittest.TestCase):
         self.assertEqual(rep["days"][0]["changed"], 0)
 
 
+class Overnight(unittest.TestCase):
+    """The overnight run stays on the model's own points; only the edit room writes the finer ones."""
+
+    def setUp(self):
+        self.raw = run(block(5))
+        cols = ["cat", "tprob", "hail", "wind", "flood", "cape", "shear", "ship", "rain"]
+        self.frames = {1: {"day": 1, "times": ["t"], "cols": cols, "points": [
+            {"lat": p["lat"], "lon": p["lon"], "f": [[0, 0, 0, 0, 0, 100, 10, 0, 1.0]]} for p in self.raw["points"]]}}
+        dense = m.densify(self.raw)[0]
+        pts = dense["points"]
+        cat = [0] * len(pts)
+        cat[7] = 2                                                      # a model square
+        cat[next(i for i, p in enumerate(pts) if p.get("interp"))] = 3  # an added square
+        self.edits = {"points": [[p["lat"], p["lon"]] for p in pts],    # made in the edit room: finer lattice
+                      "dates": {DATES[0]: {"scale": "fine", "cat": cat}}}
+
+    def test_publishes_the_models_own_points(self):
+        out, fo, rep = m.compose(self.raw, self.frames, self.edits, fine=False)
+        self.assertEqual(len(out["points"]), 25)
+        self.assertNotIn("grid_step", out)
+        self.assertFalse(any(p.get("interp") for p in out["points"]))
+        self.assertEqual(len(fo[1]["points"]), 25)
+
+    def test_takes_the_edit_at_the_models_points(self):
+        out, _, rep = m.compose(self.raw, None, self.edits, fine=False)
+        self.assertEqual(out["points"][7]["d"][0]["cat"], 2)
+        self.assertEqual(sum(p["d"][0]["cat"] > 0 for p in out["points"]), 1)   # the added square isn't there
+        self.assertEqual((rep["days"][0]["changed"], rep["days"][0]["missing"]), (1, 0))
+
+    def test_same_as_before_for_an_edit_on_the_old_lattice(self):
+        old = {"points": [[p["lat"], p["lon"]] for p in self.raw["points"]],
+               "dates": {DATES[0]: {"scale": "fine", "cat": [2 if i == 7 else 0 for i in range(25)]}}}
+        out, _, _ = m.compose(self.raw, None, old, fine=False)
+        self.assertEqual([p["d"][0]["cat"] for p in out["points"]], [2 if i == 7 else 0 for i in range(25)])
+
+    def test_the_edit_room_way_is_still_the_finer_lattice(self):
+        out, fo, _ = m.compose(self.raw, self.frames, self.edits)
+        self.assertEqual(len(out["points"]), 81)                        # (2*5-1)**2
+        self.assertEqual(len(fo[1]["points"]), 81)
+
+
 if __name__ == "__main__":
     unittest.main()
