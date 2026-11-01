@@ -26,6 +26,7 @@ import importlib
 import json
 import os
 import posixpath
+import re
 import socketserver
 import subprocess
 import sys
@@ -294,6 +295,34 @@ def dumps(o):
     return json.dumps(o, separators=(",", ":"), ensure_ascii=False).encode()
 
 
+# ---------------------------------------------------------------- model viewer data ---------
+# The model viewer's fields (SCP, SHIP, SWEAT...) live in a public bucket that only lets the
+# website's own origins read it from a browser. The editor is on 127.0.0.1, so this server fetches
+# them and hands them on: the browser asks here, never at the bucket. Only the run list, a run's
+# manifest and its ECMWF field frames can be asked for.
+MODELS_URL = "https://models.cyclonesoz.com"
+MODEL_PATH = re.compile(r"^(index\.json|ifs-0p(?:1|25)/\d{10}/(?:manifest\.json|[a-z0-9]+/\d{3}\.png(?:\?g=\d+x\d+)?))$")
+_models = {}           # path -> (fetched at, bytes)
+MODELS_KEEP = 400      # frames kept; a day's worth of three fields at 0.1 deg is a few dozen
+
+
+def model_file(rel):
+    """(body, content type) for a model-viewer file, or None if the bucket won't give it."""
+    hit = _models.get(rel)
+    is_json = rel.split("?")[0].endswith(".json")
+    if hit and (not is_json or time.time() - hit[0] < 60):     # frames never change; run lists do
+        return hit[1], ("application/json" if is_json else "image/png")
+    r = subprocess.run(["curl", "-sf", "--max-time", "30", MODELS_URL + "/" + rel],
+                       capture_output=True, timeout=45)
+    if r.returncode != 0 or not r.stdout:
+        return None
+    if len(_models) >= MODELS_KEEP:
+        for k in sorted(_models, key=lambda k: _models[k][0])[:MODELS_KEEP // 4]:
+            del _models[k]
+    _models[rel] = (time.time(), r.stdout)
+    return r.stdout, ("application/json" if is_json else "image/png")
+
+
 # ---------------------------------------------------------------- viewer patches ------------
 PATCHES = [
     # open on the Daily view and on the editor's day, not the 3-hourly default
@@ -394,6 +423,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return self._send(200, dense_run()[2])
             if p in ("/data/coastline.geo.json", "/data/states.geo.json"):
                 return self._file(os.path.join(DOCS, p.split("/")[-1]))
+            if p == "/data/towns.json":                  # the website's town list (name, lat, lon, tier)
+                return self._file(os.path.join(HERE, "towns.json"))
+            if p.startswith("/models/"):
+                rel = p[len("/models/"):] + (("?" + url.query) if url.query else "")
+                if not MODEL_PATH.match(rel):
+                    return self._send(404, {"error": "not a model file"})
+                got = model_file(rel)
+                if not got:
+                    return self._send(502, {"error": "the model viewer's data could not be reached"})
+                return self._send(200, got[0], got[1], cache=not rel.endswith(".json"))
             if p.startswith("/preview/") or p.startswith("/sandbox/"):
                 return self._viewer_file(p)
             return self._send(404, {"error": "not found"})
