@@ -1,897 +1,43 @@
 {
- "run_date": "2026-11-02T20:05:08Z",
+ "run_date": "2026-11-03T20:03:37Z",
  "events": [
   {
-   "date": "2026-11-03",
+   "date": "2026-11-04",
    "lead": 1,
    "points": [
-    "-22.66,145.42"
-   ],
-   "n_points": 1,
-   "centroid": [
-    -22.66,
-    145.42
-   ],
-   "bbox": [
-    -22.66,
-    145.42,
-    -22.66,
-    145.42
-   ],
-   "rules": [
-    "wind_sig",
-    "wind_mod",
-    "hail_minor",
-    "storms_minor"
-   ],
-   "level": 3,
-   "districts": [
-    "Central West"
-   ],
-   "regions": [
-    "qld_inland"
-   ],
-   "peak": {
-    "cape": 3110,
-    "shear": 45,
-    "scp": 6.1,
-    "ship": 1.2,
-    "dcape": 1119,
-    "rain": 12.3,
-    "hail": 2,
-    "wind": 3,
-    "cat": 3,
-    "heat": 0,
-    "snow72": 0,
-    "rain3": 13.200000000000001
-   },
-   "window_local": "Tue 3 Nov 10:00 AEST to Wed 4 Nov 10:00 AEST",
-   "published_cat_max": 2,
-   "id": "20261103-1",
-   "first_seen": "2026-10-29T20:06:48Z",
-   "told": {
-    "level": 3,
-    "n_points": 1,
-    "centroid": [
-     -22.66,
-     145.42
-    ],
-    "rules": [
-     "wind_sig",
-     "wind_mod",
-     "hail_minor",
-     "storms_minor"
-    ]
-   },
-   "prev": {
-    "level": 3,
-    "n_points": 56,
-    "centroid": [
-     -27.16,
-     150.42
-    ],
-    "rules": [
-     "storms_sig",
-     "wind_sig",
-     "hail_mod",
-     "storms_mod_high",
-     "storms_mod_wide",
-     "tor_mod",
-     "wind_mod",
-     "hail_minor",
-     "storms_minor",
-     "tor_minor",
-     "wind_minor"
-    ]
-   }
-  },
-  {
-   "date": "2026-11-03",
-   "lead": 1,
-   "points": [
-    "-13.30,131.02",
-    "-12.58,131.02"
-   ],
-   "n_points": 2,
-   "centroid": [
-    -12.94,
-    131.02
-   ],
-   "bbox": [
-    -13.3,
-    131.02,
-    -12.58,
-    131.02
-   ],
-   "rules": [
-    "wind_mod",
-    "storms_minor"
-   ],
-   "level": 2,
-   "districts": [
-    "Daly"
-   ],
-   "regions": [
-    "tropical_north"
-   ],
-   "peak": {
-    "cape": 3961,
-    "shear": 22,
-    "scp": 3.2,
-    "ship": 0.4,
-    "dcape": 825,
-    "rain": 8.2,
-    "hail": 0,
-    "wind": 2,
-    "cat": 3,
-    "heat": 0,
-    "snow72": 0,
-    "rain3": 13.899999999999999
-   },
-   "window_local": "Tue 3 Nov 09:30 ACST to Wed 4 Nov 09:30 ACST",
-   "published_cat_max": 1,
-   "id": "20261103-10",
-   "first_seen": "2026-11-01T20:02:17Z",
-   "told": {
-    "level": 2,
-    "n_points": 1,
-    "centroid": [
-     -12.58,
-     131.02
-    ],
-    "rules": [
-     "wind_mod",
-     "storms_minor"
-    ]
-   }
-  },
-  {
-   "date": "2026-11-03",
-   "lead": 1,
-   "points": [
-    "-21.22,140.38",
-    "-21.22,141.10"
-   ],
-   "n_points": 2,
-   "centroid": [
-    -21.22,
-    140.74
-   ],
-   "bbox": [
-    -21.22,
-    140.38,
-    -21.22,
-    141.1
-   ],
-   "rules": [
-    "wind_mod",
-    "storms_minor"
-   ],
-   "level": 2,
-   "districts": [
-    "North West"
-   ],
-   "regions": [
-    "qld_inland"
-   ],
-   "peak": {
-    "cape": 4180,
-    "shear": 40,
-    "scp": 6.2,
-    "ship": 1,
-    "dcape": 1092,
-    "rain": 7.5,
-    "hail": 1,
-    "wind": 2,
-    "cat": 3,
-    "heat": 0,
-    "snow72": 0,
-    "rain3": 7.5
-   },
-   "window_local": "Tue 3 Nov 10:00 AEST to Wed 4 Nov 10:00 AEST",
-   "published_cat_max": 1,
-   "id": "20261103-10",
-   "first_seen": "2026-11-02T20:05:08Z",
-   "told": {
-    "level": 2,
-    "n_points": 2,
-    "centroid": [
-     -21.22,
-     140.74
-    ],
-    "rules": [
-     "wind_mod",
-     "storms_minor"
-    ]
-   },
-   "prev": null
-  },
-  {
-   "date": "2026-11-03",
-   "lead": 1,
-   "points": [
-    "-19.78,138.94",
-    "-19.78,139.66",
-    "-19.06,138.94"
-   ],
-   "n_points": 3,
-   "centroid": [
-    -19.54,
-    139.18
-   ],
-   "bbox": [
-    -19.78,
-    138.94,
-    -19.06,
-    139.66
-   ],
-   "rules": [
-    "storms_minor",
-    "wind_minor"
-   ],
-   "level": 1,
-   "districts": [
-    "North West",
-    "Gulf Country"
-   ],
-   "regions": [
-    "qld_inland"
-   ],
-   "peak": {
-    "cape": 3746,
-    "shear": 32,
-    "scp": 2.2,
-    "ship": 0.5,
-    "dcape": 966,
-    "rain": 9.6,
-    "hail": 1,
-    "wind": 1,
-    "cat": 3,
-    "heat": 0,
-    "snow72": 0,
-    "rain3": 12.3
-   },
-   "window_local": "Tue 3 Nov 10:00 AEST to Wed 4 Nov 10:00 AEST",
-   "published_cat_max": 1,
-   "id": "20261103-11",
-   "first_seen": "2026-11-02T20:05:08Z",
-   "told": {
-    "level": 1,
-    "n_points": 3,
-    "centroid": [
-     -19.54,
-     139.18
-    ],
-    "rules": [
-     "storms_minor",
-     "wind_minor"
-    ]
-   },
-   "prev": null
-  },
-  {
-   "date": "2026-11-03",
-   "lead": 1,
-   "points": [
-    "-19.78,143.98",
-    "-19.06,143.98"
-   ],
-   "n_points": 2,
-   "centroid": [
-    -19.42,
-    143.98
-   ],
-   "bbox": [
-    -19.78,
-    143.98,
-    -19.06,
-    143.98
-   ],
-   "rules": [
-    "storms_minor"
-   ],
-   "level": 1,
-   "districts": [
-    "Northern Goldfields and Upper Flinders"
-   ],
-   "regions": [
-    "qld_inland"
-   ],
-   "peak": {
-    "cape": 3219,
-    "shear": 37,
-    "scp": 3.9,
-    "ship": 0.6,
-    "dcape": 846,
-    "rain": 6.3,
-    "hail": 1,
-    "wind": 1,
-    "cat": 3,
-    "heat": 0,
-    "snow72": 0,
-    "rain3": 7.2
-   },
-   "window_local": "Tue 3 Nov 10:00 AEST to Wed 4 Nov 10:00 AEST",
-   "published_cat_max": 2,
-   "id": "20261103-12",
-   "first_seen": "2026-11-02T20:05:08Z",
-   "told": {
-    "level": 1,
-    "n_points": 2,
-    "centroid": [
-     -19.42,
-     143.98
-    ],
-    "rules": [
-     "storms_minor"
-    ]
-   },
-   "prev": null
-  },
-  {
-   "date": "2026-11-03",
-   "lead": 1,
-   "points": [
-    "-25.54,126.70",
-    "-24.82,123.10",
-    "-24.82,123.82",
-    "-24.82,125.26",
-    "-24.82,125.98",
-    "-24.82,126.70",
-    "-24.82,127.42",
-    "-24.82,128.14",
-    "-24.10,121.66",
-    "-24.10,122.38",
-    "-24.10,123.82",
-    "-24.10,124.54",
-    "-24.10,125.26",
-    "-24.10,125.98",
-    "-24.10,126.70",
-    "-24.10,127.42",
-    "-24.10,129.58",
-    "-24.10,130.30",
-    "-24.10,131.02",
-    "-24.10,131.74",
-    "-23.38,120.94",
-    "-23.38,121.66",
-    "-23.38,123.10",
-    "-23.38,123.82",
-    "-23.38,124.54",
-    "-23.38,125.26",
-    "-23.38,125.98",
-    "-23.38,126.70",
-    "-23.38,127.42",
-    "-23.38,128.14",
-    "-23.38,129.58",
-    "-23.38,130.30",
-    "-22.66,121.66",
-    "-22.66,123.10",
-    "-22.66,123.82",
-    "-22.66,124.54",
-    "-22.66,125.26",
-    "-22.66,125.98",
-    "-22.66,126.70",
-    "-22.66,127.42",
-    "-22.66,128.14",
-    "-22.66,128.86",
-    "-22.66,129.58",
-    "-22.66,130.30",
-    "-22.66,131.02",
-    "-21.94,119.50",
-    "-21.94,120.22",
-    "-21.94,120.94",
-    "-21.94,121.66",
-    "-21.94,122.38",
-    "-21.94,123.10",
-    "-21.94,123.82",
-    "-21.94,124.54",
-    "-21.94,125.98",
-    "-21.94,126.70",
-    "-21.94,127.42",
-    "-21.94,129.58",
-    "-21.22,118.06",
-    "-21.22,118.78",
-    "-21.22,120.22",
-    "-21.22,121.66",
-    "-21.22,123.10",
-    "-21.22,123.82",
-    "-21.22,124.54",
-    "-21.22,125.26",
-    "-21.22,126.70",
-    "-21.22,127.42",
-    "-21.22,128.86",
-    "-21.22,129.58",
-    "-20.50,118.78",
-    "-20.50,119.50",
-    "-20.50,125.26",
-    "-20.50,126.70",
-    "-20.50,127.42",
-    "-20.50,128.14",
-    "-20.50,128.86",
-    "-20.50,129.58",
-    "-19.78,125.98",
-    "-19.78,126.70",
-    "-19.78,127.42"
-   ],
-   "n_points": 80,
-   "centroid": [
-    -22.56,
-    125.49
-   ],
-   "bbox": [
-    -25.54,
-    118.06,
-    -19.78,
-    131.74
-   ],
-   "rules": [
-    "fire_minor"
-   ],
-   "level": 1,
-   "districts": [
-    "North Interior",
-    "South Interior",
-    "Pilbara",
-    "Lasseter",
-    "Tanami",
-    "Kimberley"
-   ],
-   "regions": [
-    "interior_arid",
-    "pilbara_gascoyne"
-   ],
-   "peak": {
-    "cape": 420,
-    "shear": 26,
-    "scp": 0.1,
-    "ship": 0,
-    "dcape": 1532,
-    "rain": 0,
-    "hail": 0,
-    "wind": 0,
-    "cat": 0,
-    "heat": 0,
-    "snow72": 0,
-    "rain3": 3.9
-   },
-   "window_local": "Tue 3 Nov 08:00 AWST to Wed 4 Nov 08:00 AWST",
-   "published_cat_max": 0,
-   "id": "20261103-3",
-   "first_seen": "2026-10-29T20:06:48Z",
-   "told": {
-    "level": 1,
-    "n_points": 94,
-    "centroid": [
-     -22.25,
-     125.25
-    ],
-    "rules": [
-     "fire_minor"
-    ]
-   }
-  },
-  {
-   "date": "2026-11-03",
-   "lead": 1,
-   "points": [
+    "-25.54,137.50",
+    "-25.54,138.22",
+    "-25.54,138.94",
+    "-25.54,139.66",
+    "-24.82,136.06",
+    "-24.82,136.78",
+    "-24.82,137.50",
     "-24.82,138.22",
     "-24.82,138.94",
+    "-24.10,136.78",
+    "-24.10,137.50",
     "-24.10,138.22",
     "-24.10,138.94",
-    "-23.38,138.22",
-    "-23.38,138.94"
-   ],
-   "n_points": 6,
-   "centroid": [
-    -24.1,
-    138.58
-   ],
-   "bbox": [
-    -24.82,
-    138.22,
-    -23.38,
-    138.94
-   ],
-   "rules": [
-    "fire_minor"
-   ],
-   "level": 1,
-   "districts": [
-    "Channel Country"
-   ],
-   "regions": [
-    "qld_inland"
-   ],
-   "peak": {
-    "cape": 29,
-    "shear": 23,
-    "scp": 0,
-    "ship": 0,
-    "dcape": 1304,
-    "rain": 0.1,
-    "hail": 0,
-    "wind": 0,
-    "cat": 0,
-    "heat": 0,
-    "snow72": 0,
-    "rain3": 0.1
-   },
-   "window_local": "Tue 3 Nov 10:00 AEST to Wed 4 Nov 10:00 AEST",
-   "published_cat_max": 0,
-   "id": "20261103-5",
-   "first_seen": "2026-10-29T20:06:48Z",
-   "told": {
-    "level": 1,
-    "n_points": 6,
-    "centroid": [
-     -24.1,
-     138.58
-    ],
-    "rules": [
-     "fire_minor"
-    ]
-   },
-   "prev": {
-    "level": 1,
-    "n_points": 23,
-    "centroid": [
-     -24.23,
-     140.91
-    ],
-    "rules": [
-     "fire_minor"
-    ]
-   }
-  },
-  {
-   "date": "2026-11-03",
-   "lead": 1,
-   "points": [
-    "-32.02,151.90",
-    "-31.30,151.90",
-    "-31.30,152.62",
-    "-30.58,151.90",
-    "-30.58,152.62",
-    "-29.86,150.46",
-    "-29.86,151.18",
-    "-29.86,151.90",
-    "-29.86,152.62",
-    "-29.14,150.46",
-    "-29.14,151.18",
-    "-29.14,151.90",
-    "-29.14,152.62",
-    "-29.14,153.34",
-    "-28.42,150.46",
-    "-28.42,151.18",
-    "-28.42,151.90",
-    "-28.42,152.62",
-    "-28.42,153.34",
-    "-27.70,149.74",
-    "-27.70,150.46",
-    "-27.70,151.18",
-    "-27.70,151.90",
-    "-27.70,152.62",
-    "-27.70,153.34",
-    "-26.98,149.02",
-    "-26.98,149.74",
-    "-26.98,150.46",
-    "-26.98,151.18",
-    "-26.98,151.90",
-    "-26.98,152.62",
-    "-26.26,146.86",
-    "-26.26,147.58",
-    "-26.26,148.30",
-    "-26.26,149.02",
-    "-26.26,149.74",
-    "-26.26,150.46",
-    "-26.26,151.18",
-    "-26.26,151.90",
-    "-26.26,152.62",
-    "-25.54,146.86",
-    "-25.54,147.58",
-    "-25.54,148.30",
-    "-25.54,149.02",
-    "-25.54,149.74",
-    "-25.54,150.46",
-    "-25.54,151.18",
-    "-25.54,151.90",
-    "-25.54,152.62",
-    "-24.82,146.86",
-    "-24.82,147.58",
-    "-24.82,148.30",
-    "-24.82,149.74",
-    "-24.82,150.46",
-    "-24.82,151.18",
-    "-24.10,148.30"
-   ],
-   "n_points": 56,
-   "centroid": [
-    -27.33,
-    150.68
-   ],
-   "bbox": [
-    -32.02,
-    146.86,
-    -24.1,
-    153.34
-   ],
-   "rules": [
-    "storms_sig",
-    "wind_sig",
-    "hail_mod",
-    "storms_mod_high",
-    "storms_mod_wide",
-    "tor_mod",
-    "wind_mod",
-    "hail_minor",
-    "storms_minor",
-    "tor_minor",
-    "wind_minor"
-   ],
-   "level": 3,
-   "districts": [
-    "Darling Downs and Granite Belt",
-    "Wide Bay and Burnett",
-    "Central Highlands and Coalfields",
-    "Northern Tablelands",
-    "Maranoa and Warrego",
-    "Mid North Coast"
-   ],
-   "regions": [
-    "nsw_qld_coast",
-    "qld_inland",
-    "tropical_qld_coast"
-   ],
-   "peak": {
-    "cape": 3503,
-    "shear": 52,
-    "scp": 16,
-    "ship": 1.7,
-    "dcape": 1036,
-    "rain": 26.1,
-    "hail": 2,
-    "wind": 3,
-    "cat": 4,
-    "heat": 0,
-    "snow72": 0,
-    "rain3": 26.400000000000002
-   },
-   "window_local": "Tue 3 Nov 10:00 AEST to Wed 4 Nov 10:00 AEST",
-   "published_cat_max": 4,
-   "id": "20261103-6",
-   "first_seen": "2026-11-02T20:05:08Z",
-   "told": {
-    "level": 3,
-    "n_points": 56,
-    "centroid": [
-     -27.33,
-     150.68
-    ],
-    "rules": [
-     "storms_sig",
-     "wind_sig",
-     "hail_mod",
-     "storms_mod_high",
-     "storms_mod_wide",
-     "tor_mod",
-     "wind_mod",
-     "hail_minor",
-     "storms_minor",
-     "tor_minor",
-     "wind_minor"
-    ]
-   },
-   "prev": null
-  },
-  {
-   "date": "2026-11-03",
-   "lead": 1,
-   "points": [
-    "-23.38,146.86"
-   ],
-   "n_points": 1,
-   "centroid": [
-    -23.38,
-    146.86
-   ],
-   "bbox": [
-    -23.38,
-    146.86,
-    -23.38,
-    146.86
-   ],
-   "rules": [
-    "hail_minor"
-   ],
-   "level": 1,
-   "districts": [
-    "Central Highlands and Coalfields"
-   ],
-   "regions": [
-    "tropical_qld_coast"
-   ],
-   "peak": {
-    "cape": 2759,
-    "shear": 45,
-    "scp": 6.4,
-    "ship": 1.2,
-    "dcape": 1032,
-    "rain": 0.6,
-    "hail": 2,
-    "wind": 1,
-    "cat": 2,
-    "heat": 0,
-    "snow72": 0,
-    "rain3": 0.6
-   },
-   "window_local": "Tue 3 Nov 10:00 AEST to Wed 4 Nov 10:00 AEST",
-   "published_cat_max": 3,
-   "id": "20261103-7",
-   "first_seen": "2026-11-02T20:05:08Z",
-   "told": {
-    "level": 1,
-    "n_points": 1,
-    "centroid": [
-     -23.38,
-     146.86
-    ],
-    "rules": [
-     "hail_minor"
-    ]
-   },
-   "prev": null
-  },
-  {
-   "date": "2026-11-03",
-   "lead": 1,
-   "points": [
-    "-21.94,142.54",
-    "-21.94,143.26",
-    "-21.22,142.54",
-    "-21.22,143.98",
-    "-21.22,144.70"
-   ],
-   "n_points": 5,
-   "centroid": [
-    -21.51,
-    143.4
-   ],
-   "bbox": [
-    -21.94,
-    142.54,
-    -21.22,
-    144.7
-   ],
-   "rules": [
-    "wind_mod",
-    "storms_minor",
-    "wind_minor"
-   ],
-   "level": 2,
-   "districts": [
-    "Northern Goldfields and Upper Flinders",
-    "Central West"
-   ],
-   "regions": [
-    "qld_inland"
-   ],
-   "peak": {
-    "cape": 3628,
-    "shear": 37,
-    "scp": 4.3,
-    "ship": 0.8,
-    "dcape": 1231,
-    "rain": 14.7,
-    "hail": 1,
-    "wind": 2,
-    "cat": 3,
-    "heat": 0,
-    "snow72": 0,
-    "rain3": 14.7
-   },
-   "window_local": "Tue 3 Nov 10:00 AEST to Wed 4 Nov 10:00 AEST",
-   "published_cat_max": 2,
-   "id": "20261103-8",
-   "first_seen": "2026-11-02T20:05:08Z",
-   "told": {
-    "level": 2,
-    "n_points": 5,
-    "centroid": [
-     -21.51,
-     143.4
-    ],
-    "rules": [
-     "wind_mod",
-     "storms_minor",
-     "wind_minor"
-    ]
-   },
-   "prev": null
-  },
-  {
-   "date": "2026-11-03",
-   "lead": 1,
-   "points": [
-    "-21.22,135.34"
-   ],
-   "n_points": 1,
-   "centroid": [
-    -21.22,
-    135.34
-   ],
-   "bbox": [
-    -21.22,
-    135.34,
-    -21.22,
-    135.34
-   ],
-   "rules": [
-    "storms_minor"
-   ],
-   "level": 1,
-   "districts": [
-    "Barkly"
-   ],
-   "regions": [
-    "interior_arid"
-   ],
-   "peak": {
-    "cape": 3209,
-    "shear": 30,
-    "scp": 2.4,
-    "ship": 0.4,
-    "dcape": 1054,
-    "rain": 6.3,
-    "hail": 1,
-    "wind": 1,
-    "cat": 3,
-    "heat": 0,
-    "snow72": 0,
-    "rain3": 6.3
-   },
-   "window_local": "Tue 3 Nov 09:30 ACST to Wed 4 Nov 09:30 ACST",
-   "published_cat_max": 0,
-   "id": "20261103-9",
-   "first_seen": "2026-11-02T20:05:08Z",
-   "told": {
-    "level": 1,
-    "n_points": 1,
-    "centroid": [
-     -21.22,
-     135.34
-    ],
-    "rules": [
-     "storms_minor"
-    ]
-   },
-   "prev": null
-  },
-  {
-   "date": "2026-11-04",
-   "lead": 2,
-   "points": [
-    "-24.10,137.50",
-    "-24.10,138.94",
     "-23.38,137.50",
+    "-23.38,138.22",
     "-23.38,138.94",
-    "-22.66,137.50",
     "-22.66,138.22",
     "-22.66,138.94",
     "-22.66,139.66",
-    "-21.94,137.50",
-    "-21.94,139.66",
-    "-21.22,138.22"
+    "-22.66,140.38",
+    "-21.94,138.22",
+    "-21.22,137.50"
    ],
-   "n_points": 11,
+   "n_points": 22,
    "centroid": [
-    -22.79,
-    138.42
+    -23.94,
+    138.22
    ],
    "bbox": [
-    -24.1,
-    137.5,
+    -25.54,
+    136.06,
     -21.22,
-    139.66
+    140.38
    ],
    "rules": [
     "fire_minor"
@@ -899,8 +45,8 @@
    "level": 1,
    "districts": [
     "Channel Country",
-    "North West",
     "Simpson",
+    "North West",
     "Barkly"
    ],
    "regions": [
@@ -908,24 +54,35 @@
     "qld_inland"
    ],
    "peak": {
-    "cape": 1198,
-    "shear": 27,
-    "scp": 0.6,
-    "ship": 0.2,
-    "dcape": 1500,
+    "cape": 703,
+    "shear": 28,
+    "scp": 0.2,
+    "ship": 0.1,
+    "dcape": 1462,
     "rain": 0,
     "hail": 0,
     "wind": 0,
     "cat": 0,
     "heat": 0,
-    "snow72": 0,
-    "rain3": 9
+    "snow72": 0.0,
+    "rain3": 0
    },
    "window_local": "Wed 4 Nov 10:00 AEST to Thu 5 Nov 10:00 AEST",
    "published_cat_max": 1,
    "id": "20261104-1",
    "first_seen": "2026-10-30T20:03:31Z",
    "told": {
+    "level": 1,
+    "n_points": 22,
+    "centroid": [
+     -23.94,
+     138.22
+    ],
+    "rules": [
+     "fire_minor"
+    ]
+   },
+   "prev": {
     "level": 1,
     "n_points": 11,
     "centroid": [
@@ -935,74 +92,61 @@
     "rules": [
      "fire_minor"
     ]
-   },
-   "prev": {
-    "level": 1,
-    "n_points": 21,
-    "centroid": [
-     -24.17,
-     137.81
-    ],
-    "rules": [
-     "fire_minor"
-    ]
    }
   },
   {
    "date": "2026-11-04",
-   "lead": 2,
+   "lead": 1,
    "points": [
-    "-19.78,138.94"
+    "-18.34,140.38"
    ],
    "n_points": 1,
    "centroid": [
-    -19.78,
-    138.94
+    -18.34,
+    140.38
    ],
    "bbox": [
-    -19.78,
-    138.94,
-    -19.78,
-    138.94
+    -18.34,
+    140.38,
+    -18.34,
+    140.38
    ],
    "rules": [
-    "wind_mod",
     "storms_minor"
    ],
-   "level": 2,
+   "level": 1,
    "districts": [
-    "North West"
+    "Gulf Country"
    ],
    "regions": [
-    "qld_inland"
+    "tropical_north"
    ],
    "peak": {
-    "cape": 3514,
-    "shear": 31,
-    "scp": 1.6,
-    "ship": 0.4,
-    "dcape": 1194,
-    "rain": 2.1,
+    "cape": 4410,
+    "shear": 28,
+    "scp": 2.8,
+    "ship": 0.5,
+    "dcape": 1070,
+    "rain": 3.3,
     "hail": 1,
-    "wind": 2,
+    "wind": 1,
     "cat": 3,
     "heat": 0,
-    "snow72": 0,
-    "rain3": 12.3
+    "snow72": 0.0,
+    "rain3": 7.1
    },
    "window_local": "Wed 4 Nov 10:00 AEST to Thu 5 Nov 10:00 AEST",
    "published_cat_max": 1,
    "id": "20261104-10",
-   "first_seen": "2026-11-02T20:05:08Z",
+   "first_seen": "2026-11-03T20:03:37Z",
    "told": {
-    "level": 2,
+    "level": 1,
     "n_points": 1,
     "centroid": [
-     -19.78,
-     138.94
+     -18.34,
+     140.38
     ],
     "rules": [
-     "wind_mod",
      "storms_minor"
     ]
    },
@@ -1010,18 +154,71 @@
   },
   {
    "date": "2026-11-04",
-   "lead": 2,
+   "lead": 1,
+   "points": [
+    "-16.90,138.22"
+   ],
+   "n_points": 1,
+   "centroid": [
+    -16.9,
+    138.22
+   ],
+   "bbox": [
+    -16.9,
+    138.22,
+    -16.9,
+    138.22
+   ],
+   "rules": [
+    "storms_minor"
+   ],
+   "level": 1,
+   "districts": [
+    "Gulf Country"
+   ],
+   "regions": [
+    "tropical_north"
+   ],
+   "peak": {
+    "cape": 3358,
+    "shear": 29,
+    "scp": 3.2,
+    "ship": 0.4,
+    "dcape": 984,
+    "rain": 3.6,
+    "hail": 0,
+    "wind": 1,
+    "cat": 3,
+    "heat": 0,
+    "snow72": 0.0,
+    "rain3": 4.8
+   },
+   "window_local": "Wed 4 Nov 10:00 AEST to Thu 5 Nov 10:00 AEST",
+   "published_cat_max": 1,
+   "id": "20261104-11",
+   "first_seen": "2026-11-03T20:03:37Z",
+   "told": {
+    "level": 1,
+    "n_points": 1,
+    "centroid": [
+     -16.9,
+     138.22
+    ],
+    "rules": [
+     "storms_minor"
+    ]
+   },
+   "prev": null
+  },
+  {
+   "date": "2026-11-04",
+   "lead": 1,
    "points": [
     "-24.82,127.42",
     "-24.10,123.82",
-    "-24.10,124.54",
-    "-24.10,125.26",
     "-24.10,125.98",
     "-24.10,126.70",
     "-24.10,127.42",
-    "-24.10,128.86",
-    "-24.10,131.74",
-    "-23.38,121.66",
     "-23.38,122.38",
     "-23.38,123.10",
     "-23.38,123.82",
@@ -1046,6 +243,8 @@
     "-22.66,128.86",
     "-22.66,129.58",
     "-22.66,130.30",
+    "-22.66,131.02",
+    "-21.94,119.50",
     "-21.94,120.22",
     "-21.94,120.94",
     "-21.94,121.66",
@@ -1060,6 +259,8 @@
     "-21.94,128.14",
     "-21.94,128.86",
     "-21.94,129.58",
+    "-21.94,130.30",
+    "-21.22,118.06",
     "-21.22,118.78",
     "-21.22,120.22",
     "-21.22,121.66",
@@ -1074,6 +275,7 @@
     "-21.22,128.14",
     "-21.22,128.86",
     "-21.22,129.58",
+    "-20.50,118.06",
     "-20.50,118.78",
     "-20.50,119.50",
     "-20.50,120.22",
@@ -1098,25 +300,32 @@
     "-19.78,125.26",
     "-19.78,125.98",
     "-19.78,126.70",
+    "-19.06,121.66",
     "-19.06,122.38",
     "-19.06,123.10",
     "-19.06,123.82",
     "-19.06,124.54",
     "-19.06,125.26",
     "-19.06,125.98",
+    "-18.34,122.38",
+    "-18.34,123.10",
     "-18.34,123.82",
-    "-18.34,125.26"
+    "-18.34,124.54",
+    "-18.34,125.26",
+    "-17.62,122.38",
+    "-17.62,123.10",
+    "-17.62,125.26"
    ],
-   "n_points": 94,
+   "n_points": 101,
    "centroid": [
-    -21.64,
-    125.08
+    -21.28,
+    124.8
    ],
    "bbox": [
     -24.82,
-    118.78,
-    -18.34,
-    131.74
+    118.06,
+    -17.62,
+    131.02
    ],
    "rules": [
     "fire_minor"
@@ -1126,9 +335,9 @@
     "North Interior",
     "Kimberley",
     "Pilbara",
+    "Tanami",
     "South Interior",
-    "Lasseter",
-    "Tanami"
+    "Lasseter"
    ],
    "regions": [
     "interior_arid",
@@ -1136,18 +345,18 @@
     "tropical_north"
    ],
    "peak": {
-    "cape": 1188,
-    "shear": 34,
-    "scp": 0.4,
-    "ship": 0.1,
-    "dcape": 1684,
+    "cape": 2914,
+    "shear": 18,
+    "scp": 0.2,
+    "ship": 0.3,
+    "dcape": 1597,
     "rain": 0,
     "hail": 0,
     "wind": 0,
     "cat": 0,
     "heat": 0,
-    "snow72": 0,
-    "rain3": 23.7
+    "snow72": 0.0,
+    "rain3": 4.8
    },
    "window_local": "Wed 4 Nov 08:00 AWST to Thu 5 Nov 08:00 AWST",
    "published_cat_max": 0,
@@ -1167,27 +376,33 @@
   },
   {
    "date": "2026-11-04",
-   "lead": 2,
+   "lead": 1,
    "points": [
+    "-32.02,141.82",
+    "-32.02,142.54",
+    "-32.02,143.26",
     "-31.30,140.38",
     "-31.30,141.10",
     "-31.30,141.82",
     "-31.30,142.54",
+    "-31.30,143.26",
     "-30.58,139.66",
     "-30.58,141.10",
     "-30.58,141.82",
-    "-29.86,139.66"
+    "-30.58,142.54",
+    "-30.58,143.26",
+    "-29.86,142.54"
    ],
-   "n_points": 8,
+   "n_points": 14,
    "centroid": [
-    -30.85,
-    141.01
+    -31.09,
+    141.97
    ],
    "bbox": [
-    -31.3,
+    -32.02,
     139.66,
     -29.86,
-    142.54
+    143.26
    ],
    "rules": [
     "fire_minor"
@@ -1195,6 +410,7 @@
    "level": 1,
    "districts": [
     "Upper Western",
+    "Lower Western",
     "North East Pastoral"
    ],
    "regions": [
@@ -1203,17 +419,17 @@
     "sa_southeast"
    ],
    "peak": {
-    "cape": 0,
-    "shear": 1,
+    "cape": 4,
+    "shear": 7,
     "scp": 0,
     "ship": 0,
-    "dcape": 994,
+    "dcape": 1001,
     "rain": 0,
     "hail": 0,
     "wind": 0,
     "cat": 0,
     "heat": 0,
-    "snow72": 0,
+    "snow72": 0.0,
     "rain3": 0
    },
    "window_local": "Wed 4 Nov 11:00 AEDT to Thu 5 Nov 11:00 AEDT",
@@ -1221,6 +437,17 @@
    "id": "20261104-7",
    "first_seen": "2026-11-02T20:05:08Z",
    "told": {
+    "level": 1,
+    "n_points": 14,
+    "centroid": [
+     -31.09,
+     141.97
+    ],
+    "rules": [
+     "fire_minor"
+    ]
+   },
+   "prev": {
     "level": 1,
     "n_points": 8,
     "centroid": [
@@ -1230,81 +457,143 @@
     "rules": [
      "fire_minor"
     ]
-   },
-   "prev": null
+   }
   },
   {
    "date": "2026-11-04",
-   "lead": 2,
+   "lead": 1,
    "points": [
-    "-24.82,141.82",
-    "-24.10,142.54",
-    "-24.10,143.26",
-    "-23.38,141.10",
-    "-23.38,141.82",
-    "-23.38,142.54",
-    "-23.38,143.26",
-    "-22.66,141.82",
-    "-22.66,142.54",
-    "-22.66,143.98"
+    "-21.22,144.70",
+    "-21.22,145.42",
+    "-21.22,146.14",
+    "-20.50,144.70"
    ],
-   "n_points": 10,
+   "n_points": 4,
    "centroid": [
-    -23.45,
-    142.47
+    -21.04,
+    145.24
    ],
    "bbox": [
-    -24.82,
-    141.1,
-    -22.66,
-    143.98
+    -21.22,
+    144.7,
+    -20.5,
+    146.14
    ],
    "rules": [
-    "fire_minor"
+    "wind_mod",
+    "storms_minor",
+    "wind_minor"
    ],
-   "level": 1,
+   "level": 2,
    "districts": [
-    "Central West",
-    "North West",
-    "Channel Country"
+    "Northern Goldfields and Upper Flinders",
+    "Central Highlands and Coalfields",
+    "Central West"
    ],
    "regions": [
-    "qld_inland"
+    "qld_inland",
+    "tropical_qld_coast"
    ],
    "peak": {
-    "cape": 490,
-    "shear": 15,
-    "scp": 0.5,
-    "ship": 0.1,
-    "dcape": 1465,
-    "rain": 0,
-    "hail": 0,
-    "wind": 0,
-    "cat": 0,
+    "cape": 3449,
+    "shear": 31,
+    "scp": 2.9,
+    "ship": 0.6,
+    "dcape": 1188,
+    "rain": 15.3,
+    "hail": 1,
+    "wind": 2,
+    "cat": 3,
     "heat": 0,
-    "snow72": 0,
-    "rain3": 0
+    "snow72": 0.0,
+    "rain3": 16.8
    },
    "window_local": "Wed 4 Nov 10:00 AEST to Thu 5 Nov 10:00 AEST",
-   "published_cat_max": 1,
-   "id": "20261104-8",
-   "first_seen": "2026-11-02T20:05:08Z",
+   "published_cat_max": 2,
+   "id": "20261104-7",
+   "first_seen": "2026-11-03T20:03:37Z",
    "told": {
-    "level": 1,
-    "n_points": 10,
+    "level": 2,
+    "n_points": 4,
     "centroid": [
-     -23.45,
-     142.47
+     -21.04,
+     145.24
     ],
     "rules": [
-     "fire_minor"
+     "wind_mod",
+     "storms_minor",
+     "wind_minor"
     ]
    },
    "prev": null
   },
   {
    "date": "2026-11-04",
-   "lead": 2,
+   "lead": 1,
+   "points": [
+    "-20.50,140.38",
+    "-19.78,139.66",
+    "-19.78,140.38"
+   ],
+   "n_points": 3,
+   "centroid": [
+    -20.02,
+    140.14
+   ],
+   "bbox": [
+    -20.5,
+    139.66,
+    -19.78,
+    140.38
+   ],
+   "rules": [
+    "wind_mod",
+    "storms_minor",
+    "wind_minor"
+   ],
+   "level": 2,
+   "districts": [
+    "North West"
+   ],
+   "regions": [
+    "qld_inland"
+   ],
+   "peak": {
+    "cape": 3837,
+    "shear": 35,
+    "scp": 2.3,
+    "ship": 0.6,
+    "dcape": 1236,
+    "rain": 3.3,
+    "hail": 1,
+    "wind": 2,
+    "cat": 3,
+    "heat": 0,
+    "snow72": 0.0,
+    "rain3": 10.8
+   },
+   "window_local": "Wed 4 Nov 10:00 AEST to Thu 5 Nov 10:00 AEST",
+   "published_cat_max": 1,
+   "id": "20261104-8",
+   "first_seen": "2026-11-03T20:03:37Z",
+   "told": {
+    "level": 2,
+    "n_points": 3,
+    "centroid": [
+     -20.02,
+     140.14
+    ],
+    "rules": [
+     "wind_mod",
+     "storms_minor",
+     "wind_minor"
+    ]
+   },
+   "prev": null
+  },
+  {
+   "date": "2026-11-04",
+   "lead": 1,
    "points": [
     "-24.10,151.18"
    ],
@@ -1332,18 +621,18 @@
     "tropical_qld_coast"
    ],
    "peak": {
-    "cape": 3094,
-    "shear": 33,
-    "scp": 9.1,
+    "cape": 3200,
+    "shear": 34,
+    "scp": 9.2,
     "ship": 0.7,
-    "dcape": 1046,
-    "rain": 2.5,
+    "dcape": 1168,
+    "rain": 2.1,
     "hail": 1,
     "wind": 3,
     "cat": 3,
     "heat": 0,
-    "snow72": 0,
-    "rain3": 2.7
+    "snow72": 0.0,
+    "rain3": 2.4
    },
    "window_local": "Wed 4 Nov 10:00 AEST to Thu 5 Nov 10:00 AEST",
    "published_cat_max": 2,
@@ -1361,20 +650,76 @@
      "wind_mod",
      "storms_minor"
     ]
+   }
+  },
+  {
+   "date": "2026-11-04",
+   "lead": 1,
+   "points": [
+    "-19.06,143.26",
+    "-19.06,143.98"
+   ],
+   "n_points": 2,
+   "centroid": [
+    -19.06,
+    143.62
+   ],
+   "bbox": [
+    -19.06,
+    143.26,
+    -19.06,
+    143.98
+   ],
+   "rules": [
+    "storms_minor"
+   ],
+   "level": 1,
+   "districts": [
+    "Northern Goldfields and Upper Flinders"
+   ],
+   "regions": [
+    "qld_inland"
+   ],
+   "peak": {
+    "cape": 3489,
+    "shear": 26,
+    "scp": 1.4,
+    "ship": 0.4,
+    "dcape": 1097,
+    "rain": 8.4,
+    "hail": 0,
+    "wind": 1,
+    "cat": 3,
+    "heat": 0,
+    "snow72": 0.0,
+    "rain3": 13.1
+   },
+   "window_local": "Wed 4 Nov 10:00 AEST to Thu 5 Nov 10:00 AEST",
+   "published_cat_max": 1,
+   "id": "20261104-9",
+   "first_seen": "2026-11-03T20:03:37Z",
+   "told": {
+    "level": 1,
+    "n_points": 2,
+    "centroid": [
+     -19.06,
+     143.62
+    ],
+    "rules": [
+     "storms_minor"
+    ]
    },
    "prev": null
   },
   {
    "date": "2026-11-05",
-   "lead": 3,
+   "lead": 2,
    "points": [
     "-27.70,115.90",
     "-27.70,116.62",
     "-26.98,115.18",
     "-26.98,115.90",
     "-26.98,116.62",
-    "-26.98,117.34",
-    "-26.98,118.06",
     "-26.26,115.18",
     "-26.26,115.90",
     "-26.26,116.62",
@@ -1386,18 +731,24 @@
     "-25.54,116.62",
     "-25.54,117.34",
     "-25.54,118.06",
+    "-24.82,115.18",
     "-24.82,115.90",
-    "-24.82,116.62"
+    "-24.82,116.62",
+    "-24.82,117.34",
+    "-24.10,115.18",
+    "-24.10,115.90",
+    "-23.38,116.62",
+    "-23.38,117.34"
    ],
-   "n_points": 20,
+   "n_points": 24,
    "centroid": [
-    -26.26,
-    116.66
+    -25.66,
+    116.47
    ],
    "bbox": [
     -27.7,
     115.18,
-    -24.82,
+    -23.38,
     118.78
    ],
    "rules": [
@@ -1405,24 +756,25 @@
    ],
    "level": 1,
    "districts": [
-    "Gascoyne"
+    "Gascoyne",
+    "Pilbara"
    ],
    "regions": [
     "pilbara_gascoyne"
    ],
    "peak": {
-    "cape": 195,
-    "shear": 24,
+    "cape": 319,
+    "shear": 32,
     "scp": 0.1,
     "ship": 0,
-    "dcape": 1577,
-    "rain": 0,
+    "dcape": 1573,
+    "rain": 0.3,
     "hail": 0,
     "wind": 0,
     "cat": 0,
     "heat": 0,
-    "snow72": 0,
-    "rain3": 0
+    "snow72": 0.0,
+    "rain3": 0.6
    },
    "window_local": "Thu 5 Nov 08:00 AWST to Fri 6 Nov 08:00 AWST",
    "published_cat_max": 0,
@@ -1442,23 +794,16 @@
   },
   {
    "date": "2026-11-05",
-   "lead": 3,
+   "lead": 2,
    "points": [
     "-23.38,124.54",
-    "-23.38,125.26",
-    "-23.38,125.98",
     "-23.38,126.70",
-    "-23.38,127.42",
-    "-22.66,121.66",
     "-22.66,123.10",
     "-22.66,123.82",
     "-22.66,124.54",
     "-22.66,125.26",
-    "-22.66,125.98",
     "-22.66,126.70",
-    "-22.66,127.42",
-    "-22.66,128.14",
-    "-22.66,128.86",
+    "-21.94,118.06",
     "-21.94,120.22",
     "-21.94,120.94",
     "-21.94,121.66",
@@ -1471,6 +816,9 @@
     "-21.94,126.70",
     "-21.94,127.42",
     "-21.94,128.14",
+    "-21.94,128.86",
+    "-21.94,129.58",
+    "-21.94,130.30",
     "-21.22,118.06",
     "-21.22,118.78",
     "-21.22,120.22",
@@ -1482,6 +830,10 @@
     "-21.22,125.26",
     "-21.22,125.98",
     "-21.22,126.70",
+    "-21.22,127.42",
+    "-21.22,128.14",
+    "-21.22,128.86",
+    "-21.22,129.58",
     "-20.50,118.06",
     "-20.50,118.78",
     "-20.50,119.50",
@@ -1493,21 +845,26 @@
     "-20.50,123.82",
     "-20.50,124.54",
     "-20.50,125.26",
+    "-20.50,125.98",
+    "-20.50,126.70",
     "-19.78,120.94",
     "-19.78,121.66",
     "-19.78,122.38",
-    "-19.78,123.10"
+    "-19.78,123.10",
+    "-19.78,123.82",
+    "-19.78,124.54",
+    "-19.78,125.26"
    ],
-   "n_points": 53,
+   "n_points": 58,
    "centroid": [
-    -21.6,
-    123.63
+    -21.28,
+    123.94
    ],
    "bbox": [
     -23.38,
     118.06,
     -19.78,
-    128.86
+    130.3
    ],
    "rules": [
     "fire_minor"
@@ -1516,25 +873,26 @@
    "districts": [
     "North Interior",
     "Pilbara",
-    "Kimberley"
+    "Kimberley",
+    "Tanami"
    ],
    "regions": [
     "interior_arid",
     "pilbara_gascoyne"
    ],
    "peak": {
-    "cape": 3678,
-    "shear": 32,
-    "scp": 0.1,
-    "ship": 0.6,
-    "dcape": 1681,
-    "rain": 0.9,
+    "cape": 3033,
+    "shear": 31,
+    "scp": 0.6,
+    "ship": 0.4,
+    "dcape": 1637,
+    "rain": 0.6,
     "hail": 0,
     "wind": 0,
     "cat": 0,
     "heat": 0,
-    "snow72": 0,
-    "rain3": 23.7
+    "snow72": 0.0,
+    "rain3": 9.3
    },
    "window_local": "Thu 5 Nov 08:00 AWST to Fri 6 Nov 08:00 AWST",
    "published_cat_max": 0,
@@ -1550,50 +908,45 @@
     "rules": [
      "fire_minor"
     ]
-   },
-   "prev": {
-    "level": 1,
-    "n_points": 100,
-    "centroid": [
-     -21.61,
-     125.26
-    ],
-    "rules": [
-     "fire_minor"
-    ]
    }
   },
   {
    "date": "2026-11-05",
-   "lead": 3,
+   "lead": 2,
    "points": [
-    "-24.82,136.06",
+    "-25.54,137.50",
+    "-25.54,138.22",
+    "-25.54,138.94",
+    "-25.54,139.66",
     "-24.82,136.78",
+    "-24.82,137.50",
+    "-24.82,138.22",
     "-24.82,138.94",
     "-24.10,136.78",
     "-24.10,137.50",
     "-24.10,138.22",
     "-24.10,138.94",
+    "-23.38,136.78",
     "-23.38,137.50",
     "-23.38,138.22",
-    "-23.38,138.94",
     "-22.66,137.50",
-    "-22.66,138.22",
-    "-22.66,138.94",
-    "-22.66,139.66",
-    "-22.66,140.38",
-    "-21.94,139.66"
+    "-21.94,136.06",
+    "-21.94,136.78",
+    "-21.94,137.50",
+    "-21.94,138.22",
+    "-21.22,136.78",
+    "-21.22,137.50"
    ],
-   "n_points": 16,
+   "n_points": 22,
    "centroid": [
-    -23.52,
-    138.26
+    -23.67,
+    137.73
    ],
    "bbox": [
-    -24.82,
+    -25.54,
     136.06,
-    -21.94,
-    140.38
+    -21.22,
+    139.66
    ],
    "rules": [
     "fire_minor"
@@ -1602,6 +955,7 @@
    "districts": [
     "Channel Country",
     "Simpson",
+    "Barkly",
     "North West"
    ],
    "regions": [
@@ -1609,21 +963,21 @@
     "qld_inland"
    ],
    "peak": {
-    "cape": 1040,
-    "shear": 43,
-    "scp": 2.1,
-    "ship": 0.2,
-    "dcape": 1480,
+    "cape": 803,
+    "shear": 24,
+    "scp": 0.6,
+    "ship": 0.1,
+    "dcape": 1541,
     "rain": 0,
     "hail": 0,
     "wind": 0,
     "cat": 0,
     "heat": 0,
-    "snow72": 0,
-    "rain3": 9
+    "snow72": 0.0,
+    "rain3": 0.2
    },
-   "window_local": "Thu 5 Nov 10:00 AEST to Fri 6 Nov 10:00 AEST",
-   "published_cat_max": 0,
+   "window_local": "Thu 5 Nov 09:30 ACST to Fri 6 Nov 09:30 ACST",
+   "published_cat_max": 1,
    "id": "20261105-3",
    "first_seen": "2026-10-31T20:04:11Z",
    "told": {
@@ -1636,35 +990,24 @@
     "rules": [
      "fire_minor"
     ]
-   },
-   "prev": {
-    "level": 1,
-    "n_points": 26,
-    "centroid": [
-     -23.32,
-     137.11
-    ],
-    "rules": [
-     "fire_minor"
-    ]
    }
   },
   {
    "date": "2026-11-05",
-   "lead": 3,
+   "lead": 2,
    "points": [
-    "-19.78,138.94"
+    "-21.22,141.10"
    ],
    "n_points": 1,
    "centroid": [
-    -19.78,
-    138.94
+    -21.22,
+    141.1
    ],
    "bbox": [
-    -19.78,
-    138.94,
-    -19.78,
-    138.94
+    -21.22,
+    141.1,
+    -21.22,
+    141.1
    ],
    "rules": [
     "wind_mod",
@@ -1678,29 +1021,29 @@
     "qld_inland"
    ],
    "peak": {
-    "cape": 3630,
-    "shear": 31,
-    "scp": 0.4,
-    "ship": 0.5,
-    "dcape": 1133,
-    "rain": 3.6,
+    "cape": 3912,
+    "shear": 37,
+    "scp": 1.6,
+    "ship": 0.8,
+    "dcape": 1322,
+    "rain": 11.4,
     "hail": 1,
     "wind": 2,
     "cat": 3,
     "heat": 0,
-    "snow72": 0,
-    "rain3": 12.6
+    "snow72": 0.0,
+    "rain3": 20.1
    },
    "window_local": "Thu 5 Nov 10:00 AEST to Fri 6 Nov 10:00 AEST",
-   "published_cat_max": 1,
+   "published_cat_max": 2,
    "id": "20261105-6",
-   "first_seen": "2026-11-02T20:05:08Z",
+   "first_seen": "2026-11-03T20:03:37Z",
    "told": {
     "level": 2,
     "n_points": 1,
     "centroid": [
-     -19.78,
-     138.94
+     -21.22,
+     141.1
     ],
     "rules": [
      "wind_mod",
@@ -1711,20 +1054,20 @@
   },
   {
    "date": "2026-11-05",
-   "lead": 3,
+   "lead": 2,
    "points": [
-    "-13.30,130.30"
+    "-19.78,139.66"
    ],
    "n_points": 1,
    "centroid": [
-    -13.3,
-    130.3
+    -19.78,
+    139.66
    ],
    "bbox": [
-    -13.3,
-    130.3,
-    -13.3,
-    130.3
+    -19.78,
+    139.66,
+    -19.78,
+    139.66
    ],
    "rules": [
     "wind_mod",
@@ -1732,35 +1075,35 @@
    ],
    "level": 2,
    "districts": [
-    "Daly"
+    "North West"
    ],
    "regions": [
-    "tropical_north"
+    "qld_inland"
    ],
    "peak": {
-    "cape": 4757,
-    "shear": 20,
-    "scp": 4.6,
+    "cape": 3770,
+    "shear": 33,
+    "scp": 1,
     "ship": 0.6,
-    "dcape": 823,
-    "rain": 11.8,
-    "hail": 0,
+    "dcape": 1148,
+    "rain": 7.5,
+    "hail": 1,
     "wind": 2,
     "cat": 3,
     "heat": 0,
-    "snow72": 0,
-    "rain3": 27.1
+    "snow72": 0.0,
+    "rain3": 8.7
    },
-   "window_local": "Thu 5 Nov 09:30 ACST to Fri 6 Nov 09:30 ACST",
+   "window_local": "Thu 5 Nov 10:00 AEST to Fri 6 Nov 10:00 AEST",
    "published_cat_max": 2,
    "id": "20261105-7",
-   "first_seen": "2026-11-02T20:05:08Z",
+   "first_seen": "2026-11-03T20:03:37Z",
    "told": {
     "level": 2,
     "n_points": 1,
     "centroid": [
-     -13.3,
-     130.3
+     -19.78,
+     139.66
     ],
     "rules": [
      "wind_mod",
@@ -1770,15 +1113,214 @@
    "prev": null
   },
   {
-   "date": "2026-11-06",
-   "lead": 4,
+   "date": "2026-11-05",
+   "lead": 2,
    "points": [
-    "-29.86,118.78",
-    "-29.86,119.50",
-    "-29.86,120.22",
+    "-19.06,138.22"
+   ],
+   "n_points": 1,
+   "centroid": [
+    -19.06,
+    138.22
+   ],
+   "bbox": [
+    -19.06,
+    138.22,
+    -19.06,
+    138.22
+   ],
+   "rules": [
+    "storms_minor"
+   ],
+   "level": 1,
+   "districts": [
+    "Gulf Country"
+   ],
+   "regions": [
+    "qld_inland"
+   ],
+   "peak": {
+    "cape": 3804,
+    "shear": 33,
+    "scp": 1.6,
+    "ship": 0.4,
+    "dcape": 948,
+    "rain": 5.4,
+    "hail": 0,
+    "wind": 1,
+    "cat": 3,
+    "heat": 0,
+    "snow72": 0.0,
+    "rain3": 8.100000000000001
+   },
+   "window_local": "Thu 5 Nov 10:00 AEST to Fri 6 Nov 10:00 AEST",
+   "published_cat_max": 3,
+   "id": "20261105-8",
+   "first_seen": "2026-11-03T20:03:37Z",
+   "told": {
+    "level": 1,
+    "n_points": 1,
+    "centroid": [
+     -19.06,
+     138.22
+    ],
+    "rules": [
+     "storms_minor"
+    ]
+   },
+   "prev": null
+  },
+  {
+   "date": "2026-11-05",
+   "lead": 2,
+   "points": [
+    "-19.06,141.82",
+    "-18.34,141.10",
+    "-18.34,141.82",
+    "-18.34,142.54"
+   ],
+   "n_points": 4,
+   "centroid": [
+    -18.52,
+    141.82
+   ],
+   "bbox": [
+    -19.06,
+    141.1,
+    -18.34,
+    142.54
+   ],
+   "rules": [
+    "wind_mod",
+    "storms_minor",
+    "wind_minor"
+   ],
+   "level": 2,
+   "districts": [
+    "Gulf Country"
+   ],
+   "regions": [
+    "qld_inland",
+    "tropical_north"
+   ],
+   "peak": {
+    "cape": 3912,
+    "shear": 32,
+    "scp": 1,
+    "ship": 0.5,
+    "dcape": 1154,
+    "rain": 14.1,
+    "hail": 1,
+    "wind": 2,
+    "cat": 3,
+    "heat": 0,
+    "snow72": 0.0,
+    "rain3": 14.100000000000001
+   },
+   "window_local": "Thu 5 Nov 10:00 AEST to Fri 6 Nov 10:00 AEST",
+   "published_cat_max": 1,
+   "id": "20261105-9",
+   "first_seen": "2026-11-03T20:03:37Z",
+   "told": {
+    "level": 2,
+    "n_points": 4,
+    "centroid": [
+     -18.52,
+     141.82
+    ],
+    "rules": [
+     "wind_mod",
+     "storms_minor",
+     "wind_minor"
+    ]
+   },
+   "prev": null
+  },
+  {
+   "date": "2026-11-06",
+   "lead": 3,
+   "points": [
+    "-25.54,137.50",
+    "-24.82,137.50",
+    "-24.82,138.22",
+    "-24.82,138.94",
+    "-24.10,137.50",
+    "-24.10,138.22",
+    "-24.10,138.94",
+    "-23.38,138.22",
+    "-23.38,138.94",
+    "-22.66,137.50",
+    "-22.66,138.22",
+    "-22.66,138.94",
+    "-22.66,139.66",
+    "-21.94,136.06",
+    "-21.94,136.78",
+    "-21.94,137.50",
+    "-21.94,138.22",
+    "-21.94,139.66",
+    "-21.22,138.22"
+   ],
+   "n_points": 19,
+   "centroid": [
+    -23.19,
+    138.14
+   ],
+   "bbox": [
+    -25.54,
+    136.06,
+    -21.22,
+    139.66
+   ],
+   "rules": [
+    "fire_minor"
+   ],
+   "level": 1,
+   "districts": [
+    "Channel Country",
+    "North West",
+    "Simpson",
+    "Barkly"
+   ],
+   "regions": [
+    "interior_arid",
+    "qld_inland"
+   ],
+   "peak": {
+    "cape": 781,
+    "shear": 21,
+    "scp": 0.1,
+    "ship": 0.1,
+    "dcape": 1408,
+    "rain": 0,
+    "hail": 0,
+    "wind": 0,
+    "cat": 0,
+    "heat": 0,
+    "snow72": 0.0,
+    "rain3": 0
+   },
+   "window_local": "Fri 6 Nov 10:00 AEST to Sat 7 Nov 10:00 AEST",
+   "published_cat_max": 1,
+   "id": "20261106-2",
+   "first_seen": "2026-11-01T20:02:17Z",
+   "told": {
+    "level": 1,
+    "n_points": 17,
+    "centroid": [
+     -24.48,
+     137.63
+    ],
+    "rules": [
+     "fire_minor"
+    ]
+   }
+  },
+  {
+   "date": "2026-11-06",
+   "lead": 3,
+   "points": [
     "-29.86,120.94",
-    "-29.86,123.10",
-    "-29.14,118.06",
+    "-29.86,121.66",
     "-29.14,118.78",
     "-29.14,119.50",
     "-29.14,120.22",
@@ -1798,17 +1340,19 @@
     "-27.70,120.22",
     "-27.70,120.94",
     "-27.70,121.66",
+    "-27.70,122.38",
     "-27.70,123.10",
-    "-27.70,123.82",
+    "-26.98,115.90",
+    "-26.98,116.62",
     "-26.98,117.34",
     "-26.98,118.06",
     "-26.98,118.78",
     "-26.98,119.50",
     "-26.98,120.22",
+    "-26.98,120.94",
     "-26.98,121.66",
     "-26.98,122.38",
     "-26.98,123.10",
-    "-26.98,123.82",
     "-26.26,115.90",
     "-26.26,116.62",
     "-26.26,117.34",
@@ -1816,30 +1360,75 @@
     "-26.26,118.78",
     "-26.26,119.50",
     "-26.26,120.22",
+    "-26.26,120.94",
+    "-26.26,122.38",
+    "-26.26,123.10",
+    "-26.26,123.82",
     "-26.26,124.54",
     "-25.54,115.90",
     "-25.54,116.62",
     "-25.54,117.34",
     "-25.54,118.06",
     "-25.54,118.78",
-    "-25.54,119.50",
+    "-25.54,123.82",
     "-24.82,115.90",
     "-24.82,116.62",
     "-24.82,117.34",
+    "-24.82,122.38",
+    "-24.82,123.10",
+    "-24.82,123.82",
+    "-24.82,125.26",
     "-24.10,115.90",
-    "-23.38,115.90",
-    "-23.38,116.62"
+    "-24.10,120.94",
+    "-24.10,121.66",
+    "-24.10,122.38",
+    "-24.10,123.10",
+    "-24.10,123.82",
+    "-24.10,124.54",
+    "-24.10,125.26",
+    "-23.38,120.94",
+    "-23.38,121.66",
+    "-23.38,122.38",
+    "-23.38,123.10",
+    "-23.38,123.82",
+    "-23.38,124.54",
+    "-23.38,125.26",
+    "-23.38,125.98",
+    "-22.66,123.10",
+    "-22.66,123.82",
+    "-22.66,124.54",
+    "-22.66,125.26",
+    "-22.66,125.98",
+    "-21.94,119.50",
+    "-21.94,120.22",
+    "-21.94,120.94",
+    "-21.94,122.38",
+    "-21.94,123.10",
+    "-21.94,123.82",
+    "-21.94,124.54",
+    "-21.22,118.78",
+    "-21.22,120.22",
+    "-21.22,121.66",
+    "-21.22,122.38",
+    "-21.22,123.10",
+    "-21.22,123.82",
+    "-20.50,118.78",
+    "-20.50,119.50",
+    "-20.50,120.22",
+    "-20.50,120.94",
+    "-20.50,121.66",
+    "-20.50,122.38"
    ],
-   "n_points": 56,
+   "n_points": 99,
    "centroid": [
-    -27.25,
-    119.59
+    -25.17,
+    121.05
    ],
    "bbox": [
     -29.86,
     115.9,
-    -23.38,
-    124.54
+    -20.5,
+    125.98
    ],
    "rules": [
     "fire_minor"
@@ -1847,10 +1436,10 @@
    "level": 1,
    "districts": [
     "Gascoyne",
-    "Goldfields",
     "South Interior",
-    "Pilbara",
-    "Central Wheat Belt"
+    "Goldfields",
+    "North Interior",
+    "Pilbara"
    ],
    "regions": [
     "interior_arid",
@@ -1858,277 +1447,35 @@
     "southwest_wa"
    ],
    "peak": {
-    "cape": 591,
-    "shear": 55,
-    "scp": 0.9,
-    "ship": 0.1,
-    "dcape": 1497,
-    "rain": 0.3,
-    "hail": 0,
-    "wind": 0,
-    "cat": 0,
-    "heat": 0,
-    "snow72": 0,
-    "rain3": 1.8
-   },
-   "window_local": "Fri 6 Nov 08:00 AWST to Sat 7 Nov 08:00 AWST",
-   "published_cat_max": 1,
-   "id": "20261106-1",
-   "first_seen": "2026-11-01T20:02:17Z",
-   "told": {
-    "level": 1,
-    "n_points": 56,
-    "centroid": [
-     -27.25,
-     119.59
-    ],
-    "rules": [
-     "fire_minor"
-    ]
-   },
-   "prev": {
-    "level": 1,
-    "n_points": 35,
-    "centroid": [
-     -26.57,
-     118.04
-    ],
-    "rules": [
-     "fire_minor"
-    ]
-   }
-  },
-  {
-   "date": "2026-11-06",
-   "lead": 4,
-   "points": [
-    "-26.26,137.50",
-    "-26.26,138.22",
-    "-25.54,136.78",
-    "-25.54,137.50",
-    "-25.54,138.22",
-    "-25.54,138.94",
-    "-24.82,136.78",
-    "-24.82,137.50",
-    "-24.82,138.22",
-    "-24.10,136.78",
-    "-24.10,138.94",
-    "-23.38,136.06",
-    "-23.38,136.78",
-    "-23.38,137.50",
-    "-23.38,138.22",
-    "-22.66,137.50",
-    "-22.66,138.22"
-   ],
-   "n_points": 17,
-   "centroid": [
-    -24.48,
-    137.63
-   ],
-   "bbox": [
-    -26.26,
-    136.06,
-    -22.66,
-    138.94
-   ],
-   "rules": [
-    "fire_minor"
-   ],
-   "level": 1,
-   "districts": [
-    "Simpson",
-    "Channel Country",
-    "North East Pastoral"
-   ],
-   "regions": [
-    "interior_arid",
-    "qld_inland"
-   ],
-   "peak": {
-    "cape": 1451,
-    "shear": 37,
-    "scp": 1.2,
-    "ship": 0.3,
-    "dcape": 1467,
-    "rain": 0.3,
+    "cape": 2263,
+    "shear": 52,
+    "scp": 1,
+    "ship": 0.4,
+    "dcape": 1586,
+    "rain": 5.1,
     "hail": 1,
-    "wind": 0,
-    "cat": 1,
-    "heat": 0,
-    "snow72": 0,
-    "rain3": 1.5
-   },
-   "window_local": "Fri 6 Nov 09:30 ACST to Sat 7 Nov 09:30 ACST",
-   "published_cat_max": 1,
-   "id": "20261106-2",
-   "first_seen": "2026-11-01T20:02:17Z",
-   "told": {
-    "level": 1,
-    "n_points": 17,
-    "centroid": [
-     -24.48,
-     137.63
-    ],
-    "rules": [
-     "fire_minor"
-    ]
-   },
-   "prev": {
-    "level": 1,
-    "n_points": 7,
-    "centroid": [
-     -25.44,
-     137.4
-    ],
-    "rules": [
-     "fire_minor"
-    ]
-   }
-  },
-  {
-   "date": "2026-11-06",
-   "lead": 4,
-   "points": [
-    "-24.10,130.30",
-    "-23.38,129.58",
-    "-22.66,130.30",
-    "-21.94,130.30",
-    "-21.22,130.30",
-    "-21.22,131.02",
-    "-21.22,131.74",
-    "-20.50,131.02"
-   ],
-   "n_points": 8,
-   "centroid": [
-    -22.03,
-    130.57
-   ],
-   "bbox": [
-    -24.1,
-    129.58,
-    -20.5,
-    131.74
-   ],
-   "rules": [
-    "fire_minor"
-   ],
-   "level": 1,
-   "districts": [
-    "Tanami",
-    "Lasseter"
-   ],
-   "regions": [
-    "interior_arid"
-   ],
-   "peak": {
-    "cape": 652,
-    "shear": 21,
-    "scp": 0,
-    "ship": 0,
-    "dcape": 1409,
-    "rain": 0,
-    "hail": 0,
-    "wind": 0,
-    "cat": 0,
-    "heat": 0,
-    "snow72": 0,
-    "rain3": 8.1
-   },
-   "window_local": "Fri 6 Nov 09:30 ACST to Sat 7 Nov 09:30 ACST",
-   "published_cat_max": 1,
-   "id": "20261106-3",
-   "first_seen": "2026-11-01T20:02:17Z",
-   "told": {
-    "level": 1,
-    "n_points": 8,
-    "centroid": [
-     -22.03,
-     130.57
-    ],
-    "rules": [
-     "fire_minor"
-    ]
-   },
-   "prev": {
-    "level": 1,
-    "n_points": 28,
-    "centroid": [
-     -22.92,
-     129.19
-    ],
-    "rules": [
-     "fire_minor"
-    ]
-   }
-  },
-  {
-   "date": "2026-11-06",
-   "lead": 4,
-   "points": [
-    "-24.82,123.10",
-    "-24.82,123.82",
-    "-24.10,122.38",
-    "-24.10,123.10",
-    "-23.38,122.38",
-    "-22.66,121.66",
-    "-22.66,123.10",
-    "-22.66,123.82",
-    "-22.66,124.54",
-    "-21.94,120.22",
-    "-21.94,120.94",
-    "-21.94,121.66",
-    "-21.94,122.38",
-    "-21.22,118.78",
-    "-21.22,120.22",
-    "-21.22,121.66",
-    "-21.22,122.38",
-    "-21.22,123.10",
-    "-20.50,118.78",
-    "-20.50,119.50"
-   ],
-   "n_points": 20,
-   "centroid": [
-    -22.34,
-    121.88
-   ],
-   "bbox": [
-    -24.82,
-    118.78,
-    -20.5,
-    124.54
-   ],
-   "rules": [
-    "fire_minor"
-   ],
-   "level": 1,
-   "districts": [
-    "Pilbara",
-    "North Interior",
-    "South Interior"
-   ],
-   "regions": [
-    "interior_arid",
-    "pilbara_gascoyne"
-   ],
-   "peak": {
-    "cape": 3434,
-    "shear": 33,
-    "scp": 0.5,
-    "ship": 0.7,
-    "dcape": 1370,
-    "rain": 8.4,
-    "hail": 0,
     "wind": 1,
     "cat": 2,
     "heat": 0,
-    "snow72": 0,
-    "rain3": 14.700000000000001
+    "snow72": 0.0,
+    "rain3": 12.3
    },
    "window_local": "Fri 6 Nov 08:00 AWST to Sat 7 Nov 08:00 AWST",
    "published_cat_max": 2,
    "id": "20261106-4",
    "first_seen": "2026-11-01T20:02:17Z",
    "told": {
+    "level": 1,
+    "n_points": 99,
+    "centroid": [
+     -25.17,
+     121.05
+    ],
+    "rules": [
+     "fire_minor"
+    ]
+   },
+   "prev": {
     "level": 1,
     "n_points": 21,
     "centroid": [
@@ -2142,20 +1489,273 @@
   },
   {
    "date": "2026-11-06",
-   "lead": 4,
+   "lead": 3,
    "points": [
     "-19.06,138.22",
-    "-18.34,138.94"
+    "-19.06,138.94"
    ],
    "n_points": 2,
    "centroid": [
-    -18.7,
+    -19.06,
     138.58
    ],
    "bbox": [
     -19.06,
     138.22,
+    -19.06,
+    138.94
+   ],
+   "rules": [
+    "wind_mod",
+    "storms_minor"
+   ],
+   "level": 2,
+   "districts": [
+    "Gulf Country"
+   ],
+   "regions": [
+    "qld_inland"
+   ],
+   "peak": {
+    "cape": 3700,
+    "shear": 33,
+    "scp": 2,
+    "ship": 0.4,
+    "dcape": 1268,
+    "rain": 3,
+    "hail": 1,
+    "wind": 2,
+    "cat": 3,
+    "heat": 0,
+    "snow72": 0.0,
+    "rain3": 3
+   },
+   "window_local": "Fri 6 Nov 10:00 AEST to Sat 7 Nov 10:00 AEST",
+   "published_cat_max": 3,
+   "id": "20261106-6",
+   "first_seen": "2026-11-01T20:02:17Z",
+   "told": {
+    "level": 2,
+    "n_points": 2,
+    "centroid": [
+     -19.06,
+     138.58
+    ],
+    "rules": [
+     "wind_mod",
+     "storms_minor"
+    ]
+   },
+   "prev": {
+    "level": 1,
+    "n_points": 2,
+    "centroid": [
+     -18.7,
+     138.58
+    ],
+    "rules": [
+     "storms_minor"
+    ]
+   }
+  },
+  {
+   "date": "2026-11-06",
+   "lead": 3,
+   "points": [
+    "-21.94,141.82",
+    "-21.94,142.54",
+    "-21.22,141.10"
+   ],
+   "n_points": 3,
+   "centroid": [
+    -21.7,
+    141.82
+   ],
+   "bbox": [
+    -21.94,
+    141.1,
+    -21.22,
+    142.54
+   ],
+   "rules": [
+    "wind_mod",
+    "storms_minor",
+    "wind_minor"
+   ],
+   "level": 2,
+   "districts": [
+    "North West",
+    "Central West"
+   ],
+   "regions": [
+    "qld_inland"
+   ],
+   "peak": {
+    "cape": 4364,
+    "shear": 34,
+    "scp": 4.4,
+    "ship": 0.8,
+    "dcape": 1311,
+    "rain": 8.7,
+    "hail": 1,
+    "wind": 2,
+    "cat": 3,
+    "heat": 0,
+    "snow72": 0.0,
+    "rain3": 8.7
+   },
+   "window_local": "Fri 6 Nov 10:00 AEST to Sat 7 Nov 10:00 AEST",
+   "published_cat_max": 3,
+   "id": "20261106-6",
+   "first_seen": "2026-11-03T20:03:37Z",
+   "told": {
+    "level": 2,
+    "n_points": 3,
+    "centroid": [
+     -21.7,
+     141.82
+    ],
+    "rules": [
+     "wind_mod",
+     "storms_minor",
+     "wind_minor"
+    ]
+   },
+   "prev": null
+  },
+  {
+   "date": "2026-11-06",
+   "lead": 3,
+   "points": [
+    "-20.50,139.66"
+   ],
+   "n_points": 1,
+   "centroid": [
+    -20.5,
+    139.66
+   ],
+   "bbox": [
+    -20.5,
+    139.66,
+    -20.5,
+    139.66
+   ],
+   "rules": [
+    "wind_mod",
+    "storms_minor"
+   ],
+   "level": 2,
+   "districts": [
+    "North West"
+   ],
+   "regions": [
+    "qld_inland"
+   ],
+   "peak": {
+    "cape": 3654,
+    "shear": 31,
+    "scp": 2.6,
+    "ship": 0.6,
+    "dcape": 1175,
+    "rain": 9.6,
+    "hail": 1,
+    "wind": 2,
+    "cat": 3,
+    "heat": 0,
+    "snow72": 0.0,
+    "rain3": 9.6
+   },
+   "window_local": "Fri 6 Nov 10:00 AEST to Sat 7 Nov 10:00 AEST",
+   "published_cat_max": 3,
+   "id": "20261106-7",
+   "first_seen": "2026-11-03T20:03:37Z",
+   "told": {
+    "level": 2,
+    "n_points": 1,
+    "centroid": [
+     -20.5,
+     139.66
+    ],
+    "rules": [
+     "wind_mod",
+     "storms_minor"
+    ]
+   },
+   "prev": null
+  },
+  {
+   "date": "2026-11-06",
+   "lead": 3,
+   "points": [
+    "-18.34,141.10"
+   ],
+   "n_points": 1,
+   "centroid": [
     -18.34,
+    141.1
+   ],
+   "bbox": [
+    -18.34,
+    141.1,
+    -18.34,
+    141.1
+   ],
+   "rules": [
+    "storms_minor"
+   ],
+   "level": 1,
+   "districts": [
+    "Gulf Country"
+   ],
+   "regions": [
+    "tropical_north"
+   ],
+   "peak": {
+    "cape": 3721,
+    "shear": 26,
+    "scp": 0.9,
+    "ship": 0.4,
+    "dcape": 1161,
+    "rain": 3.4,
+    "hail": 0,
+    "wind": 1,
+    "cat": 3,
+    "heat": 0,
+    "snow72": 0.0,
+    "rain3": 5.1
+   },
+   "window_local": "Fri 6 Nov 10:00 AEST to Sat 7 Nov 10:00 AEST",
+   "published_cat_max": 0,
+   "id": "20261106-8",
+   "first_seen": "2026-11-03T20:03:37Z",
+   "told": {
+    "level": 1,
+    "n_points": 1,
+    "centroid": [
+     -18.34,
+     141.1
+    ],
+    "rules": [
+     "storms_minor"
+    ]
+   },
+   "prev": null
+  },
+  {
+   "date": "2026-11-06",
+   "lead": 3,
+   "points": [
+    "-16.90,138.94"
+   ],
+   "n_points": 1,
+   "centroid": [
+    -16.9,
+    138.94
+   ],
+   "bbox": [
+    -16.9,
+    138.94,
+    -16.9,
     138.94
    ],
    "rules": [
@@ -2166,228 +1766,101 @@
     "Gulf Country"
    ],
    "regions": [
-    "qld_inland",
     "tropical_north"
    ],
    "peak": {
-    "cape": 3321,
-    "shear": 27,
-    "scp": 2.3,
-    "ship": 0.5,
-    "dcape": 1151,
-    "rain": 13.9,
-    "hail": 1,
+    "cape": 4437,
+    "shear": 24,
+    "scp": 3.4,
+    "ship": 0.4,
+    "dcape": 937,
+    "rain": 3.4,
+    "hail": 0,
     "wind": 1,
     "cat": 3,
     "heat": 0,
-    "snow72": 0,
-    "rain3": 19.3
+    "snow72": 0.0,
+    "rain3": 8.2
    },
    "window_local": "Fri 6 Nov 10:00 AEST to Sat 7 Nov 10:00 AEST",
-   "published_cat_max": 3,
-   "id": "20261106-6",
-   "first_seen": "2026-11-01T20:02:17Z",
+   "published_cat_max": 0,
+   "id": "20261106-9",
+   "first_seen": "2026-11-03T20:03:37Z",
    "told": {
     "level": 1,
-    "n_points": 2,
+    "n_points": 1,
     "centroid": [
-     -18.7,
-     138.58
+     -16.9,
+     138.94
     ],
     "rules": [
      "storms_minor"
-    ]
-   },
-   "prev": {
-    "level": 1,
-    "n_points": 3,
-    "centroid": [
-     -19.3,
-     138.46
-    ],
-    "rules": [
-     "storms_minor"
-    ]
-   }
-  },
-  {
-   "date": "2026-11-07",
-   "lead": 5,
-   "points": [
-    "-29.86,128.86",
-    "-29.14,124.54",
-    "-29.14,125.26",
-    "-29.14,125.98",
-    "-29.14,126.70",
-    "-29.14,128.14",
-    "-29.14,129.58",
-    "-29.14,131.02",
-    "-28.42,123.10",
-    "-28.42,123.82",
-    "-28.42,124.54",
-    "-28.42,125.26",
-    "-28.42,125.98",
-    "-28.42,126.70",
-    "-28.42,127.42",
-    "-28.42,128.14",
-    "-28.42,128.86",
-    "-28.42,129.58",
-    "-28.42,130.30",
-    "-28.42,131.02",
-    "-28.42,131.74",
-    "-27.70,123.10",
-    "-27.70,123.82",
-    "-27.70,125.26",
-    "-27.70,125.98",
-    "-27.70,127.42",
-    "-27.70,130.30",
-    "-27.70,131.02",
-    "-27.70,132.46",
-    "-26.98,121.66",
-    "-26.98,122.38",
-    "-26.98,123.10",
-    "-26.98,123.82",
-    "-26.98,126.70",
-    "-26.98,127.42",
-    "-26.98,128.14",
-    "-26.98,128.86",
-    "-26.98,129.58",
-    "-26.98,130.30",
-    "-26.98,131.02",
-    "-26.26,122.38",
-    "-26.26,123.10",
-    "-26.26,123.82",
-    "-26.26,124.54",
-    "-26.26,125.26",
-    "-26.26,126.70",
-    "-26.26,127.42",
-    "-26.26,128.14"
-   ],
-   "n_points": 48,
-   "centroid": [
-    -27.75,
-    126.88
-   ],
-   "bbox": [
-    -29.86,
-    121.66,
-    -26.26,
-    132.46
-   ],
-   "rules": [
-    "fire_minor"
-   ],
-   "level": 1,
-   "districts": [
-    "South Interior",
-    "North West Pastoral",
-    "Goldfields"
-   ],
-   "regions": [
-    "interior_arid"
-   ],
-   "peak": {
-    "cape": 2356,
-    "shear": 41,
-    "scp": 1.6,
-    "ship": 0.9,
-    "dcape": 1437,
-    "rain": 9.3,
-    "hail": 1,
-    "wind": 1,
-    "cat": 2,
-    "heat": 0,
-    "snow72": 0,
-    "rain3": 22.8
-   },
-   "window_local": "Sat 7 Nov 08:00 AWST to Sun 8 Nov 08:00 AWST",
-   "published_cat_max": 1,
-   "id": "20261107-1",
-   "first_seen": "2026-11-02T20:05:08Z",
-   "told": {
-    "level": 1,
-    "n_points": 48,
-    "centroid": [
-     -27.75,
-     126.88
-    ],
-    "rules": [
-     "fire_minor"
     ]
    },
    "prev": null
   },
   {
    "date": "2026-11-07",
-   "lead": 5,
+   "lead": 4,
    "points": [
-    "-27.70,143.26",
+    "-26.98,136.06",
     "-26.98,136.78",
-    "-26.98,139.66",
-    "-26.98,140.38",
-    "-26.98,141.10",
-    "-26.98,141.82",
-    "-26.98,142.54",
-    "-26.98,143.26",
-    "-26.26,134.62",
-    "-26.26,135.34",
     "-26.26,136.06",
     "-26.26,136.78",
     "-26.26,137.50",
     "-26.26,138.22",
-    "-26.26,139.66",
-    "-26.26,140.38",
-    "-26.26,141.10",
-    "-26.26,142.54",
-    "-26.26,143.26",
-    "-25.54,135.34",
-    "-25.54,136.06",
-    "-25.54,136.78",
     "-25.54,137.50",
     "-25.54,138.22",
     "-25.54,138.94",
     "-25.54,139.66",
     "-25.54,141.82",
     "-25.54,143.26",
-    "-24.82,136.78",
     "-24.82,137.50",
     "-24.82,138.22",
     "-24.82,138.94",
-    "-24.82,139.66",
     "-24.82,140.38",
     "-24.82,141.82",
     "-24.82,142.54",
     "-24.10,137.50",
     "-24.10,138.22",
     "-24.10,138.94",
-    "-24.10,141.10",
+    "-24.10,141.82",
+    "-24.10,142.54",
     "-24.10,143.26",
     "-23.38,137.50",
     "-23.38,138.22",
     "-23.38,138.94",
+    "-23.38,139.66",
     "-23.38,141.10",
+    "-23.38,141.82",
     "-23.38,143.26",
     "-22.66,137.50",
     "-22.66,138.22",
     "-22.66,138.94",
     "-22.66,139.66",
     "-22.66,140.38",
-    "-22.66,143.98",
     "-21.94,137.50",
     "-21.94,138.22",
     "-21.94,138.94",
-    "-21.22,138.22"
+    "-21.94,139.66",
+    "-21.94,140.38",
+    "-21.22,137.50",
+    "-21.22,138.22",
+    "-21.22,138.94",
+    "-20.50,138.22",
+    "-20.50,138.94",
+    "-19.78,137.50"
    ],
-   "n_points": 56,
+   "n_points": 47,
    "centroid": [
-    -24.9,
-    139.42
+    -23.76,
+    139.19
    ],
    "bbox": [
-    -27.7,
-    134.62,
-    -21.22,
-    143.98
+    -26.98,
+    136.06,
+    -19.78,
+    143.26
    ],
    "rules": [
     "fire_minor"
@@ -2395,9 +1868,9 @@
    "level": 1,
    "districts": [
     "Channel Country",
+    "North West",
     "North East Pastoral",
     "Simpson",
-    "North West",
     "Central West",
     "Barkly"
    ],
@@ -2406,18 +1879,18 @@
     "qld_inland"
    ],
    "peak": {
-    "cape": 587,
-    "shear": 17,
-    "scp": 0.4,
-    "ship": 0.1,
-    "dcape": 1437,
-    "rain": 1.4,
+    "cape": 304,
+    "shear": 10,
+    "scp": 0,
+    "ship": 0,
+    "dcape": 1448,
+    "rain": 0,
     "hail": 0,
     "wind": 0,
     "cat": 0,
     "heat": 0,
-    "snow72": 0,
-    "rain3": 4.2
+    "snow72": 0.0,
+    "rain3": 2.4
    },
    "window_local": "Sat 7 Nov 10:00 AEST to Sun 8 Nov 10:00 AEST",
    "published_cat_max": 1,
@@ -2433,66 +1906,144 @@
     "rules": [
      "fire_minor"
     ]
-   },
-   "prev": null
+   }
   },
   {
    "date": "2026-11-07",
-   "lead": 5,
+   "lead": 4,
    "points": [
+    "-28.42,129.58",
+    "-28.42,130.30",
+    "-28.42,131.02",
+    "-28.42,131.74",
+    "-27.70,118.06",
+    "-27.70,123.10",
+    "-27.70,125.98",
+    "-27.70,126.70",
+    "-27.70,131.02",
+    "-27.70,131.74",
+    "-27.70,132.46",
+    "-26.98,118.06",
     "-26.98,119.50",
     "-26.98,120.22",
+    "-26.98,121.66",
+    "-26.98,122.38",
+    "-26.98,123.10",
+    "-26.98,123.82",
+    "-26.98,124.54",
+    "-26.98,125.98",
+    "-26.98,126.70",
+    "-26.98,128.14",
+    "-26.98,128.86",
+    "-26.98,129.58",
+    "-26.98,130.30",
+    "-26.26,117.34",
     "-26.26,118.06",
     "-26.26,118.78",
+    "-26.26,119.50",
     "-26.26,120.22",
+    "-26.26,120.94",
+    "-26.26,121.66",
+    "-26.26,122.38",
+    "-26.26,123.10",
+    "-26.26,123.82",
+    "-26.26,124.54",
+    "-26.26,125.98",
+    "-26.26,127.42",
+    "-26.26,128.14",
+    "-25.54,117.34",
     "-25.54,118.06",
     "-25.54,119.50",
     "-25.54,120.22",
+    "-25.54,122.38",
+    "-25.54,123.10",
+    "-25.54,123.82",
+    "-25.54,126.70",
+    "-25.54,128.86",
+    "-24.82,116.62",
     "-24.82,120.22",
-    "-24.82,120.94"
+    "-24.82,120.94",
+    "-24.82,122.38",
+    "-24.82,123.10",
+    "-24.82,123.82",
+    "-24.82,125.26",
+    "-24.82,125.98",
+    "-24.82,126.70",
+    "-24.82,127.42",
+    "-24.82,128.14",
+    "-24.10,120.22",
+    "-24.10,120.94",
+    "-24.10,121.66",
+    "-24.10,123.82",
+    "-24.10,124.54",
+    "-24.10,127.42",
+    "-23.38,120.94",
+    "-23.38,123.82",
+    "-23.38,124.54",
+    "-23.38,125.26",
+    "-22.66,123.10",
+    "-22.66,124.54",
+    "-21.94,122.38",
+    "-21.94,124.54",
+    "-21.22,123.82"
    ],
-   "n_points": 10,
+   "n_points": 74,
    "centroid": [
-    -25.9,
-    119.57
+    -25.73,
+    124.03
    ],
    "bbox": [
-    -26.98,
-    118.06,
-    -24.82,
-    120.94
+    -28.42,
+    116.62,
+    -21.22,
+    132.46
    ],
    "rules": [
     "fire_minor"
    ],
    "level": 1,
    "districts": [
+    "South Interior",
     "Gascoyne",
+    "North West Pastoral",
+    "North Interior",
     "Goldfields",
-    "South Interior"
+    "Pilbara"
    ],
    "regions": [
+    "interior_arid",
     "pilbara_gascoyne"
    ],
    "peak": {
-    "cape": 641,
-    "shear": 31,
-    "scp": 1,
-    "ship": 0.1,
-    "dcape": 1302,
-    "rain": 0.3,
-    "hail": 0,
-    "wind": 0,
-    "cat": 0,
+    "cape": 1871,
+    "shear": 45,
+    "scp": 0.9,
+    "ship": 0.4,
+    "dcape": 1406,
+    "rain": 7.9,
+    "hail": 1,
+    "wind": 1,
+    "cat": 2,
     "heat": 0,
-    "snow72": 0,
-    "rain3": 0.3
+    "snow72": 0.0,
+    "rain3": 8.8
    },
    "window_local": "Sat 7 Nov 08:00 AWST to Sun 8 Nov 08:00 AWST",
-   "published_cat_max": 0,
+   "published_cat_max": 2,
    "id": "20261107-3",
    "first_seen": "2026-11-02T20:05:08Z",
    "told": {
+    "level": 1,
+    "n_points": 74,
+    "centroid": [
+     -25.73,
+     124.03
+    ],
+    "rules": [
+     "fire_minor"
+    ]
+   },
+   "prev": {
     "level": 1,
     "n_points": 10,
     "centroid": [
@@ -2502,66 +2053,342 @@
     "rules": [
      "fire_minor"
     ]
+   }
+  },
+  {
+   "date": "2026-11-07",
+   "lead": 4,
+   "points": [
+    "-24.82,151.90",
+    "-24.10,150.46",
+    "-24.10,151.18"
+   ],
+   "n_points": 3,
+   "centroid": [
+    -24.34,
+    151.18
+   ],
+   "bbox": [
+    -24.82,
+    150.46,
+    -24.1,
+    151.9
+   ],
+   "rules": [
+    "storms_minor"
+   ],
+   "level": 1,
+   "districts": [
+    "Capricornia",
+    "Wide Bay and Burnett"
+   ],
+   "regions": [
+    "tropical_qld_coast"
+   ],
+   "peak": {
+    "cape": 2828,
+    "shear": 42,
+    "scp": 7.6,
+    "ship": 0.7,
+    "dcape": 819,
+    "rain": 15.7,
+    "hail": 1,
+    "wind": 2,
+    "cat": 3,
+    "heat": 0,
+    "snow72": 0.0,
+    "rain3": 24.299999999999997
+   },
+   "window_local": "Sat 7 Nov 10:00 AEST to Sun 8 Nov 10:00 AEST",
+   "published_cat_max": 3,
+   "id": "20261107-6",
+   "first_seen": "2026-11-03T20:03:37Z",
+   "told": {
+    "level": 1,
+    "n_points": 3,
+    "centroid": [
+     -24.34,
+     151.18
+    ],
+    "rules": [
+     "storms_minor"
+    ]
    },
    "prev": null
   },
   {
    "date": "2026-11-07",
-   "lead": 5,
+   "lead": 4,
    "points": [
-    "-21.22,128.86",
-    "-21.22,129.58",
-    "-21.22,130.30",
-    "-20.50,128.14",
-    "-20.50,129.58",
-    "-20.50,131.02"
+    "-16.90,138.94"
    ],
-   "n_points": 6,
+   "n_points": 1,
    "centroid": [
-    -20.86,
-    129.58
+    -16.9,
+    138.94
    ],
    "bbox": [
+    -16.9,
+    138.94,
+    -16.9,
+    138.94
+   ],
+   "rules": [
+    "storms_minor"
+   ],
+   "level": 1,
+   "districts": [
+    "Gulf Country"
+   ],
+   "regions": [
+    "tropical_north"
+   ],
+   "peak": {
+    "cape": 4100,
+    "shear": 21,
+    "scp": 3.8,
+    "ship": 0.4,
+    "dcape": 935,
+    "rain": 3.1,
+    "hail": 0,
+    "wind": 1,
+    "cat": 3,
+    "heat": 0,
+    "snow72": 0.0,
+    "rain3": 6.3
+   },
+   "window_local": "Sat 7 Nov 10:00 AEST to Sun 8 Nov 10:00 AEST",
+   "published_cat_max": 3,
+   "id": "20261107-7",
+   "first_seen": "2026-11-03T20:03:37Z",
+   "told": {
+    "level": 1,
+    "n_points": 1,
+    "centroid": [
+     -16.9,
+     138.94
+    ],
+    "rules": [
+     "storms_minor"
+    ]
+   },
+   "prev": null
+  },
+  {
+   "date": "2026-11-08",
+   "lead": 5,
+   "points": [
+    "-31.30,131.74",
+    "-31.30,132.46",
+    "-31.30,133.90",
+    "-30.58,131.02",
+    "-30.58,131.74",
+    "-30.58,132.46",
+    "-30.58,133.18",
+    "-30.58,133.90",
+    "-30.58,134.62",
+    "-30.58,135.34",
+    "-29.86,132.46",
+    "-29.86,133.18",
+    "-29.86,133.90",
+    "-29.86,134.62",
+    "-29.86,135.34",
+    "-29.14,119.50",
+    "-29.14,128.86",
+    "-29.14,129.58",
+    "-29.14,130.30",
+    "-29.14,131.02",
+    "-29.14,132.46",
+    "-29.14,133.18",
+    "-29.14,133.90",
+    "-29.14,134.62",
+    "-29.14,135.34",
+    "-29.14,136.06",
+    "-28.42,119.50",
+    "-28.42,120.22",
+    "-28.42,128.14",
+    "-28.42,128.86",
+    "-28.42,129.58",
+    "-28.42,130.30",
+    "-28.42,131.74",
+    "-28.42,132.46",
+    "-28.42,133.18",
+    "-28.42,133.90",
+    "-28.42,134.62",
+    "-28.42,135.34",
+    "-28.42,136.06",
+    "-28.42,136.78",
+    "-28.42,137.50",
+    "-28.42,138.22",
+    "-27.70,118.06",
+    "-27.70,118.78",
+    "-27.70,120.22",
+    "-27.70,122.38",
+    "-27.70,123.10",
+    "-27.70,125.98",
+    "-27.70,126.70",
+    "-27.70,127.42",
+    "-27.70,128.14",
+    "-27.70,128.86",
+    "-27.70,129.58",
+    "-27.70,130.30",
+    "-27.70,131.02",
+    "-27.70,132.46",
+    "-27.70,133.18",
+    "-27.70,133.90",
+    "-27.70,134.62",
+    "-27.70,135.34",
+    "-27.70,136.06",
+    "-27.70,136.78",
+    "-27.70,137.50",
+    "-27.70,138.22",
+    "-27.70,138.94",
+    "-26.98,118.06",
+    "-26.98,119.50",
+    "-26.98,120.22",
+    "-26.98,120.94",
+    "-26.98,121.66",
+    "-26.98,122.38",
+    "-26.98,123.10",
+    "-26.98,123.82",
+    "-26.98,124.54",
+    "-26.98,125.26",
+    "-26.98,125.98",
+    "-26.98,126.70",
+    "-26.98,127.42",
+    "-26.98,128.14",
+    "-26.98,128.86",
+    "-26.98,129.58",
+    "-26.98,133.18",
+    "-26.98,133.90",
+    "-26.98,135.34",
+    "-26.98,136.06",
+    "-26.98,136.78",
+    "-26.98,137.50",
+    "-26.26,118.06",
+    "-26.26,118.78",
+    "-26.26,120.22",
+    "-26.26,120.94",
+    "-26.26,121.66",
+    "-26.26,122.38",
+    "-26.26,123.10",
+    "-26.26,123.82",
+    "-26.26,124.54",
+    "-26.26,125.26",
+    "-26.26,125.98",
+    "-26.26,126.70",
+    "-26.26,127.42",
+    "-26.26,128.14",
+    "-26.26,133.90",
+    "-26.26,134.62",
+    "-26.26,135.34",
+    "-26.26,136.06",
+    "-26.26,136.78",
+    "-26.26,137.50",
+    "-26.26,138.22",
+    "-25.54,117.34",
+    "-25.54,118.06",
+    "-25.54,119.50",
+    "-25.54,120.22",
+    "-25.54,120.94",
+    "-25.54,121.66",
+    "-25.54,122.38",
+    "-25.54,123.10",
+    "-25.54,125.98",
+    "-25.54,126.70",
+    "-25.54,133.90",
+    "-25.54,134.62",
+    "-25.54,135.34",
+    "-25.54,136.06",
+    "-24.82,116.62",
+    "-24.82,120.22",
+    "-24.82,120.94",
+    "-24.82,121.66",
+    "-24.82,122.38",
+    "-24.82,123.10",
+    "-24.82,123.82",
+    "-24.82,124.54",
+    "-24.82,125.26",
+    "-24.82,126.70",
+    "-24.82,127.42",
+    "-24.82,133.90",
+    "-24.82,134.62",
+    "-24.82,135.34",
+    "-24.10,120.22",
+    "-24.10,120.94",
+    "-24.10,121.66",
+    "-24.10,122.38",
+    "-24.10,123.10",
+    "-24.10,123.82",
+    "-24.10,124.54",
+    "-24.10,125.98",
+    "-23.38,123.10",
+    "-23.38,123.82",
+    "-23.38,124.54",
+    "-23.38,125.98",
+    "-23.38,126.70",
+    "-23.38,127.42",
+    "-22.66,124.54",
+    "-21.94,123.82",
+    "-21.94,125.26",
+    "-21.94,125.98",
+    "-21.22,123.82",
+    "-21.22,125.26"
+   ],
+   "n_points": 156,
+   "centroid": [
+    -26.82,
+    128.28
+   ],
+   "bbox": [
+    -31.3,
+    116.62,
     -21.22,
-    128.14,
-    -20.5,
-    131.02
+    138.94
    ],
    "rules": [
     "fire_minor"
    ],
    "level": 1,
    "districts": [
-    "Tanami",
-    "North Interior"
+    "South Interior",
+    "North West Pastoral",
+    "North East Pastoral",
+    "Gascoyne",
+    "North Interior",
+    "Simpson"
    ],
    "regions": [
-    "interior_arid"
+    "interior_arid",
+    "pilbara_gascoyne",
+    "qld_inland",
+    "sa_southeast",
+    "southwest_wa"
    ],
    "peak": {
-    "cape": 2184,
-    "shear": 29,
-    "scp": 0.7,
-    "ship": 0.4,
-    "dcape": 962,
-    "rain": 1.2,
+    "cape": 2134,
+    "shear": 52,
+    "scp": 1.8,
+    "ship": 0.5,
+    "dcape": 1539,
+    "rain": 7.8,
     "hail": 1,
-    "wind": 0,
-    "cat": 1,
+    "wind": 1,
+    "cat": 2,
     "heat": 0,
-    "snow72": 0,
-    "rain3": 19.8
+    "snow72": 0.0,
+    "rain3": 13.1
    },
-   "window_local": "Sat 7 Nov 09:30 ACST to Sun 8 Nov 09:30 ACST",
-   "published_cat_max": 1,
-   "id": "20261107-4",
-   "first_seen": "2026-11-02T20:05:08Z",
+   "window_local": "Sun 8 Nov 08:00 AWST to Mon 9 Nov 08:00 AWST",
+   "published_cat_max": 2,
+   "id": "20261108-1",
+   "first_seen": "2026-11-03T20:03:37Z",
    "told": {
     "level": 1,
-    "n_points": 6,
+    "n_points": 156,
     "centroid": [
-     -20.86,
-     129.58
+     -26.82,
+     128.28
     ],
     "rules": [
      "fire_minor"
@@ -2570,61 +2397,281 @@
    "prev": null
   },
   {
-   "date": "2026-11-07",
+   "date": "2026-11-08",
    "lead": 5,
    "points": [
-    "-21.22,132.46",
-    "-21.22,133.18"
+    "-23.38,149.74"
    ],
-   "n_points": 2,
+   "n_points": 1,
    "centroid": [
-    -21.22,
-    132.82
+    -23.38,
+    149.74
    ],
    "bbox": [
-    -21.22,
-    132.46,
-    -21.22,
-    133.18
+    -23.38,
+    149.74,
+    -23.38,
+    149.74
    ],
    "rules": [
-    "rain3_minor"
+    "storms_minor"
    ],
    "level": 1,
    "districts": [
-    "Simpson",
-    "Tanami"
+    "Central Highlands and Coalfields"
    ],
    "regions": [
-    "interior_arid"
+    "tropical_qld_coast"
    ],
    "peak": {
-    "cape": 2680,
-    "shear": 23,
-    "scp": 0.4,
-    "ship": 0.4,
-    "dcape": 951,
-    "rain": 30.3,
+    "cape": 3041,
+    "shear": 41,
+    "scp": 5.5,
+    "ship": 0.9,
+    "dcape": 850,
+    "rain": 8.6,
     "hail": 1,
-    "wind": 0,
-    "cat": 1,
+    "wind": 3,
+    "cat": 3,
     "heat": 0,
-    "snow72": 0,
-    "rain3": 53.400000000000006
+    "snow72": 0.0,
+    "rain3": 12.6
    },
-   "window_local": "Sat 7 Nov 09:30 ACST to Sun 8 Nov 09:30 ACST",
-   "published_cat_max": 1,
-   "id": "20261107-5",
-   "first_seen": "2026-11-02T20:05:08Z",
+   "window_local": "Sun 8 Nov 10:00 AEST to Mon 9 Nov 10:00 AEST",
+   "published_cat_max": 2,
+   "id": "20261108-2",
+   "first_seen": "2026-11-03T20:03:37Z",
    "told": {
     "level": 1,
-    "n_points": 2,
+    "n_points": 1,
     "centroid": [
-     -21.22,
-     132.82
+     -23.38,
+     149.74
     ],
     "rules": [
-     "rain3_minor"
+     "storms_minor"
+    ]
+   },
+   "prev": null
+  },
+  {
+   "date": "2026-11-08",
+   "lead": 5,
+   "points": [
+    "-22.66,135.34",
+    "-22.66,138.22",
+    "-22.66,138.94",
+    "-22.66,139.66",
+    "-22.66,140.38",
+    "-21.94,134.62",
+    "-21.94,135.34",
+    "-21.94,136.06",
+    "-21.94,136.78",
+    "-21.94,137.50",
+    "-21.94,138.22",
+    "-21.94,138.94",
+    "-21.94,139.66",
+    "-21.22,133.90",
+    "-21.22,135.34",
+    "-21.22,136.06",
+    "-21.22,136.78",
+    "-21.22,137.50",
+    "-21.22,138.22",
+    "-21.22,138.94",
+    "-20.50,134.62",
+    "-20.50,135.34",
+    "-20.50,136.06",
+    "-20.50,136.78",
+    "-20.50,138.22",
+    "-20.50,138.94",
+    "-19.78,136.06",
+    "-19.78,136.78",
+    "-19.78,137.50",
+    "-19.78,138.22",
+    "-19.06,136.78",
+    "-19.06,137.50"
+   ],
+   "n_points": 32,
+   "centroid": [
+    -21.18,
+    137.16
+   ],
+   "bbox": [
+    -22.66,
+    133.9,
+    -19.06,
+    140.38
+   ],
+   "rules": [
+    "fire_minor"
+   ],
+   "level": 1,
+   "districts": [
+    "Barkly",
+    "North West",
+    "Channel Country",
+    "Simpson"
+   ],
+   "regions": [
+    "interior_arid",
+    "qld_inland"
+   ],
+   "peak": {
+    "cape": 1873,
+    "shear": 28,
+    "scp": 0.2,
+    "ship": 0.2,
+    "dcape": 1323,
+    "rain": 0,
+    "hail": 0,
+    "wind": 0,
+    "cat": 0,
+    "heat": 0,
+    "snow72": 0.0,
+    "rain3": 29.8
+   },
+   "window_local": "Sun 8 Nov 09:30 ACST to Mon 9 Nov 09:30 ACST",
+   "published_cat_max": 2,
+   "id": "20261108-3",
+   "first_seen": "2026-11-03T20:03:37Z",
+   "told": {
+    "level": 1,
+    "n_points": 32,
+    "centroid": [
+     -21.18,
+     137.16
+    ],
+    "rules": [
+     "fire_minor"
+    ]
+   },
+   "prev": null
+  },
+  {
+   "date": "2026-11-08",
+   "lead": 5,
+   "points": [
+    "-22.66,143.98",
+    "-22.66,144.70",
+    "-21.94,143.26",
+    "-21.94,143.98",
+    "-21.22,141.82",
+    "-21.22,142.54",
+    "-21.22,143.26",
+    "-20.50,140.38",
+    "-20.50,141.10",
+    "-20.50,141.82",
+    "-20.50,142.54",
+    "-19.78,140.38"
+   ],
+   "n_points": 12,
+   "centroid": [
+    -21.22,
+    142.48
+   ],
+   "bbox": [
+    -22.66,
+    140.38,
+    -19.78,
+    144.7
+   ],
+   "rules": [
+    "fire_minor"
+   ],
+   "level": 1,
+   "districts": [
+    "North West",
+    "Central West",
+    "Northern Goldfields and Upper Flinders"
+   ],
+   "regions": [
+    "qld_inland"
+   ],
+   "peak": {
+    "cape": 912,
+    "shear": 25,
+    "scp": 0.3,
+    "ship": 0.1,
+    "dcape": 1356,
+    "rain": 0,
+    "hail": 0,
+    "wind": 0,
+    "cat": 0,
+    "heat": 0,
+    "snow72": 0.0,
+    "rain3": 7.6
+   },
+   "window_local": "Sun 8 Nov 10:00 AEST to Mon 9 Nov 10:00 AEST",
+   "published_cat_max": 0,
+   "id": "20261108-4",
+   "first_seen": "2026-11-03T20:03:37Z",
+   "told": {
+    "level": 1,
+    "n_points": 12,
+    "centroid": [
+     -21.22,
+     142.48
+    ],
+    "rules": [
+     "fire_minor"
+    ]
+   },
+   "prev": null
+  },
+  {
+   "date": "2026-11-08",
+   "lead": 5,
+   "points": [
+    "-18.34,127.42"
+   ],
+   "n_points": 1,
+   "centroid": [
+    -18.34,
+    127.42
+   ],
+   "bbox": [
+    -18.34,
+    127.42,
+    -18.34,
+    127.42
+   ],
+   "rules": [
+    "storms_minor"
+   ],
+   "level": 1,
+   "districts": [
+    "Kimberley"
+   ],
+   "regions": [
+    "tropical_north"
+   ],
+   "peak": {
+    "cape": 3075,
+    "shear": 25,
+    "scp": 0.5,
+    "ship": 0.4,
+    "dcape": 877,
+    "rain": 3,
+    "hail": 1,
+    "wind": 1,
+    "cat": 3,
+    "heat": 0,
+    "snow72": 0.0,
+    "rain3": 10.8
+   },
+   "window_local": "Sun 8 Nov 08:00 AWST to Mon 9 Nov 08:00 AWST",
+   "published_cat_max": 2,
+   "id": "20261108-5",
+   "first_seen": "2026-11-03T20:03:37Z",
+   "told": {
+    "level": 1,
+    "n_points": 1,
+    "centroid": [
+     -18.34,
+     127.42
+    ],
+    "rules": [
+     "storms_minor"
     ]
    },
    "prev": null
