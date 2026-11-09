@@ -1,352 +1,499 @@
-[Front Line] ACTION: 53 alert(s) to look at (model run Mon 9 Nov 03:59 AWST)
+[Front Line] ACTION: 83 alert(s) to look at (model run Tue 10 Nov 04:03 AWST)
 
 LIVE scan. Shadow mode: this goes only to you, nothing is published to subscribers.
 
-Model: ecmwf_ifs025, second opinion GFS. Run 2026-11-08T19:59:32Z UTC. Scanned days 1-7 against alerts/thresholds.json.
+Model: ecmwf_ifs025, second opinion GFS. Run 2026-11-09T20:03:46Z UTC. Scanned days 1-7 against alerts/thresholds.json.
 
-NEW  Mon 9 Nov  (day 1)
-   Where:   Kimberley  [centre -19.1, 127.8; 2 model points]
-   Window:  Mon 9 Nov 08:00 AWST to Tue 10 Nov 08:00 AWST  (model day is 00Z-24Z)
-   Why:     Persistent rain (3-day region bar)
-   Peak:    CAPE 2213, shear 15 kt, SCP 0.2, SHIP 0.3, DCAPE 725, rain up to 14 mm (42 mm over 3 days from this one); hail tier 0, wind tier 0
-   Your published map: up to TSTM over these points
-
-NEW  Tue 10 Nov  (day 2)
-   Where:   Darling Downs and Granite Belt, Wide Bay and Burnett  [centre -27.7, 151.9; 3 model points]
+NEW  Tue 10 Nov  (day 1)
+   Where:   Channel Country  [centre -26.0, 142.1; 6 model points]
    Window:  Tue 10 Nov 10:00 AEST to Wed 11 Nov 10:00 AEST  (model day is 00Z-24Z)
-   Why:     Persistent rain (3-day region bar)
-   Peak:    CAPE 1089, shear 47 kt, SCP 1.2, SHIP 0.6, DCAPE 693, rain up to 4 mm (50 mm over 3 days from this one); hail tier 1, wind tier 1
+   Why:     Severe fire danger (FFDI 50+)
+   Peak:    CAPE 230, shear 32 kt, SCP 0.5, SHIP 0.0, DCAPE 1290, rain up to 0 mm (1 mm over 3 days from this one); hail tier 0, wind tier 0
    Your published map: up to TSTM over these points
 
-NEW  Tue 10 Nov  (day 2)
-   Where:   North West Pastoral  [centre -27.3, 129.6; 2 model points]
-   Window:  Tue 10 Nov 10:30 ACDT to Wed 11 Nov 10:30 ACDT  (model day is 00Z-24Z)
-   Why:     Persistent rain (3-day region bar)
-   Peak:    CAPE 56, shear 25 kt, SCP 0.1, SHIP 0.0, DCAPE 622, rain up to 0 mm (53 mm over 3 days from this one); hail tier 0, wind tier 0
-   Your published map: up to none over these points
-
-NEW  Tue 10 Nov  (day 2)
-   Where:   South Interior  [centre -26.6, 127.8; 2 model points]
+NEW  Tue 10 Nov  (day 1)
+   Where:   Gascoyne, Pilbara  [centre -24.9, 117.1; 6 model points]
    Window:  Tue 10 Nov 08:00 AWST to Wed 11 Nov 08:00 AWST  (model day is 00Z-24Z)
-   Why:     Persistent rain (3-day region bar)
-   Peak:    CAPE 1062, shear 48 kt, SCP 1.8, SHIP 0.4, DCAPE 656, rain up to 0 mm (43 mm over 3 days from this one); hail tier 0, wind tier 0
-   Your published map: up to TSTM over these points
-
-NEW  Tue 10 Nov  (day 2)
-   Where:   Tanami  [centre -21.9, 130.3; 1 model points]
-   Window:  Tue 10 Nov 09:30 ACST to Wed 11 Nov 09:30 ACST  (model day is 00Z-24Z)
-   Why:     Severe storms (MDT)
-   Peak:    CAPE 3458, shear 31 kt, SCP 0.8, SHIP 0.7, DCAPE 781, rain up to 6 mm (24 mm over 3 days from this one); hail tier 1, wind tier 1
+   Why:     Severe fire danger (FFDI 50+)
+   Peak:    CAPE 254, shear 50 kt, SCP 0.2, SHIP 0.0, DCAPE 1292, rain up to 0 mm; hail tier 0, wind tier 0
    Your published map: up to MRGL over these points
 
-NEW  Tue 10 Nov  (day 2)
-   Where:   Kimberley  [centre -18.3, 122.4; 1 model points]
-   Window:  Tue 10 Nov 08:00 AWST to Wed 11 Nov 08:00 AWST  (model day is 00Z-24Z)
-   Why:     Severe storms (MDT)
-   Peak:    CAPE 4335, shear 26 kt, SCP 2.5, SHIP 0.6, DCAPE 1086, rain up to 8 mm (16 mm over 3 days from this one); hail tier 1, wind tier 1
-   Your published map: up to none over these points
-
-NEW  Tue 10 Nov  (day 2)
-   Where:   Kimberley  [centre -18.3, 123.8; 1 model points]
-   Window:  Tue 10 Nov 08:00 AWST to Wed 11 Nov 08:00 AWST  (model day is 00Z-24Z)
-   Why:     Severe storms (MDT)
-   Peak:    CAPE 3727, shear 27 kt, SCP 2.1, SHIP 0.5, DCAPE 1071, rain up to 3 mm (10 mm over 3 days from this one); hail tier 1, wind tier 1
-   Your published map: up to none over these points
-
-NEW  Tue 10 Nov  (day 2)
-   Where:   Tanami  [centre -18.3, 131.7; 1 model points]
+NEW  Tue 10 Nov  (day 1)
+   Where:   Lasseter  [centre -25.1, 129.8; 3 model points]
    Window:  Tue 10 Nov 09:30 ACST to Wed 11 Nov 09:30 ACST  (model day is 00Z-24Z)
-   Why:     Severe storms (MDT)
-   Peak:    CAPE 3585, shear 26 kt, SCP 2.5, SHIP 0.3, DCAPE 802, rain up to 2 mm (22 mm over 3 days from this one); hail tier 0, wind tier 1
-   Your published map: up to TSTM over these points
-
-NEW  Wed 11 Nov  (day 3)
-   Where:   North West Pastoral  [centre -27.3, 129.6; 2 model points]
-   Window:  Wed 11 Nov 10:30 ACDT to Thu 12 Nov 10:30 ACDT  (model day is 00Z-24Z)
    Why:     Persistent rain (3-day region bar)
-   Peak:    CAPE 2267, shear 33 kt, SCP 2.3, SHIP 0.7, DCAPE 623, rain up to 13 mm (54 mm over 3 days from this one); hail tier 1, wind tier 1
-   Your published map: up to TSTM over these points
-
-NEW  Wed 11 Nov  (day 3)
-   Where:   South Interior  [centre -26.6, 127.8; 2 model points]
-   Window:  Wed 11 Nov 08:00 AWST to Thu 12 Nov 08:00 AWST  (model day is 00Z-24Z)
-   Why:     Persistent rain (3-day region bar)
-   Peak:    CAPE 2100, shear 38 kt, SCP 3.4, SHIP 0.8, DCAPE 717, rain up to 24 mm (43 mm over 3 days from this one); hail tier 1, wind tier 1
-   Your published map: up to TSTM over these points
-
-NEW  Wed 11 Nov  (day 3)
-   Where:   Lasseter, North Interior, South Interior  [centre -23.5, 128.7; 12 model points]
-   Window:  Wed 11 Nov 08:00 AWST to Thu 12 Nov 08:00 AWST  (model day is 00Z-24Z)
-   Why:     Widespread severe storms (MDT); Destructive winds (125+ km/h); Persistent rain (3-day region bar); Severe storms (MDT); Damaging winds (90+ km/h)
-   Peak:    CAPE 3814, shear 40 kt, SCP 5.4, SHIP 1.1, DCAPE 754, rain up to 34 mm (51 mm over 3 days from this one); hail tier 1, wind tier 2
-   Your published map: up to MDT over these points
-
-NEW  Wed 11 Nov  (day 3)
-   Where:   Kimberley  [centre -18.0, 125.0; 26 model points]
-   Window:  Wed 11 Nov 08:00 AWST to Thu 12 Nov 08:00 AWST  (model day is 00Z-24Z)
-   Why:     Widespread severe storms (MDT); Destructive winds (125+ km/h); Severe storms (MDT); Damaging winds (90+ km/h)
-   Peak:    CAPE 4472, shear 38 kt, SCP 3.9, SHIP 0.7, DCAPE 899, rain up to 33 mm (42 mm over 3 days from this one); hail tier 1, wind tier 2
-   Your published map: up to MDT over these points
-
-NEW  Wed 11 Nov  (day 3)
-   Where:   Tanami  [centre -19.1, 131.0; 1 model points]
-   Window:  Wed 11 Nov 09:30 ACST to Thu 12 Nov 09:30 ACST  (model day is 00Z-24Z)
-   Why:     Severe storms (MDT)
-   Peak:    CAPE 3131, shear 30 kt, SCP 3.7, SHIP 0.4, DCAPE 595, rain up to 7 mm (9 mm over 3 days from this one); hail tier 0, wind tier 1
+   Peak:    CAPE 1887, shear 40 kt, SCP 1.4, SHIP 0.4, DCAPE 670, rain up to 19 mm (50 mm over 3 days from this one); hail tier 1, wind tier 1
    Your published map: up to MRGL over these points
 
-NEW  Thu 12 Nov  (day 4)
-   Where:   South Interior  [centre -27.0, 128.1; 1 model points]
+NEW  Tue 10 Nov  (day 1)
+   Where:   Kimberley  [centre -19.8, 122.4; 1 model points]
+   Window:  Tue 10 Nov 08:00 AWST to Wed 11 Nov 08:00 AWST  (model day is 00Z-24Z)
+   Why:     Destructive winds (125+ km/h); Severe storms (MDT)
+   Peak:    CAPE 3379, shear 30 kt, SCP 2.1, SHIP 0.7, DCAPE 1013, rain up to 10 mm (24 mm over 3 days from this one); hail tier 1, wind tier 2
+   Your published map: up to MRGL over these points
+
+NEW  Tue 10 Nov  (day 1)
+   Where:   Kimberley  [centre -18.3, 125.3; 1 model points]
+   Window:  Tue 10 Nov 08:00 AWST to Wed 11 Nov 08:00 AWST  (model day is 00Z-24Z)
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 4319, shear 25 kt, SCP 1.5, SHIP 0.5, DCAPE 1018, rain up to 5 mm (6 mm over 3 days from this one); hail tier 1, wind tier 1
+   Your published map: up to TSTM over these points
+
+NEW  Tue 10 Nov  (day 1)
+   Where:   Kimberley  [centre -16.9, 125.3; 1 model points]
+   Window:  Tue 10 Nov 08:00 AWST to Wed 11 Nov 08:00 AWST  (model day is 00Z-24Z)
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 3661, shear 26 kt, SCP 0.8, SHIP 0.3, DCAPE 929, rain up to 4 mm (19 mm over 3 days from this one); hail tier 0, wind tier 1
+   Your published map: up to MRGL over these points
+
+NEW  Wed 11 Nov  (day 2)
+   Where:   Mid North Coast  [centre -31.3, 152.4; 3 model points]
+   Window:  Wed 11 Nov 11:00 AEDT to Thu 12 Nov 11:00 AEDT  (model day is 00Z-24Z)
+   Why:     Very destructive winds (160+ km/h); Very large hail (6 cm+); Destructive winds (125+ km/h); Large hail (3-6 cm); Severe storms (MDT)
+   Peak:    CAPE 4072, shear 48 kt, SCP 8.7, SHIP 2.6, DCAPE 698, rain up to 20 mm (27 mm over 3 days from this one); hail tier 3, wind tier 3
+   Your published map: up to MRGL over these points
+
+NEW  Wed 11 Nov  (day 2)
+   Where:   Darling Downs and Granite Belt, North West Slopes & Plains, Northern Tablelands  [centre -29.0, 151.2; 5 model points]
+   Window:  Wed 11 Nov 10:00 AEST to Thu 12 Nov 10:00 AEST  (model day is 00Z-24Z)
+   Why:     Large hail (3-6 cm)
+   Peak:    CAPE 2449, shear 47 kt, SCP 6.5, SHIP 1.3, DCAPE 767, rain up to 13 mm (22 mm over 3 days from this one); hail tier 2, wind tier 1
+   Your published map: up to MDT over these points
+
+NEW  Wed 11 Nov  (day 2)
+   Where:   Channel Country, Maranoa and Warrego  [centre -27.1, 143.4; 9 model points]
+   Window:  Wed 11 Nov 10:00 AEST to Thu 12 Nov 10:00 AEST  (model day is 00Z-24Z)
+   Why:     Severe fire danger (FFDI 50+)
+   Peak:    CAPE 505, shear 16 kt, SCP 0.8, SHIP 0.1, DCAPE 1332, rain up to 0 mm (12 mm over 3 days from this one); hail tier 0, wind tier 0
+   Your published map: up to MRGL over these points
+
+NEW  Wed 11 Nov  (day 2)
+   Where:   Channel Country, Simpson, North East Pastoral  [centre -24.5, 138.7; 10 model points]
+   Window:  Wed 11 Nov 10:00 AEST to Thu 12 Nov 10:00 AEST  (model day is 00Z-24Z)
+   Why:     Severe fire danger (FFDI 50+)
+   Peak:    CAPE 286, shear 19 kt, SCP 0.1, SHIP 0.0, DCAPE 1211, rain up to 0 mm (22 mm over 3 days from this one); hail tier 0, wind tier 0
+   Your published map: up to TSTM over these points
+
+NEW  Wed 11 Nov  (day 2)
+   Where:   South Interior  [centre -24.6, 121.4; 3 model points]
+   Window:  Wed 11 Nov 08:00 AWST to Thu 12 Nov 08:00 AWST  (model day is 00Z-24Z)
+   Why:     Very destructive winds (160+ km/h); Strong tornado environment; Destructive winds (125+ km/h); Severe storms (MDT); Tornado environment; Damaging winds (90+ km/h)
+   Peak:    CAPE 1840, shear 56 kt, SCP 9.4, SHIP 0.8, DCAPE 636, rain up to 14 mm (14 mm over 3 days from this one); hail tier 1, wind tier 3
+   Your published map: up to MRGL over these points
+
+NEW  Wed 11 Nov  (day 2)
+   Where:   Kimberley, North Interior, Pilbara  [centre -20.3, 122.9; 3 model points]
+   Window:  Wed 11 Nov 08:00 AWST to Thu 12 Nov 08:00 AWST  (model day is 00Z-24Z)
+   Why:     Destructive winds (125+ km/h); Severe storms (MDT); Damaging winds (90+ km/h)
+   Peak:    CAPE 3076, shear 48 kt, SCP 7.6, SHIP 0.9, DCAPE 774, rain up to 10 mm (12 mm over 3 days from this one); hail tier 1, wind tier 2
+   Your published map: up to MDT over these points
+
+NEW  Thu 12 Nov  (day 3)
+   Where:   Wide Bay and Burnett, Southeast Coast, Darling Downs and Granite Belt, Northern Rivers  [centre -27.1, 152.3; 8 model points]
+   Window:  Thu 12 Nov 10:00 AEST to Fri 13 Nov 10:00 AEST  (model day is 00Z-24Z)
+   Why:     Widespread severe storms (MDT); Destructive winds (125+ km/h); Large hail (3-6 cm); Persistent rain (3-day region bar); Severe storms (MDT); Damaging winds (90+ km/h)
+   Peak:    CAPE 3691, shear 45 kt, SCP 6.2, SHIP 1.6, DCAPE 861, rain up to 23 mm (52 mm over 3 days from this one); hail tier 2, wind tier 2
+   Your published map: up to MDT over these points
+
+NEW  Thu 12 Nov  (day 3)
+   Where:   South Interior  [centre -27.0, 126.7; 1 model points]
    Window:  Thu 12 Nov 08:00 AWST to Fri 13 Nov 08:00 AWST  (model day is 00Z-24Z)
-   Why:     Severe storms (MDT)
-   Peak:    CAPE 3087, shear 32 kt, SCP 6.2, SHIP 0.9, DCAPE 570, rain up to 33 mm (33 mm over 3 days from this one); hail tier 1, wind tier 2
+   Why:     Very destructive winds (160+ km/h); Destructive winds (125+ km/h); Severe storms (MDT)
+   Peak:    CAPE 2247, shear 42 kt, SCP 6.2, SHIP 0.8, DCAPE 789, rain up to 4 mm (4 mm over 3 days from this one); hail tier 1, wind tier 3
+   Your published map: up to MRGL over these points
+
+NEW  Thu 12 Nov  (day 3)
+   Where:   North Interior, Lasseter, North West Pastoral, South Interior, Tanami  [centre -23.3, 128.4; 30 model points]
+   Window:  Thu 12 Nov 08:00 AWST to Fri 13 Nov 08:00 AWST  (model day is 00Z-24Z)
+   Why:     Very destructive winds (160+ km/h); Widespread severe storms (MDT); Destructive winds (125+ km/h); Severe storms (MDT); Tornado environment; Damaging winds (90+ km/h)
+   Peak:    CAPE 4071, shear 45 kt, SCP 8.4, SHIP 1.1, DCAPE 1075, rain up to 34 mm (35 mm over 3 days from this one); hail tier 1, wind tier 3
    Your published map: up to MDT over these points
 
-NEW  Thu 12 Nov  (day 4)
-   Where:   Capricornia  [centre -24.1, 150.5; 1 model points]
+NEW  Thu 12 Nov  (day 3)
+   Where:   Central West  [centre -24.5, 144.3; 2 model points]
+   Window:  Thu 12 Nov 10:00 AEST to Fri 13 Nov 10:00 AEST  (model day is 00Z-24Z)
+   Why:     Persistent rain (3-day region bar)
+   Peak:    CAPE 2112, shear 23 kt, SCP 0.6, SHIP 0.3, DCAPE 703, rain up to 20 mm (45 mm over 3 days from this one); hail tier 0, wind tier 0
+   Your published map: up to TSTM over these points
+
+NEW  Thu 12 Nov  (day 3)
+   Where:   Channel Country  [centre -23.4, 138.9; 1 model points]
    Window:  Thu 12 Nov 10:00 AEST to Fri 13 Nov 10:00 AEST  (model day is 00Z-24Z)
    Why:     Severe storms (MDT)
-   Peak:    CAPE 3145, shear 32 kt, SCP 3.1, SHIP 0.6, DCAPE 551, rain up to 9 mm (16 mm over 3 days from this one); hail tier 1, wind tier 1
-   Your published map: up to MDT over these points
+   Peak:    CAPE 3301, shear 28 kt, SCP 0.8, SHIP 0.4, DCAPE 765, rain up to 14 mm (17 mm over 3 days from this one); hail tier 1, wind tier 1
+   Your published map: up to TSTM over these points
 
-NEW  Thu 12 Nov  (day 4)
-   Where:   Barkly  [centre -20.5, 133.2; 1 model points]
+NEW  Thu 12 Nov  (day 3)
+   Where:   North West  [centre -21.9, 138.9; 1 model points]
+   Window:  Thu 12 Nov 10:00 AEST to Fri 13 Nov 10:00 AEST  (model day is 00Z-24Z)
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 3925, shear 26 kt, SCP 0.6, SHIP 0.4, DCAPE 814, rain up to 3 mm (9 mm over 3 days from this one); hail tier 0, wind tier 1
+   Your published map: up to TSTM over these points
+
+NEW  Thu 12 Nov  (day 3)
+   Where:   North Interior  [centre -20.5, 123.1; 1 model points]
+   Window:  Thu 12 Nov 08:00 AWST to Fri 13 Nov 08:00 AWST  (model day is 00Z-24Z)
+   Why:     Destructive winds (125+ km/h); Severe storms (MDT)
+   Peak:    CAPE 3723, shear 41 kt, SCP 3.2, SHIP 0.9, DCAPE 937, rain up to 4 mm (4 mm over 3 days from this one); hail tier 1, wind tier 2
+   Your published map: up to MRGL over these points
+
+NEW  Thu 12 Nov  (day 3)
+   Where:   Barkly  [centre -20.5, 133.9; 1 model points]
    Window:  Thu 12 Nov 09:30 ACST to Fri 13 Nov 09:30 ACST  (model day is 00Z-24Z)
    Why:     Severe storms (MDT)
-   Peak:    CAPE 3192, shear 26 kt, SCP 2.2, SHIP 0.3, DCAPE 632, rain up to 4 mm (4 mm over 3 days from this one); hail tier 0, wind tier 0
-   Your published map: up to MDT over these points
+   Peak:    CAPE 3100, shear 28 kt, SCP 0.9, SHIP 0.4, DCAPE 683, rain up to 4 mm (7 mm over 3 days from this one); hail tier 0, wind tier 0
+   Your published map: up to TSTM over these points
 
-NEW  Thu 12 Nov  (day 4)
-   Where:   Kimberley  [centre -16.2, 125.3; 1 model points]
+NEW  Thu 12 Nov  (day 3)
+   Where:   Kimberley  [centre -19.1, 121.7; 1 model points]
+   Window:  Thu 12 Nov 08:00 AWST to Fri 13 Nov 08:00 AWST  (model day is 00Z-24Z)
+   Why:     Destructive winds (125+ km/h); Severe storms (MDT)
+   Peak:    CAPE 3489, shear 36 kt, SCP 1.8, SHIP 0.5, DCAPE 932, rain up to 4 mm (4 mm over 3 days from this one); hail tier 1, wind tier 2
+   Your published map: up to TSTM over these points
+
+NEW  Thu 12 Nov  (day 3)
+   Where:   Kimberley  [centre -16.9, 125.3; 1 model points]
    Window:  Thu 12 Nov 08:00 AWST to Fri 13 Nov 08:00 AWST  (model day is 00Z-24Z)
    Why:     Severe storms (MDT)
-   Peak:    CAPE 3652, shear 25 kt, SCP 0.5, SHIP 0.3, DCAPE 951, rain up to 4 mm (7 mm over 3 days from this one); hail tier 0, wind tier 1
-   Your published map: up to MDT over these points
-
-NEW  Fri 13 Nov  (day 5)
-   Where:   Mid North Coast  [centre -30.9, 152.6; 2 model points]
-   Window:  Fri 13 Nov 11:00 AEDT to Sat 14 Nov 11:00 AEDT  (model day is 00Z-24Z)
-   Why:     Persistent rain (3-day region bar); Severe storms (MDT)
-   Peak:    CAPE 3279, shear 40 kt, SCP 7.1, SHIP 1.6, DCAPE 838, rain up to 5 mm (109 mm over 3 days from this one); hail tier 2, wind tier 2
-   Your published map: up to none over these points
-
-NEW  Fri 13 Nov  (day 5)
-   Where:   Darling Downs and Granite Belt, Wide Bay and Burnett, Central Highlands and Coalfields, Maranoa and Warrego, Northern Tablelands, North West Slopes & Plains  [centre -27.4, 150.6; 20 model points]
-   Window:  Fri 13 Nov 10:00 AEST to Sat 14 Nov 10:00 AEST  (model day is 00Z-24Z)
-   Why:     Widespread persistent rain (3-day region bar); Widespread severe storms (MDT); Persistent rain (3-day region bar); Severe storms (MDT)
-   Peak:    CAPE 3445, shear 47 kt, SCP 7.7, SHIP 1.3, DCAPE 979, rain up to 29 mm (63 mm over 3 days from this one); hail tier 2, wind tier 3
+   Peak:    CAPE 3807, shear 27 kt, SCP 0.5, SHIP 0.5, DCAPE 1031, rain up to 6 mm (6 mm over 3 days from this one); hail tier 1, wind tier 1
    Your published map: up to MRGL over these points
 
-NEW  Fri 13 Nov  (day 5)
-   Where:   North East Pastoral  [centre -26.3, 136.1; 1 model points]
-   Window:  Fri 13 Nov 10:30 ACDT to Sat 14 Nov 10:30 ACDT  (model day is 00Z-24Z)
-   Why:     Severe storms (MDT)
-   Peak:    CAPE 3321, shear 26 kt, SCP 0.5, SHIP 0.7, DCAPE 838, rain up to 15 mm (15 mm over 3 days from this one); hail tier 1, wind tier 2
-   Your published map: up to none over these points
-
-NEW  Fri 13 Nov  (day 5)
-   Where:   Central West, Maranoa and Warrego  [centre -25.2, 145.8; 2 model points]
+NEW  Fri 13 Nov  (day 4)
+   Where:   Channel Country, Barkly, North West, Simpson  [centre -23.2, 138.6; 8 model points]
    Window:  Fri 13 Nov 10:00 AEST to Sat 14 Nov 10:00 AEST  (model day is 00Z-24Z)
+   Why:     Widespread severe storms (MDT); Severe storms (MDT)
+   Peak:    CAPE 4561, shear 36 kt, SCP 4.6, SHIP 1.3, DCAPE 962, rain up to 22 mm (22 mm over 3 days from this one); hail tier 2, wind tier 2
+   Your published map: up to MDT over these points
+
+NEW  Fri 13 Nov  (day 4)
+   Where:   Channel Country  [centre -24.8, 141.1; 1 model points]
+   Window:  Fri 13 Nov 10:00 AEST to Sat 14 Nov 10:00 AEST  (model day is 00Z-24Z)
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 3071, shear 28 kt, SCP 1.5, SHIP 0.8, DCAPE 782, rain up to 8 mm (10 mm over 3 days from this one); hail tier 1, wind tier 1
+   Your published map: up to MDT over these points
+
+NEW  Fri 13 Nov  (day 4)
+   Where:   Channel Country  [centre -24.8, 143.3; 1 model points]
+   Window:  Fri 13 Nov 10:00 AEST to Sat 14 Nov 10:00 AEST  (model day is 00Z-24Z)
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 3349, shear 29 kt, SCP 1.4, SHIP 0.5, DCAPE 708, rain up to 5 mm (12 mm over 3 days from this one); hail tier 1, wind tier 1
+   Your published map: up to MDT over these points
+
+NEW  Fri 13 Nov  (day 4)
+   Where:   Central Highlands and Coalfields  [centre -24.8, 148.3; 1 model points]
+   Window:  Fri 13 Nov 10:00 AEST to Sat 14 Nov 10:00 AEST  (model day is 00Z-24Z)
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 3125, shear 27 kt, SCP 1.7, SHIP 0.4, DCAPE 592, rain up to 7 mm (30 mm over 3 days from this one); hail tier 0, wind tier 0
+   Your published map: up to MDT over these points
+
+NEW  Fri 13 Nov  (day 4)
+   Where:   Simpson  [centre -24.1, 133.9; 1 model points]
+   Window:  Fri 13 Nov 09:30 ACST to Sat 14 Nov 09:30 ACST  (model day is 00Z-24Z)
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 3351, shear 32 kt, SCP 4.2, SHIP 0.8, DCAPE 975, rain up to 2 mm (2 mm over 3 days from this one); hail tier 1, wind tier 2
+   Your published map: up to MDT over these points
+
+NEW  Fri 13 Nov  (day 4)
+   Where:   Barkly  [centre -20.7, 134.6; 4 model points]
+   Window:  Fri 13 Nov 09:30 ACST to Sat 14 Nov 09:30 ACST  (model day is 00Z-24Z)
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 4512, shear 38 kt, SCP 3.1, SHIP 0.6, DCAPE 961, rain up to 4 mm (6 mm over 3 days from this one); hail tier 1, wind tier 2
+   Your published map: up to MDT over these points
+
+NEW  Fri 13 Nov  (day 4)
+   Where:   Barkly  [centre -20.1, 137.5; 2 model points]
+   Window:  Fri 13 Nov 09:30 ACST to Sat 14 Nov 09:30 ACST  (model day is 00Z-24Z)
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 3883, shear 30 kt, SCP 1.3, SHIP 0.4, DCAPE 773, rain up to 7 mm (8 mm over 3 days from this one); hail tier 1, wind tier 1
+   Your published map: up to MDT over these points
+
+NEW  Fri 13 Nov  (day 4)
+   Where:   Barkly  [centre -19.1, 134.3; 2 model points]
+   Window:  Fri 13 Nov 09:30 ACST to Sat 14 Nov 09:30 ACST  (model day is 00Z-24Z)
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 3413, shear 31 kt, SCP 0.9, SHIP 0.4, DCAPE 852, rain up to 3 mm (7 mm over 3 days from this one); hail tier 0, wind tier 1
+   Your published map: up to MDT over these points
+
+NEW  Fri 13 Nov  (day 4)
+   Where:   Kimberley  [centre -15.5, 125.3; 1 model points]
+   Window:  Fri 13 Nov 08:00 AWST to Sat 14 Nov 08:00 AWST  (model day is 00Z-24Z)
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 5008, shear 26 kt, SCP 0.3, SHIP 0.4, DCAPE 935, rain up to 7 mm (11 mm over 3 days from this one); hail tier 0, wind tier 1
+   Your published map: up to MDT over these points
+
+NEW  Sat 14 Nov  (day 5)
+   Where:   East Gippsland, Snowy Mountains, West and South Gippsland  [centre -37.6, 148.2; 5 model points]
+   Window:  Sat 14 Nov 11:00 AEDT to Sun 15 Nov 11:00 AEDT  (model day is 00Z-24Z)
    Why:     Persistent rain (3-day region bar)
-   Peak:    CAPE 2276, shear 32 kt, SCP 3.6, SHIP 0.4, DCAPE 710, rain up to 35 mm (48 mm over 3 days from this one); hail tier 0, wind tier 0
-   Your published map: up to MRGL over these points
-
-NEW  Fri 13 Nov  (day 5)
-   Where:   Lasseter  [centre -24.8, 131.7; 1 model points]
-   Window:  Fri 13 Nov 09:30 ACST to Sat 14 Nov 09:30 ACST  (model day is 00Z-24Z)
-   Why:     Severe storms (MDT)
-   Peak:    CAPE 3142, shear 31 kt, SCP 2.4, SHIP 0.7, DCAPE 772, rain up to 3 mm (4 mm over 3 days from this one); hail tier 1, wind tier 2
+   Peak:    CAPE 1209, shear 44 kt, SCP 2.6, SHIP 0.5, DCAPE 441, rain up to 24 mm (55 mm over 3 days from this one); hail tier 1, wind tier 0
    Your published map: up to none over these points
 
-NEW  Fri 13 Nov  (day 5)
-   Where:   Central West, Channel Country  [centre -24.2, 142.2; 6 model points]
-   Window:  Fri 13 Nov 10:00 AEST to Sat 14 Nov 10:00 AEST  (model day is 00Z-24Z)
+NEW  Sat 14 Nov  (day 5)
+   Where:   Hunter, Central Tablelands  [centre -33.1, 151.2; 4 model points]
+   Window:  Sat 14 Nov 11:00 AEDT to Sun 15 Nov 11:00 AEDT  (model day is 00Z-24Z)
+   Why:     Persistent rain (3-day region bar)
+   Peak:    CAPE 2011, shear 33 kt, SCP 2.8, SHIP 0.6, DCAPE 794, rain up to 24 mm (77 mm over 3 days from this one); hail tier 1, wind tier 1
+   Your published map: up to MRGL over these points
+
+NEW  Sat 14 Nov  (day 5)
+   Where:   Darling Downs and Granite Belt, North West Slopes & Plains, Wide Bay and Burnett, Central Highlands and Coalfields  [centre -27.4, 150.8; 13 model points]
+   Window:  Sat 14 Nov 10:00 AEST to Sun 15 Nov 10:00 AEST  (model day is 00Z-24Z)
+   Why:     Widespread persistent rain (3-day region bar); Persistent rain (3-day region bar)
+   Peak:    CAPE 2075, shear 25 kt, SCP 1.1, SHIP 0.3, DCAPE 448, rain up to 46 mm (63 mm over 3 days from this one); hail tier 0, wind tier 0
+   Your published map: up to MRGL over these points
+
+NEW  Sat 14 Nov  (day 5)
+   Where:   Channel Country  [centre -25.5, 141.1; 1 model points]
+   Window:  Sat 14 Nov 10:00 AEST to Sun 15 Nov 10:00 AEST  (model day is 00Z-24Z)
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 3324, shear 26 kt, SCP 1.6, SHIP 0.7, DCAPE 945, rain up to 13 mm (13 mm over 3 days from this one); hail tier 1, wind tier 2
+   Your published map: up to none over these points
+
+NEW  Sat 14 Nov  (day 5)
+   Where:   North West  [centre -21.9, 138.9; 1 model points]
+   Window:  Sat 14 Nov 10:00 AEST to Sun 15 Nov 10:00 AEST  (model day is 00Z-24Z)
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 3047, shear 41 kt, SCP 1.2, SHIP 0.7, DCAPE 890, rain up to 4 mm (4 mm over 3 days from this one); hail tier 1, wind tier 2
+   Your published map: up to MRGL over these points
+
+NEW  Sat 14 Nov  (day 5)
+   Where:   Barkly  [centre -21.2, 137.5; 1 model points]
+   Window:  Sat 14 Nov 09:30 ACST to Sun 15 Nov 09:30 ACST  (model day is 00Z-24Z)
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 3012, shear 41 kt, SCP 0.8, SHIP 0.6, DCAPE 978, rain up to 8 mm (8 mm over 3 days from this one); hail tier 1, wind tier 2
+   Your published map: up to none over these points
+
+NEW  Sat 14 Nov  (day 5)
+   Where:   Barkly, Gulf Country  [centre -18.9, 136.8; 6 model points]
+   Window:  Sat 14 Nov 09:30 ACST to Sun 15 Nov 09:30 ACST  (model day is 00Z-24Z)
    Why:     Widespread severe storms (MDT); Severe storms (MDT)
-   Peak:    CAPE 3638, shear 34 kt, SCP 2.5, SHIP 0.7, DCAPE 710, rain up to 17 mm (23 mm over 3 days from this one); hail tier 1, wind tier 1
+   Peak:    CAPE 3556, shear 32 kt, SCP 2.0, SHIP 0.6, DCAPE 926, rain up to 20 mm (21 mm over 3 days from this one); hail tier 1, wind tier 1
    Your published map: up to MRGL over these points
 
-NEW  Fri 13 Nov  (day 5)
-   Where:   Tanami, Lasseter  [centre -22.7, 130.5; 4 model points]
-   Window:  Fri 13 Nov 09:30 ACST to Sat 14 Nov 09:30 ACST  (model day is 00Z-24Z)
+NEW  Sat 14 Nov  (day 5)
+   Where:   Kimberley  [centre -17.4, 127.9; 3 model points]
+   Window:  Sat 14 Nov 08:00 AWST to Sun 15 Nov 08:00 AWST  (model day is 00Z-24Z)
    Why:     Severe storms (MDT)
-   Peak:    CAPE 4292, shear 37 kt, SCP 6.1, SHIP 0.8, DCAPE 1081, rain up to 3 mm (3 mm over 3 days from this one); hail tier 1, wind tier 3
+   Peak:    CAPE 3515, shear 41 kt, SCP 1.1, SHIP 0.5, DCAPE 1128, rain up to 5 mm (6 mm over 3 days from this one); hail tier 1, wind tier 2
    Your published map: up to MRGL over these points
 
-NEW  Fri 13 Nov  (day 5)
-   Where:   Lasseter  [centre -23.4, 132.5; 1 model points]
-   Window:  Fri 13 Nov 09:30 ACST to Sat 14 Nov 09:30 ACST  (model day is 00Z-24Z)
+NEW  Sat 14 Nov  (day 5)
+   Where:   Barkly, Gregory  [centre -16.5, 132.5; 2 model points]
+   Window:  Sat 14 Nov 09:30 ACST to Sun 15 Nov 09:30 ACST  (model day is 00Z-24Z)
    Why:     Severe storms (MDT)
-   Peak:    CAPE 3245, shear 32 kt, SCP 3.4, SHIP 0.7, DCAPE 785, rain up to 2 mm (2 mm over 3 days from this one); hail tier 1, wind tier 2
+   Peak:    CAPE 3177, shear 34 kt, SCP 0.6, SHIP 0.3, DCAPE 920, rain up to 3 mm (7 mm over 3 days from this one); hail tier 0, wind tier 1
+   Your published map: up to MRGL over these points
+
+NEW  Sat 14 Nov  (day 5)
+   Where:   Gulf Country  [centre -16.9, 141.1; 1 model points]
+   Window:  Sat 14 Nov 10:00 AEST to Sun 15 Nov 10:00 AEST  (model day is 00Z-24Z)
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 3475, shear 27 kt, SCP 1.1, SHIP 0.2, DCAPE 672, rain up to 4 mm (22 mm over 3 days from this one); hail tier 0, wind tier 0
+   Your published map: up to TSTM over these points
+
+NEW  Sat 14 Nov  (day 5)
+   Where:   Gregory  [centre -16.2, 129.6; 1 model points]
+   Window:  Sat 14 Nov 09:30 ACST to Sun 15 Nov 09:30 ACST  (model day is 00Z-24Z)
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 3645, shear 36 kt, SCP 0.9, SHIP 0.3, DCAPE 873, rain up to 4 mm (8 mm over 3 days from this one); hail tier 0, wind tier 1
    Your published map: up to none over these points
 
-NEW  Fri 13 Nov  (day 5)
-   Where:   Kimberley, North Interior  [centre -19.4, 127.7; 8 model points]
-   Window:  Fri 13 Nov 08:00 AWST to Sat 14 Nov 08:00 AWST  (model day is 00Z-24Z)
-   Why:     Widespread severe storms (MDT); Severe storms (MDT)
-   Peak:    CAPE 4006, shear 42 kt, SCP 4.1, SHIP 1.0, DCAPE 1221, rain up to 5 mm (6 mm over 3 days from this one); hail tier 1, wind tier 3
+NEW  Sat 14 Nov  (day 5)
+   Where:   Carpentaria  [centre -16.2, 136.8; 1 model points]
+   Window:  Sat 14 Nov 09:30 ACST to Sun 15 Nov 09:30 ACST  (model day is 00Z-24Z)
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 3330, shear 29 kt, SCP 0.8, SHIP 0.3, DCAPE 695, rain up to 3 mm (13 mm over 3 days from this one); hail tier 0, wind tier 0
    Your published map: up to MRGL over these points
 
-NEW  Fri 13 Nov  (day 5)
-   Where:   Tanami  [centre -21.9, 132.5; 1 model points]
-   Window:  Fri 13 Nov 09:30 ACST to Sat 14 Nov 09:30 ACST  (model day is 00Z-24Z)
+NEW  Sat 14 Nov  (day 5)
+   Where:   Kimberley  [centre -15.5, 125.6; 2 model points]
+   Window:  Sat 14 Nov 08:00 AWST to Sun 15 Nov 08:00 AWST  (model day is 00Z-24Z)
    Why:     Severe storms (MDT)
-   Peak:    CAPE 3173, shear 31 kt, SCP 2.2, SHIP 0.5, DCAPE 956, rain up to 2 mm (2 mm over 3 days from this one); hail tier 1, wind tier 2
-   Your published map: up to none over these points
-
-NEW  Fri 13 Nov  (day 5)
-   Where:   North West  [centre -21.2, 141.8; 1 model points]
-   Window:  Fri 13 Nov 10:00 AEST to Sat 14 Nov 10:00 AEST  (model day is 00Z-24Z)
-   Why:     Severe storms (MDT)
-   Peak:    CAPE 3160, shear 25 kt, SCP 1.4, SHIP 0.4, DCAPE 684, rain up to 8 mm (17 mm over 3 days from this one); hail tier 0, wind tier 0
+   Peak:    CAPE 4167, shear 28 kt, SCP 2.0, SHIP 0.4, DCAPE 990, rain up to 4 mm (10 mm over 3 days from this one); hail tier 0, wind tier 1
    Your published map: up to MRGL over these points
 
-NEW  Fri 13 Nov  (day 5)
-   Where:   North Interior  [centre -20.5, 126.0; 1 model points]
-   Window:  Fri 13 Nov 08:00 AWST to Sat 14 Nov 08:00 AWST  (model day is 00Z-24Z)
-   Why:     Severe storms (MDT)
-   Peak:    CAPE 3505, shear 35 kt, SCP 2.0, SHIP 0.8, DCAPE 1095, rain up to 3 mm (4 mm over 3 days from this one); hail tier 1, wind tier 2
-   Your published map: up to MRGL over these points
-
-NEW  Fri 13 Nov  (day 5)
-   Where:   Barkly  [centre -20.1, 136.8; 2 model points]
-   Window:  Fri 13 Nov 09:30 ACST to Sat 14 Nov 09:30 ACST  (model day is 00Z-24Z)
-   Why:     Severe storms (MDT)
-   Peak:    CAPE 3489, shear 29 kt, SCP 1.6, SHIP 0.5, DCAPE 891, rain up to 7 mm (8 mm over 3 days from this one); hail tier 1, wind tier 1
-   Your published map: up to none over these points
-
-NEW  Fri 13 Nov  (day 5)
-   Where:   Gregory, Kimberley, Tanami  [centre -18.0, 129.8; 6 model points]
-   Window:  Fri 13 Nov 09:30 ACST to Sat 14 Nov 09:30 ACST  (model day is 00Z-24Z)
-   Why:     Widespread severe storms (MDT); Severe storms (MDT)
-   Peak:    CAPE 4179, shear 38 kt, SCP 1.0, SHIP 0.7, DCAPE 910, rain up to 4 mm (4 mm over 3 days from this one); hail tier 1, wind tier 1
-   Your published map: up to MRGL over these points
-
-NEW  Fri 13 Nov  (day 5)
-   Where:   Barkly  [centre -19.1, 135.3; 1 model points]
-   Window:  Fri 13 Nov 09:30 ACST to Sat 14 Nov 09:30 ACST  (model day is 00Z-24Z)
-   Why:     Severe storms (MDT)
-   Peak:    CAPE 3772, shear 25 kt, SCP 1.2, SHIP 0.4, DCAPE 919, rain up to 4 mm (7 mm over 3 days from this one); hail tier 0, wind tier 1
-   Your published map: up to MRGL over these points
-
-NEW  Fri 13 Nov  (day 5)
-   Where:   Kimberley  [centre -16.2, 126.2; 3 model points]
-   Window:  Fri 13 Nov 08:00 AWST to Sat 14 Nov 08:00 AWST  (model day is 00Z-24Z)
-   Why:     Severe storms (MDT)
-   Peak:    CAPE 3102, shear 33 kt, SCP 0.8, SHIP 0.4, DCAPE 825, rain up to 10 mm (14 mm over 3 days from this one); hail tier 0, wind tier 1
-   Your published map: up to MRGL over these points
-
-ESCALATED  Tue 10 Nov  (day 2)
-   Where:   North Interior, South Interior, Pilbara  [centre -23.0, 122.9; 33 model points]
+WEAKENED  Tue 10 Nov  (day 1)
+   Where:   South Interior  [centre -24.1, 123.8; 1 model points]
    Window:  Tue 10 Nov 08:00 AWST to Wed 11 Nov 08:00 AWST  (model day is 00Z-24Z)
-   Why:     Severe fire danger (FFDI 50+)
-   Peak:    CAPE 2032, shear 41 kt, SCP 1.9, SHIP 1.1, DCAPE 1327, rain up to 4 mm (37 mm over 3 days from this one); hail tier 1, wind tier 1
+   Why:     Large hail (3-6 cm)
+   Peak:    CAPE 2823, shear 42 kt, SCP 1.1, SHIP 1.2, DCAPE 937, rain up to 7 mm (18 mm over 3 days from this one); hail tier 2, wind tier 1
    Your published map: up to MRGL over these points
-   Was:     21 points, level 1  ->  now 33 points, level 1
+   Was:     33 points, level 1  ->  now 1 points, level 1
 
-ESCALATED  Wed 11 Nov  (day 3)
-   Where:   Darling Downs and Granite Belt, North West Slopes & Plains, Northern Tablelands, Mid North Coast, Northern Rivers, Southeast Coast  [centre -29.1, 151.4; 25 model points]
-   Window:  Wed 11 Nov 11:00 AEDT to Thu 12 Nov 11:00 AEDT  (model day is 00Z-24Z)
-   Why:     Very destructive winds (160+ km/h); Widespread large hail, or very large hail; Widespread persistent rain (3-day region bar); Severe storms (isolated HIGH); Widespread severe storms (MDT); Destructive winds (125+ km/h); Large hail (3-6 cm); Persistent rain (3-day region bar); Severe storms (MDT); Damaging winds (90+ km/h)
-   Peak:    CAPE 3003, shear 52 kt, SCP 10.4, SHIP 1.9, DCAPE 940, rain up to 33 mm (60 mm over 3 days from this one); hail tier 2, wind tier 3
-   Your published map: up to MDT over these points
-   Was:     17 points, level 2  ->  now 25 points, level 3
-
-ESCALATED  Thu 12 Nov  (day 4)
-   Where:   Darling Downs and Granite Belt, Northern Tablelands, Wide Bay and Burnett, North West Slopes & Plains, Southeast Coast  [centre -28.0, 151.6; 14 model points]
-   Window:  Thu 12 Nov 10:00 AEST to Fri 13 Nov 10:00 AEST  (model day is 00Z-24Z)
-   Why:     Widespread persistent rain (3-day region bar); Widespread severe storms (MDT); Persistent rain (3-day region bar); Severe storms (MDT)
-   Peak:    CAPE 3266, shear 47 kt, SCP 7.4, SHIP 1.7, DCAPE 992, rain up to 31 mm (77 mm over 3 days from this one); hail tier 2, wind tier 3
-   Your published map: up to MDT over these points
-   Was:     7 points, level 2  ->  now 14 points, level 2
-
-WEAKENED  Mon 9 Nov  (day 1)
-   Where:   South Interior, North Interior, Pilbara, Gascoyne, Lasseter  [centre -23.9, 123.8; 65 model points]
-   Window:  Mon 9 Nov 08:00 AWST to Tue 10 Nov 08:00 AWST  (model day is 00Z-24Z)
-   Why:     Severe fire danger (FFDI 50+)
-   Peak:    CAPE 3115, shear 47 kt, SCP 0.9, SHIP 0.8, DCAPE 1403, rain up to 2 mm (35 mm over 3 days from this one); hail tier 1, wind tier 0
-   Your published map: up to MRGL over these points
-   Was:     77 points, level 2  ->  now 65 points, level 1
-
-WEAKENED  Tue 10 Nov  (day 2)
-   Where:   Upper Western, North East Pastoral, Channel Country, Lower Western  [centre -29.5, 141.2; 34 model points]
+WEAKENED  Tue 10 Nov  (day 1)
+   Where:   Upper Western, North East Pastoral, Lower Western  [centre -30.9, 141.9; 18 model points]
    Window:  Tue 10 Nov 11:00 AEDT to Wed 11 Nov 11:00 AEDT  (model day is 00Z-24Z)
-   Why:     Severe fire danger (FFDI 50+); Large hail (3-6 cm)
-   Peak:    CAPE 2233, shear 44 kt, SCP 1.3, SHIP 1.1, DCAPE 1396, rain up to 7 mm (7 mm over 3 days from this one); hail tier 2, wind tier 1
-   Your published map: up to MRGL over these points
-   Was:     54 points, level 1  ->  now 34 points, level 1
+   Why:     Severe fire danger (FFDI 50+)
+   Peak:    CAPE 810, shear 24 kt, SCP 0.2, SHIP 0.2, DCAPE 1267, rain up to 0 mm (0 mm over 3 days from this one); hail tier 0, wind tier 0
+   Your published map: up to none over these points
+   Was:     34 points, level 1  ->  now 18 points, level 1
 
-WEAKENED  Tue 10 Nov  (day 2)
-   Where:   South Interior, Lasseter, North Interior  [centre -24.1, 128.6; 5 model points]
-   Window:  Tue 10 Nov 08:00 AWST to Wed 11 Nov 08:00 AWST  (model day is 00Z-24Z)
-   Why:     Persistent rain (3-day region bar)
-   Peak:    CAPE 2326, shear 33 kt, SCP 1.7, SHIP 0.7, DCAPE 791, rain up to 22 mm (55 mm over 3 days from this one); hail tier 1, wind tier 1
-   Your published map: up to MRGL over these points
-   Was:     20 points, level 2  ->  now 5 points, level 1
-
-WEAKENED  Wed 11 Nov  (day 3)
-   Where:   North Interior  [centre -21.5, 128.6; 3 model points]
+WEAKENED  Wed 11 Nov  (day 2)
+   Where:   Kimberley  [centre -17.6, 126.0; 1 model points]
    Window:  Wed 11 Nov 08:00 AWST to Thu 12 Nov 08:00 AWST  (model day is 00Z-24Z)
-   Why:     Severe storms (MDT); Damaging winds (90+ km/h)
-   Peak:    CAPE 3209, shear 42 kt, SCP 3.0, SHIP 0.8, DCAPE 680, rain up to 19 mm (25 mm over 3 days from this one); hail tier 1, wind tier 1
+   Why:     Severe storms (MDT)
+   Peak:    CAPE 3456, shear 26 kt, SCP 2.3, SHIP 0.4, DCAPE 728, rain up to 9 mm (10 mm over 3 days from this one); hail tier 0, wind tier 1
+   Your published map: up to MRGL over these points
+   Was:     26 points, level 2  ->  now 1 points, level 1
+
+WEAKENED  Wed 11 Nov  (day 2)
+   Where:   Northern Rivers  [centre -28.8, 153.3; 2 model points]
+   Window:  Wed 11 Nov 10:00 AEST to Thu 12 Nov 10:00 AEST  (model day is 00Z-24Z)
+   Why:     Destructive winds (125+ km/h); Large hail (3-6 cm); Severe storms (MDT)
+   Peak:    CAPE 3876, shear 47 kt, SCP 4.4, SHIP 1.8, DCAPE 746, rain up to 14 mm (18 mm over 3 days from this one); hail tier 2, wind tier 2
+   Your published map: up to MRGL over these points
+   Was:     25 points, level 3  ->  now 2 points, level 2
+
+WEAKENED  Thu 12 Nov  (day 3)
+   Where:   Tanami, Kimberley, North Interior  [centre -19.2, 129.8; 23 model points]
+   Window:  Thu 12 Nov 09:30 ACST to Fri 13 Nov 09:30 ACST  (model day is 00Z-24Z)
+   Why:     Widespread severe storms (MDT); Destructive winds (125+ km/h); Severe storms (MDT); Damaging winds (90+ km/h)
+   Peak:    CAPE 4631, shear 38 kt, SCP 3.5, SHIP 0.7, DCAPE 998, rain up to 27 mm (28 mm over 3 days from this one); hail tier 1, wind tier 2
    Your published map: up to MDT over these points
-   Was:     43 points, level 2  ->  now 3 points, level 1
+   Was:     49 points, level 2  ->  now 23 points, level 2
 
-CLEARED  Mon 9 Nov  (day 2)
-   No longer triggered by the latest run. Last told: 3 points, storms_minor, wind_minor.
+WEAKENED  Thu 12 Nov  (day 3)
+   Where:   Northern Tablelands  [centre -29.5, 152.3; 2 model points]
+   Window:  Thu 12 Nov 11:00 AEDT to Fri 13 Nov 11:00 AEDT  (model day is 00Z-24Z)
+   Why:     Large hail (3-6 cm); Severe storms (MDT)
+   Peak:    CAPE 3366, shear 44 kt, SCP 4.1, SHIP 1.3, DCAPE 826, rain up to 7 mm (24 mm over 3 days from this one); hail tier 2, wind tier 1
+   Your published map: up to MRGL over these points
+   Was:     14 points, level 2  ->  now 2 points, level 1
+
+CLEARED  Tue 10 Nov  (day 2)
+   No longer triggered by the latest run. Last told: 1 points, storms_minor.
    Was in: Kimberley
 
-CLEARED  Mon 9 Nov  (day 2)
+CLEARED  Tue 10 Nov  (day 2)
+   No longer triggered by the latest run. Last told: 1 points, storms_minor.
+   Was in: Kimberley
+
+CLEARED  Tue 10 Nov  (day 2)
+   No longer triggered by the latest run. Last told: 1 points, storms_minor.
+   Was in: Tanami
+
+CLEARED  Tue 10 Nov  (day 2)
+   No longer triggered by the latest run. Last told: 5 points, rain3_minor.
+   Was in: South Interior, Lasseter, North Interior
+
+CLEARED  Tue 10 Nov  (day 2)
+   No longer triggered by the latest run. Last told: 3 points, rain3_minor.
+   Was in: Darling Downs and Granite Belt, Wide Bay and Burnett
+
+CLEARED  Tue 10 Nov  (day 2)
    No longer triggered by the latest run. Last told: 2 points, rain3_minor.
-   Was in: Kimberley, Tanami
+   Was in: North West Pastoral
 
-CLEARED  Tue 10 Nov  (day 3)
+CLEARED  Tue 10 Nov  (day 2)
+   No longer triggered by the latest run. Last told: 2 points, rain3_minor.
+   Was in: South Interior
+
+CLEARED  Tue 10 Nov  (day 2)
    No longer triggered by the latest run. Last told: 1 points, storms_minor.
-   Was in: North Interior
+   Was in: Tanami
 
-CLEARED  Tue 10 Nov  (day 3)
-   No longer triggered by the latest run. Last told: 4 points, storms_minor, wind_minor.
-   Was in: Kimberley
+CLEARED  Wed 11 Nov  (day 3)
+   No longer triggered by the latest run. Last told: 12 points, storms_mod_wide, wind_mod, rain3_minor, storms_minor, wind_minor.
+   Was in: Lasseter, North Interior, South Interior
 
-CLEARED  Wed 11 Nov  (day 4)
-   No longer triggered by the latest run. Last told: 1 points, storms_minor.
-   Was in: Maranoa and Warrego
-
-CLEARED  Wed 11 Nov  (day 4)
+CLEARED  Wed 11 Nov  (day 3)
    No longer triggered by the latest run. Last told: 2 points, storms_minor.
-   Was in: Pilbara
+   Was in: Gregory
 
-CLEARED  Wed 11 Nov  (day 4)
-   No longer triggered by the latest run. Last told: 7 points, fire_minor.
-   Was in: Channel Country
-
-CLEARED  Wed 11 Nov  (day 4)
-   No longer triggered by the latest run. Last told: 6 points, fire_minor.
-   Was in: Gascoyne
-
-CLEARED  Thu 12 Nov  (day 5)
+CLEARED  Wed 11 Nov  (day 3)
    No longer triggered by the latest run. Last told: 1 points, storms_minor.
-   Was in: Central Highlands and Coalfields
+   Was in: Tanami
 
-CLEARED  Thu 12 Nov  (day 5)
-   No longer triggered by the latest run. Last told: 1 points, storms_minor.
-   Was in: Central Highlands and Coalfields
-
-CLEARED  Thu 12 Nov  (day 5)
-   No longer triggered by the latest run. Last told: 1 points, storms_minor.
-   Was in: Central Highlands and Coalfields
-
-CLEARED  Thu 12 Nov  (day 5)
-   No longer triggered by the latest run. Last told: 1 points, storms_minor.
+CLEARED  Wed 11 Nov  (day 3)
+   No longer triggered by the latest run. Last told: 3 points, storms_minor, wind_minor.
    Was in: North Interior
 
-CLEARED  Thu 12 Nov  (day 5)
+CLEARED  Wed 11 Nov  (day 3)
+   No longer triggered by the latest run. Last told: 2 points, rain3_minor.
+   Was in: North West Pastoral
+
+CLEARED  Wed 11 Nov  (day 3)
+   No longer triggered by the latest run. Last told: 2 points, rain3_minor.
+   Was in: South Interior
+
+CLEARED  Thu 12 Nov  (day 4)
+   No longer triggered by the latest run. Last told: 1 points, storms_minor.
+   Was in: Barkly
+
+CLEARED  Thu 12 Nov  (day 4)
    No longer triggered by the latest run. Last told: 1 points, storms_minor.
    Was in: Kimberley
 
-Still open, unchanged since you were last told (3):
-   20261109-6  2026-11-09  66 pts  North East Pastoral, North West Pastoral, Simpson
-   20261112-3  2026-11-12  49 pts  North Interior, Kimberley, Tanami
-   20261111-12  2026-11-11  3 pts  Gregory
+CLEARED  Thu 12 Nov  (day 4)
+   No longer triggered by the latest run. Last told: 1 points, storms_minor.
+   Was in: South Interior
+
+CLEARED  Thu 12 Nov  (day 4)
+   No longer triggered by the latest run. Last told: 1 points, storms_minor.
+   Was in: Capricornia
+
+CLEARED  Fri 13 Nov  (day 5)
+   No longer triggered by the latest run. Last told: 2 points, rain3_minor, storms_minor.
+   Was in: Mid North Coast
+
+CLEARED  Fri 13 Nov  (day 5)
+   No longer triggered by the latest run. Last told: 1 points, storms_minor.
+   Was in: Tanami
+
+CLEARED  Fri 13 Nov  (day 5)
+   No longer triggered by the latest run. Last told: 1 points, storms_minor.
+   Was in: North West
+
+CLEARED  Fri 13 Nov  (day 5)
+   No longer triggered by the latest run. Last told: 1 points, storms_minor.
+   Was in: North Interior
+
+CLEARED  Fri 13 Nov  (day 5)
+   No longer triggered by the latest run. Last told: 2 points, storms_minor.
+   Was in: Barkly
+
+CLEARED  Fri 13 Nov  (day 5)
+   No longer triggered by the latest run. Last told: 6 points, storms_mod_wide, storms_minor.
+   Was in: Gregory, Kimberley, Tanami
+
+CLEARED  Fri 13 Nov  (day 5)
+   No longer triggered by the latest run. Last told: 1 points, storms_minor.
+   Was in: Barkly
+
+CLEARED  Fri 13 Nov  (day 5)
+   No longer triggered by the latest run. Last told: 3 points, storms_minor.
+   Was in: Kimberley
+
+CLEARED  Fri 13 Nov  (day 5)
+   No longer triggered by the latest run. Last told: 1 points, storms_minor.
+   Was in: North East Pastoral
+
+CLEARED  Fri 13 Nov  (day 5)
+   No longer triggered by the latest run. Last told: 2 points, rain3_minor.
+   Was in: Central West, Maranoa and Warrego
+
+CLEARED  Fri 13 Nov  (day 5)
+   No longer triggered by the latest run. Last told: 1 points, storms_minor.
+   Was in: Lasseter
+
+CLEARED  Fri 13 Nov  (day 5)
+   No longer triggered by the latest run. Last told: 6 points, storms_mod_wide, storms_minor.
+   Was in: Central West, Channel Country
+
+CLEARED  Fri 13 Nov  (day 5)
+   No longer triggered by the latest run. Last told: 4 points, storms_minor.
+   Was in: Tanami, Lasseter
+
+CLEARED  Fri 13 Nov  (day 5)
+   No longer triggered by the latest run. Last told: 1 points, storms_minor.
+   Was in: Lasseter
+
+CLEARED  Fri 13 Nov  (day 5)
+   No longer triggered by the latest run. Last told: 8 points, storms_mod_wide, storms_minor.
+   Was in: Kimberley, North Interior
+
+Still open, unchanged since you were last told (1):
+   20261113-2  2026-11-13  17 pts  Darling Downs and Granite Belt, Wide Bay and Burnett, North West Slopes & Plains
 
 This is an automatic detection from the raw model run. It is not a forecast and not an
 official warning. It does not know about your edits to the map.
