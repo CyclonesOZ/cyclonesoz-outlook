@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-10T20:04:28Z",
+ "generated": "2026-11-10T23:07:55Z",
  "source": "NOAA CPC Global Unified Gauge-Based Analysis of Daily Precipitation (0.5 deg)",
  "verifies": "storm-day occurrence only (rainfall). NOT severe intensity -- a gauge cannot distinguish MRGL from MDT.",
  "thresholds_mm": {
