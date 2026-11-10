@@ -815,6 +815,9 @@
     var o={}; for(var j=0;j<S.nd;j++) o[S.st.dates[j]]={scale:coarseDay(j)?'coarse':'fine',cat:S.cats[j].slice()};
     return o;
   }
+  // the squares go with their positions, so the server can lay them onto a newer model run than
+  // this tab opened on, square by square, instead of refusing
+  function payload(){ return {base_run:S.st.base_run,points:S.pts.map(function(p){return [p.lat,p.lon];}),dates:editDates()}; }
   function pvStatus(msg,cls){ var el=$('pvStatus'); el.textContent=msg; el.className=cls||''; }
   function togglePreview(){
     S.previewOpen=!S.previewOpen; $('pane').hidden=!S.previewOpen; $('previewBtn').classList.toggle('on',S.previewOpen);
@@ -830,7 +833,7 @@
   function syncPvView(v){ [].forEach.call(document.querySelectorAll('[data-pv]'),function(x){x.classList.toggle('active',x.dataset.pv===v);}); }
   function refreshPreview(){
     var seq=++S.pvSeq; pvStatus('Updating…');
-    return api('/api/preview',{base_run:S.st.base_run,dates:editDates()}).then(function(res){
+    return api('/api/preview',payload()).then(function(res){
       if(seq!==S.pvSeq) return;
       if(res.__status===409){ newerRun(res); return; }
       if(!res.ok){ pvStatus('Preview failed: '+(res.error||'unknown'),'warn'); return; }
@@ -892,7 +895,7 @@
   $('publishBtn').onclick=function(){
     var dlg=$('pubDlg'), body=$('pubBody');
     body.innerHTML='<h2>Checking…</h2><p>Building the outlook with your edits.</p>'; dlg.showModal();
-    api('/api/preview',{base_run:S.st.base_run,dates:editDates()}).then(function(res){
+    api('/api/preview',payload()).then(function(res){
       if(res.__status===409){ dlg.close(); newerRun(res); return; }
       if(!res.ok){ body.innerHTML='<h2>Couldn\'t build the outlook</h2><p>'+(res.error||'')+'</p><div class="row"><button class="btn" id="pcx">Close</button></div>'; $('pcx').onclick=function(){dlg.close();}; return; }
       var rows=res.report.days.map(function(x,j){ return '<tr><td>Day '+(j+1)+' · '+dayLabel(j)+'</td><td>'+changedCount(j)+' squares changed from model</td></tr>'; }).join('');
@@ -909,7 +912,7 @@
       $('pcancel').onclick=function(){dlg.close();};
       $('pgo').onclick=function(){
         $('pgo').disabled=true; $('pgo').textContent='Publishing…';
-        api('/api/publish',{base_run:S.st.base_run,dates:editDates()}).then(function(r){
+        api('/api/publish',payload()).then(function(r){
           dlg.close();
           if(r.__status===409){ newerRun(r); return; }
           if(!r.ok){ banner('Not published: '+((r.problems||[]).join(' ')||r.error||'unknown error'),true); return; }
@@ -920,6 +923,7 @@
           try{localStorage.removeItem(DRAFT_KEY);}catch(e){}
           syncTabs(); syncStatus();
           var at=new Date(r.published_at).toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit'});
+          if(r.newer_run) banner('Published onto the newer model run ('+fmtTime(r.run_date)+'). Reload to see its numbers; your edit carries over.',false,{text:'Reload',fn:function(){location.reload();}});
           if(r.mode==='live'){ toast('Published at '+at+'. Waiting for the website to pick it up…',null,true); watchLive(r.published_at,r.url); }
           else toast('Published to the sandbox at '+at+'.','<a href="'+r.url+'" target="_blank" rel="noopener">Open the sandbox map</a>');
         }).catch(function(e){ dlg.close(); banner('Not published: '+e.message,true); });
