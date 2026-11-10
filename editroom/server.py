@@ -345,13 +345,30 @@ _models = {}           # path -> (fetched at, bytes)
 MODELS_KEEP = 400      # frames kept; a day's worth of three fields at 0.1 deg is a few dozen
 
 
+def gate_key():
+    """Our server key for the model data gate, from ~/.cyclonesoz/models.env (MODEL_GATE_KEY)."""
+    try:
+        with open(os.path.expanduser("~/.cyclonesoz/models.env")) as f:
+            for line in f:
+                if line.startswith("MODEL_GATE_KEY="):
+                    return line.split("=", 1)[1].strip().strip('"')
+    except OSError:
+        pass
+    return ""
+
+
 def model_file(rel):
     """(body, content type) for a model-viewer file, or None if the bucket won't give it."""
     hit = _models.get(rel)
     is_json = rel.split("?")[0].endswith(".json")
     if hit and (not is_json or time.time() - hit[0] < 60):     # frames never change; run lists do
         return hit[1], ("application/json" if is_json else "image/png")
-    r = subprocess.run(["curl", "-sf", "--max-time", "30", MODELS_URL + "/" + rel],
+    # The paid fields need our server key since models.cyclonesoz.com went behind
+    # the gate (Josh, 10 Nov 2026: "close the back door"; cyclonesoz repo,
+    # workers/model-gate). Handed to curl on stdin so it never shows in `ps`.
+    key = gate_key()
+    r = subprocess.run(["curl", "-sf", "--max-time", "30", "-H", "@-", MODELS_URL + "/" + rel],
+                       input=(f"X-Gate-Key: {key}\n" if key else "").encode(),
                        capture_output=True, timeout=45)
     if r.returncode != 0 or not r.stdout:
         return None
