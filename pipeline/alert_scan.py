@@ -497,7 +497,9 @@ def main():
         return
     age_h = (dt.datetime.now(dt.timezone.utc)
              - dt.datetime.fromisoformat(run["run_date"].replace("Z", "+00:00"))).total_seconds() / 3600
-    if age_h > args.max_age_hours:
+    # --morning-only is a preview or test: it uses the latest run whatever its age (the email names
+    # the run's time), rather than sending the "no fresh model run" warning under today's key.
+    if age_h > args.max_age_hours and not args.morning_only:
         # The model run failed or is late. Say so loudly: silence must never look like "all quiet".
         subject = "[Front Line] WARNING: no fresh model run (latest is %.0f h old), alerts NOT checked" % age_h
         body = ("The newest raw model run is %s UTC, %.1f hours old, so tonight's scan did not run.\n"
