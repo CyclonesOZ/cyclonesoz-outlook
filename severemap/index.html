@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Severe Watch Map</title>
+<link rel="stylesheet" href="/vendor/maplibre-gl@6.14.0/dist/maplibre-gl.css">
+<script src="/vendor/pmtiles@4.5.0/dist/pmtiles.js"></script>
+<style>
+  :root {
+    --ink: #1d232b; --muted: #5d6570; --line: #e3e0da; --card: #ffffffee; --chip: #f1efeb; --chip-on: #1d232b;
+    --storms: #e4572e; --rain: #2b7bd6; --wind: #7b4fd1; --fire: #d99a00; --heat: #a3123a;
+    --frost: #1fa99c; --snow: #6aa6dc; --tc: #c2185b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #d9e8f2; color: var(--ink);
+    font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  #map { position: absolute; inset: 0; }
+  #panel { position: absolute; top: 12px; left: 12px; bottom: 12px; width: 340px; display: flex; flex-direction: column;
+    background: var(--card); backdrop-filter: blur(6px); border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: 0 6px 24px #0002; overflow: hidden; z-index: 2; }
+  header { padding: 14px 16px 10px; border-bottom: 1px solid var(--line); }
+  h1 { font-size: 16px; margin: 0 0 2px; }
+  .run { color: var(--muted); font-size: 12.5px; }
+  .days { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+  .days button { border: 0; border-radius: 999px; padding: 5px 11px; background: var(--chip); color: var(--ink);
+    font: inherit; font-size: 13px; cursor: pointer; }
+  .days button[aria-pressed="true"] { background: var(--chip-on); color: #fff; }
+  ol { list-style: none; margin: 0; padding: 6px 0; overflow-y: auto; flex: 1; }
+  li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; padding: 8px 16px; cursor: pointer; align-items: start; }
+  li:hover, li.on { background: #0000000a; }
+  li.off { opacity: .35; }
+  li .h { font-weight: 600; }
+  li .s { color: var(--muted); font-size: 12.5px; }
+  .sep { padding: 10px 16px 2px; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; cursor: default; display: block; }
+  .badge { width: 24px; height: 24px; border-radius: 50%; color: #fff; font-weight: 700; font-size: 12.5px;
+    display: grid; place-items: center; border: 2px solid #fff; box-shadow: 0 1px 4px #0005; }
+  .badge.small { width: 14px; height: 14px; margin: 5px; border-width: 2px; }
+  .marker { cursor: pointer; }
+  .empty { padding: 16px; color: var(--muted); }
+  footer { padding: 8px 16px 10px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11.5px; }
+  .maplibregl-popup-content { font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 10px 12px; }
+  .maplibregl-popup-content b { display: block; margin-bottom: 2px; }
+  @media (max-width: 700px) {
+    #panel { top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; max-height: 45vh; }
+  }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<aside id="panel">
+  <header>
+    <h1>3-day severe watch</h1>
+    <div class="run" id="run">Loading…</div>
+    <div class="days" id="days"></div>
+  </header>
+  <ol id="list"></ol>
+  <footer>Automatic detection from the raw model run. Not a forecast. Nothing here has gone to members.</footer>
+</aside>
+<script type="module">
+import * as maplibregl from '/vendor/maplibre-gl@6.14.0/dist/maplibre-gl.mjs';
+
+// The morning email's link carries the areas after '#' (pipeline/morning_email.py map_link):
+// "#1." + base64url(raw deflate(JSON)). Nothing after '#' ever reaches a server.
+// JSON: {v, run, days: [label...], step, i: [[n, family, level, headline, when, [[lat, lon, daymask]...]]...]}
+// n is the item's number in the email, 0 for areas listed only as "also on the map".
+const TIER = { 1: 'Minor', 2: 'Moderate', 3: 'Significant', 4: 'Major' };
+const FILL = { 1: 0.28, 2: 0.4, 3: 0.52, 4: 0.64 };
+const css = getComputedStyle(document.documentElement);
+const colour = (fam) => css.getPropertyValue('--' + fam).trim() || '#888';
+const KEY = 'severe-watch-last';
+
+async function decode(hash) {
+  const m = /^#1\.([A-Za-z0-9_-]+)$/.exec(hash);
+  if (!m) return null;
+  const bin = atob(m[1].replace(/-/g, '+').replace(/_/g, '/'));
+  const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+  const text = await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+  return JSON.parse(text);
+}
+
+async function load() {
+  let data = null, hash = location.hash;
+  try { data = await decode(hash); } catch (e) { console.error('bad map link', e); }
+  try {
+    if (data) localStorage.setItem(KEY, hash);
+    else if ((hash = localStorage.getItem(KEY))) data = await decode(hash);
+  } catch { /* storage blocked: the link still works */ }
+  return data;
+}
+
+maplibregl.setWorkerUrl('/vendor/maplibre-gl@6.14.0/dist/maplibre-gl-worker.mjs');
+maplibregl.addProtocol('pmtiles', new pmtiles.Protocol().tile);
+const data = await load();
+const styleText = await (await fetch('/basemap-style.json')).text();
+const style = JSON.parse(styleText.replaceAll('__ORIGIN__', location.origin + '/tiles'));
+
+const map = new maplibregl.Map({
+  container: 'map', style, bounds: [[112, -44], [154, -10]],
+  fitBoundsOptions: { padding: pad() }, attributionControl: { compact: true }, dragRotate: false, pitchWithRotate: false,
+});
+map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+map.touchZoomRotate.disableRotation();
+
+function pad() {
+  const narrow = innerWidth <= 700;
+  return narrow ? { top: 40, right: 40, bottom: innerHeight * 0.47, left: 40 } : { top: 40, right: 60, bottom: 40, left: 380 };
+}
+
+const items =(data?.i || []).map(([n, fam, level, head, when, pts], k) => ({ k, n, fam, level, head, when, pts }));
+const days = data?.days || [];
+const half = (data?.step || 0.72) / 2;
+let day = -1; // -1 = all three days
+let markers = [];
+
+document.getElementById('run').textContent = data
+  ? `${days[0] || ''} to ${days[days.length - 1] || ''} · from the ${data.run} run`
+  : 'Open this from the map link in the morning email.';
+
+function cells(it) {
+  return it.pts.filter(([, , m]) => day < 0 || (m >> day) & 1);
+}
+
+function geojson() {
+  const features = [];
+  for (const it of [...items].reverse()) { // the email's order, drawn so number 1 ends up on top
+    for (const [lat, lon] of cells(it)) {
+      features.push({
+        type: 'Feature',
+        properties: { k: it.k, c: colour(it.fam), o: it.n ? FILL[it.level] : 0.16, main: it.n ? 1 : 0, w: it.n && it.level >= 3 ? 1.6 : 0.6 },
+        geometry: { type: 'Polygon', coordinates: [[[lon - half, lat - half], [lon + half, lat - half], [lon + half, lat + half], [lon - half, lat + half], [lon - half, lat - half]]] },
+      });
+    }
+  }
+  return { type: 'FeatureCollection', features };
+}
+
+function centre(pts) {
+  let lat = 0, lon = 0;
+  for (const p of pts) { lat += p[0]; lon += p[1]; }
+  return [lon / pts.length, lat / pts.length];
+}
+
+function bounds(pts) {
+  const b = new maplibregl.LngLatBounds();
+  for (const [lat, lon] of pts) b.extend([lon - half, lat - half]).extend([lon + half, lat + half]);
+  return b;
+}
+
+function popupHtml(it) {
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  return `<b>${it.n ? it.n + '. ' : ''}${esc(it.head)}</b>${esc(it.when)} · ${TIER[it.level]}`;
+}
+
+const popup = new maplibregl.Popup({ closeButton: false, maxWidth: '280px', offset: 14 });
+function show(it, at) {
+  popup.setLngLat(at || centre(cells(it).length ? cells(it) : it.pts)).setHTML(popupHtml(it)).addTo(map);
+  document.querySelectorAll('li[data-k]').forEach((li) => li.classList.toggle('on', +li.dataset.k === it.k));
+}
+
+function draw() {
+  map.getSource('areas')?.setData(geojson());
+  markers.forEach((m) => m.remove());
+  markers = [];
+  for (const it of items) {
+    const pts = cells(it);
+    const li = document.querySelector(`li[data-k="${it.k}"]`);
+    li?.classList.toggle('off', !pts.length);
+    if (!pts.length) continue;
+    const el = document.createElement('div');
+    el.className = 'marker';
+    el.innerHTML = `<div class="badge${it.n ? '' : ' small'}" style="background:${colour(it.fam)}">${it.n || ''}</div>`;
+    el.addEventListener('click', (e) => { e.stopPropagation(); show(it); });
+    // A badge would cover an area of one to three model squares, so those get it just above.
+    const few = pts.length <= 3;
+    const at = few ? [centre(pts)[0], Math.max(...pts.map((p) => p[0])) + half] : centre(pts);
+    markers.push(new maplibregl.Marker({ element: el, anchor: few ? 'bottom' : 'center', offset: few ? [0, -2] : [0, 0] })
+      .setLngLat(at).addTo(map));
+  }
+}
+
+function list() {
+  const ol = document.getElementById('list');
+  if (!data) { ol.innerHTML = '<div class="empty">No areas loaded. The link in each morning email opens this map with that morning\'s areas.</div>'; return; }
+  if (!items.length) { ol.innerHTML = '<div class="empty">Nothing in the next 3 days reaches an SWPA threshold.</div>'; return; }
+  const row = (it) => {
+    const li = document.createElement('li');
+    li.dataset.k = it.k;
+    li.innerHTML = `<div class="badge${it.n ? '' : ' small'}" style="background:${colour(it.fam)}">${it.n || ''}</div>
+      <div><div class="h"></div><div class="s"></div></div>`;
+    li.querySelector('.h').textContent = it.head;
+    li.querySelector('.s').textContent = `${it.when} · ${TIER[it.level]}`;
+    li.addEventListener('click', () => {
+      const pts = cells(it).length ? cells(it) : it.pts;
+      map.fitBounds(bounds(pts), { padding: pad(), maxZoom: 7, duration: 600 });
+      show(it, centre(pts));
+    });
+    return li;
+  };
+  const main = items.filter((it) => it.n), rest = items.filter((it) => !it.n);
+  main.forEach((it) => ol.append(row(it)));
+  if (rest.length) {
+    const s = document.createElement('li');
+    s.className = 'sep';
+    s.textContent = 'Also on the map';
+    ol.append(s);
+    rest.forEach((it) => ol.append(row(it)));
+  }
+}
+
+function dayButtons() {
+  const wrap = document.getElementById('days');
+  if (!data) return;
+  ['All 3 days', ...days].forEach((label, i) => {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.setAttribute('aria-pressed', String(i - 1 === day));
+    b.addEventListener('click', () => {
+      day = i - 1;
+      wrap.querySelectorAll('button').forEach((x, j) => x.setAttribute('aria-pressed', String(j - 1 === day)));
+      popup.remove();
+      draw();
+    });
+    wrap.append(b);
+  });
+}
+
+addEventListener('hashchange', () => location.reload()); // another morning's link opened in this tab
+list();
+dayButtons();
+// 'style.load', not 'load': 'load' waits for every basemap tile, terrain included, before the areas show.
+map.once('style.load', () => {
+  // Weather layers go under the basemap's labels: the style leaves an empty 'radar-slot' layer for that.
+  map.addSource('areas', { type: 'geojson', data: geojson() });
+  map.addLayer({ id: 'areas-fill', type: 'fill', source: 'areas', paint: { 'fill-color': ['get', 'c'], 'fill-opacity': ['get', 'o'] } }, 'radar-slot');
+  map.addLayer({ id: 'areas-line', type: 'line', source: 'areas', filter: ['==', ['get', 'main'], 1],
+    paint: { 'line-color': ['get', 'c'], 'line-opacity': 0.7, 'line-width': ['get', 'w'] } }, 'radar-slot');
+  map.addLayer({ id: 'areas-line-minor', type: 'line', source: 'areas', filter: ['==', ['get', 'main'], 0],
+    paint: { 'line-color': ['get', 'c'], 'line-opacity': 0.5, 'line-width': 0.8, 'line-dasharray': [2, 2] } }, 'radar-slot');
+  map.on('click', 'areas-fill', (e) => show(items[e.features[0].properties.k], e.lngLat));
+  map.on('mouseenter', 'areas-fill', () => { map.getCanvas().style.cursor = 'pointer'; });
+  map.on('mouseleave', 'areas-fill', () => { map.getCanvas().style.cursor = ''; });
+  draw();
+  if (items.length) {
+    const b = new maplibregl.LngLatBounds();
+    items.forEach((it) => b.extend(bounds(it.pts)));
+    map.fitBounds(b, { padding: pad(), maxZoom: 6, duration: 0 });
+  }
+});
+</script>
+</body>
+</html>

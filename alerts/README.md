@@ -56,10 +56,10 @@ email goes out every run, and a stale or failed model run sends a WARNING instea
 
 **The morning 3-day severe email** (Josh, 19 Nov 2026) is the one Josh actually reads. Same run,
 same events, days 1-3 only, sent through Resend once per Perth date (`RESEND_API_KEY` repo secret).
-For each area that could need an SWPA: a headline ("Severe storms possible in western NSW"), a few
-lines on the conditions, and a Post Alert writer block (alert type, valid times in AWST, the area,
-and notes to paste into "Your notes for Claude"). Code in `pipeline/morning_email.py`; areas are
-named by BoM forecast district through its `AREA` table. To see it from the latest run:
+For each area that could need an SWPA, five lines: a headline ("Severe storms possible in western
+NSW"), when / tier / near, the conditions, a Post Alert writer line (alert type, area, valid times
+in AWST) and notes to paste into "Your notes for Claude". Code in `pipeline/morning_email.py`; areas
+are named by BoM forecast district through its `AREA` table. To see it from the latest run:
 
 ```
 python3 pipeline/alert_scan.py --morning-only            # print it, change nothing
@@ -67,6 +67,13 @@ python3 pipeline/alert_scan.py --morning-only            # print it, change noth
 
 or run the Alert scan workflow by hand with "morning_test" ticked (emails it under a test key).
 Wind gusts (`gust_minor`, `gust_mod`) were added for it on 19 Nov; they are not calibrated.
+
+**The map** (Josh, 19 Nov: "email gives me the details, plus a link to the local host map which is
+zoomable"). The email opens with a link to `http://localhost:8419/`, served on Josh's Mac by
+`severemap/server.py` (installed to run at login by `sh severemap/install.sh`; run it again after
+changing the map). The areas travel in the link after the `#`, which a browser never sends to a
+server, so no draft area is published: this repo and its Actions logs are public. The page draws
+our own basemap from tiles.cyclonesoz.com through the local server. The link only works on that Mac.
 
 **Known limits.** Model days are 00Z-24Z (windows are shown in local time, by a crude state-level
 zone). The grid is ~80 km, so districts, not postcodes, are named. Postcodes come in a later step.

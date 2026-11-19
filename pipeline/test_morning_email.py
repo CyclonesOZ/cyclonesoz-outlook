@@ -80,14 +80,33 @@ class MorningEmailTest(unittest.TestCase):
         run = run_with({p: [rec(cape=2500, shear=40, wind=2, cat=3, rain=12, dcape=900, scp=3)] * 4 for p in pts})
         subject, body = M.compose(run, TH, [event(DATES[1], pts, ["storms_minor", "wind_mod"])], REAL_DISTRICTS, ["test data"])
         self.assertIn("Severe storms possible in western NSW", subject)
-        self.assertIn("At a glance:", body)
-        self.assertIn("Post Alert writer", body)
-        self.assertIn("Type: Severe thunderstorms (two outlines). Impact potential: Moderate.", body)
-        self.assertIn("Valid from: Fri 20 Nov 8 am AWST (11 am AEDT)", body)
-        notes = body.split("Notes for Claude (paste): ")[1].split("\n")[0]
+        self.assertIn("\n1. Severe storms possible in western NSW\n", body)
+        self.assertIn("Writer: Severe thunderstorms · Moderate.", body)
+        self.assertIn("Fri 20 Nov 8 am to Sat 21 Nov 8 am AWST.", body)
+        notes = body.split("Notes: ")[1].split("\n")[0]
         self.assertIn("destructive wind gusts of 125 km/h or more", notes)
         for jargon in ("SCP", "DCAPE", "SHIP", "STP"):  # the writer would copy these into member text
             self.assertNotIn(jargon, notes)
+        item = body.split("\n1. ")[1].split("\n\n")[0]
+        self.assertEqual(len(item.split("\n")), 5)  # Josh: the first email was "way too long"
+
+    def test_map_link_carries_the_areas_after_the_hash(self):
+        import base64, json, zlib
+        pts = [(-30.0, 146.0), (-30.72, 146.0)]
+        run = run_with({p: [rec(cape=2500, shear=40, wind=2, cat=3)] * 4 for p in pts})
+        run["points"].append({"lat": -29.28, "lon": 146.0, "d": []})
+        subject, body = M.compose(run, TH, [event(DATES[0], pts[:1], ["wind_mod"]), event(DATES[2], pts, ["wind_mod"])],
+                                  REAL_DISTRICTS, [])
+        link = body.split("Map: ")[1].split("\n")[0]
+        self.assertTrue(link.startswith("http://localhost:8419/#1."))
+        b64 = link.split("#1.")[1]
+        data = json.loads(zlib.decompress(base64.urlsafe_b64decode(b64 + "=" * (-len(b64) % 4)), -15))
+        self.assertEqual(data["days"], ["Thu 19", "Fri 20", "Sat 21"])
+        self.assertEqual(data["step"], 0.72)
+        n, fam, level, head, when, cells = data["i"][0]
+        self.assertEqual((n, fam, level, head), (1, "storms", 2, "Severe storms possible in western NSW"))
+        self.assertEqual(sorted(cells), [[-30.72, 146.0, 0b100], [-30.0, 146.0, 0b101]])  # Thu and Sat, Sat only
+        self.assertIn('<a href="http://localhost:8419/#1.', M.to_html(body))
 
     def test_nothing_found_still_sends_a_short_email(self):
         subject, body = M.compose(run_with({}), TH, [], Districts(), [])
