@@ -481,6 +481,9 @@ def main():
     ap.add_argument("--state", default=STATE)
     ap.add_argument("--max-age-hours", type=float, default=14,
                     help="warn instead of scanning when the raw run is older than this")
+    ap.add_argument("--morning-only", action="store_true",
+                    help="print the 3-day severe email from the latest run; no state written")
+    ap.add_argument("--send", action="store_true", help="with --morning-only: also email it (test key)")
     args = ap.parse_args()
 
     th, districts = load_json(THRESHOLDS), Districts(DISTRICTS)
@@ -489,7 +492,7 @@ def main():
 
     run = load_run(args.run)
     state = load_json(args.state) if os.path.exists(args.state) else {}
-    if state.get("run_date") == run["run_date"] and not args.dry_run:
+    if state.get("run_date") == run["run_date"] and not args.dry_run and not args.morning_only:
         print("Run %s already scanned; nothing to do." % run["run_date"])
         return
     age_h = (dt.datetime.now(dt.timezone.utc)
@@ -506,6 +509,12 @@ def main():
                 send(subject, body)
             except Exception as e:
                 print("[email FAILED: %s]" % e, file=sys.stderr)
+            try:  # the morning email must not go quiet just because the run is late
+                import morning_email
+                print("[morning email] " + morning_email.send(
+                    "3-day severe watch: NO fresh model run, nothing checked", body, morning_email.daily_key() + "/stale"))
+            except Exception as e:
+                print("[morning email FAILED: %s]" % e, file=sys.stderr)
         return
     published = load_json(PUBLISHED) if os.path.exists(PUBLISHED) else None
     try:  # heatwave + snow need outside data; if it fails the rest of the scan still runs
@@ -528,6 +537,8 @@ def main():
               file=sys.stderr)
         raise
     report, new_state = scan(run, th, state, districts, published, regions)
+    if args.morning_only:
+        return morning(run, th, report, districts, [extra_note, tc_note], "test" if args.send else None)
     live = not args.dry_run
     note = ("TEST (dry run, nothing sent or saved)" if args.dry_run else
             "LIVE scan. Shadow mode: this goes only to you, nothing is published to subscribers.")
@@ -553,6 +564,22 @@ def main():
             print("\n[email %s]" % ("sent" if sent else "not configured: saved to last_email.txt only"))
         except Exception as e:  # a mail failure must never fail the build
             print("\n[email FAILED: %s]" % e, file=sys.stderr)
+    morning(run, th, report, districts, [extra_note, tc_note], "daily" if live else None)
+
+
+def morning(run, th, report, districts, notes, mode):
+    """The 3-day severe email (pipeline/morning_email.py). mode: 'daily' sends once per AWST date,
+    'test' sends under a one-off key, None only prints. Never raises into the scan."""
+    try:
+        import morning_email
+        subject, body = morning_email.compose(run, th, report["events"], districts, notes)
+        print("\n" + "=" * 72 + "\n" + subject + "\n\n" + body)
+        if mode:
+            key = morning_email.daily_key() if mode == "daily" else "morning-severe-test/" + dt.datetime.now(
+                dt.timezone.utc).strftime("%Y%m%dT%H%M%S")
+            print("\n[morning email] " + morning_email.send(subject, body, key))
+    except Exception as e:
+        print("[morning email FAILED: %s]" % e, file=sys.stderr)
 
 
 if __name__ == "__main__":

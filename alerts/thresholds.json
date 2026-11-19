@@ -97,6 +97,42 @@
         "nullarbor_goldfields": 90,
         "interior_arid": 90
       }
+    },
+    "gust_damaging": {
+      "default": 90,
+      "by_region": {
+        "tropical_qld_coast": 90,
+        "tropical_north": 90,
+        "nsw_qld_coast": 90,
+        "alpine": 110,
+        "tasmania": 100,
+        "qld_inland": 90,
+        "vic_south": 90,
+        "southwest_wa": 90,
+        "murray_darling": 90,
+        "pilbara_gascoyne": 90,
+        "sa_southeast": 90,
+        "nullarbor_goldfields": 90,
+        "interior_arid": 90
+      }
+    },
+    "gust_destructive": {
+      "default": 125,
+      "by_region": {
+        "tropical_qld_coast": 125,
+        "tropical_north": 125,
+        "nsw_qld_coast": 125,
+        "alpine": 140,
+        "tasmania": 135,
+        "qld_inland": 125,
+        "vic_south": 125,
+        "southwest_wa": 125,
+        "murray_darling": 125,
+        "pilbara_gascoyne": 125,
+        "sa_southeast": 125,
+        "nullarbor_goldfields": 125,
+        "interior_arid": 125
+      }
     }
   },
   "rules": [
@@ -359,6 +395,44 @@
       ]
     },
     {
+      "id": "gust_minor",
+      "level": 1,
+      "label": "Damaging wind gusts (90+ km/h)",
+      "min_points": 3,
+      "days": [
+        1,
+        3
+      ],
+      "when": [
+        {
+          "field": "gust",
+          "op": ">=",
+          "value": {
+            "$ref_region_bar": "gust_damaging"
+          }
+        }
+      ]
+    },
+    {
+      "id": "gust_mod",
+      "level": 2,
+      "label": "Destructive wind gusts (125+ km/h)",
+      "min_points": 1,
+      "days": [
+        1,
+        3
+      ],
+      "when": [
+        {
+          "field": "gust",
+          "op": ">=",
+          "value": {
+            "$ref_region_bar": "gust_destructive"
+          }
+        }
+      ]
+    },
+    {
       "id": "tc_minor",
       "label": "Tropical low in range",
       "level": 1,
@@ -464,7 +538,9 @@
         {
           "field": "tmin",
           "op": "<=",
-          "value": { "$ref_region_bar": "frost_tmin" }
+          "value": {
+            "$ref_region_bar": "frost_tmin"
+          }
         }
       ]
     },
@@ -486,7 +562,9 @@
         {
           "field": "tmin",
           "op": "<=",
-          "value": { "$ref_region_bar": "frost_tmin_severe" }
+          "value": {
+            "$ref_region_bar": "frost_tmin_severe"
+          }
         }
       ]
     },
@@ -508,7 +586,9 @@
         {
           "field": "tmin",
           "op": "<=",
-          "value": { "$ref_region_bar": "frost_tmin_severe" }
+          "value": {
+            "$ref_region_bar": "frost_tmin_severe"
+          }
         }
       ]
     },
@@ -526,7 +606,9 @@
           "field": "rain",
           "op": ">=",
           "accumulate_days": 3,
-          "value": { "$ref_region_bar": "rain_3day" }
+          "value": {
+            "$ref_region_bar": "rain_3day"
+          }
         }
       ]
     },
@@ -544,7 +626,9 @@
           "field": "rain",
           "op": ">=",
           "accumulate_days": 3,
-          "value": { "$ref_region_bar": "rain_3day" }
+          "value": {
+            "$ref_region_bar": "rain_3day"
+          }
         }
       ]
     },
@@ -561,7 +645,9 @@
         {
           "field": "rain",
           "op": ">=",
-          "value": { "$ref_region_bar": "rain_heavy" }
+          "value": {
+            "$ref_region_bar": "rain_heavy"
+          }
         }
       ]
     },
@@ -578,7 +664,9 @@
         {
           "field": "rain",
           "op": ">=",
-          "value": { "$ref_region_bar": "rain_heavy" }
+          "value": {
+            "$ref_region_bar": "rain_heavy"
+          }
         }
       ]
     },
@@ -595,7 +683,9 @@
         {
           "field": "rain",
           "op": ">=",
-          "value": { "$ref_region_bar": "rain_extreme" }
+          "value": {
+            "$ref_region_bar": "rain_extreme"
+          }
         }
       ]
     },
@@ -612,7 +702,9 @@
         {
           "field": "rain",
           "op": ">=",
-          "value": { "$ref_region_bar": "rain_extreme" }
+          "value": {
+            "$ref_region_bar": "rain_extreme"
+          }
         }
       ]
     },
@@ -807,5 +899,6 @@
         "major": 21
       }
     }
-  }
+  },
+  "_GUST_RULES": "Added 19 Nov 2026 for the morning 3-day email (Josh: 'severe storms, heavy rain, winds etc.'). The storm wind tiers only see convective winds; these read Open-Meteo's daily max 10 m gust (pipeline/extra_hazards.py) so fronts, lows and east coast lows are caught too. FIRST PASS, NOT CALIBRATED: no issued severe_weather alert exists to test against. Alpine and Tasmania bars are higher because model gusts over high ground run hot every winter."
 }

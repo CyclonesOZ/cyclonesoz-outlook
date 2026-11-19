@@ -4,11 +4,18 @@ name: Alert scan
 # RAW run against alerts/thresholds.json and email the forecaster. Publishes nothing to subscribers.
 # Runs whether the nightly run succeeded or failed, so a failed run produces a warning email
 # (pipeline/alert_scan.py refuses to scan a stale run) instead of silence.
+# It also sends Josh the morning 3-day severe email (pipeline/morning_email.py) through Resend,
+# once per Perth date, as soon as the ~3:52 am AWST run lands.
 on:
   workflow_run:
     workflows: ["Daily storm outlook"]
     types: [completed]
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      morning_test:
+        description: "Only the 3-day severe email, from the latest run: print it, and email it if RESEND_API_KEY is set. Writes no state."
+        type: boolean
+        default: false
 
 concurrency:
   group: alert-scan
@@ -27,7 +34,7 @@ jobs:
           ref: main
 
       - name: Run tests
-        run: python3 pipeline/test_alert_scan.py && python3 pipeline/test_extra_hazards.py && python3 pipeline/test_proposals.py
+        run: python3 pipeline/test_alert_scan.py && python3 pipeline/test_extra_hazards.py && python3 pipeline/test_proposals.py && python3 pipeline/test_morning_email.py
 
       - name: Scan and email
         env:
@@ -38,9 +45,16 @@ jobs:
           ALERT_SMTP_PASS: ${{ secrets.ALERT_SMTP_PASS }}
           ALERT_FROM: ${{ secrets.ALERT_FROM }}
           ALERT_TO: ${{ secrets.ALERT_TO }}
-        run: python3 pipeline/alert_scan.py
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        run: |
+          if [ "${{ inputs.morning_test }}" = "true" ]; then
+            python3 pipeline/alert_scan.py --morning-only --send
+          else
+            python3 pipeline/alert_scan.py
+          fi
 
       - name: Commit alert state
+        if: ${{ inputs.morning_test != true }}
         run: |
           git config user.name  "outlook-bot"
           git config user.email "actions@github.com"

@@ -54,6 +54,20 @@ email goes out every run, and a stale or failed model run sends a WARNING instea
 `ALERT_SMTP_PASS`, `ALERT_FROM`, `ALERT_TO`. Without them the email is only printed and saved to
 `docs/archive/alerts/last_email.txt`.
 
+**The morning 3-day severe email** (Josh, 19 Nov 2026) is the one Josh actually reads. Same run,
+same events, days 1-3 only, sent through Resend once per Perth date (`RESEND_API_KEY` repo secret).
+For each area that could need an SWPA: a headline ("Severe storms possible in western NSW"), a few
+lines on the conditions, and a Post Alert writer block (alert type, valid times in AWST, the area,
+and notes to paste into "Your notes for Claude"). Code in `pipeline/morning_email.py`; areas are
+named by BoM forecast district through its `AREA` table. To see it from the latest run:
+
+```
+python3 pipeline/alert_scan.py --morning-only            # print it, change nothing
+```
+
+or run the Alert scan workflow by hand with "morning_test" ticked (emails it under a test key).
+Wind gusts (`gust_minor`, `gust_mod`) were added for it on 19 Nov; they are not calibrated.
+
 **Known limits.** Model days are 00Z-24Z (windows are shown in local time, by a crude state-level
 zone). The grid is ~80 km, so districts, not postcodes, are named. Postcodes come in a later step.
 

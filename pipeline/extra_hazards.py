@@ -2,6 +2,7 @@
 
     heat   0-4   heatwave tier (0 none, 1 Minor, 2 Moderate, 3 Significant, 4 Major)
     snow72 cm    snowfall summed over the 72 hours ending that day
+    gust   km/h  that day's highest 10 m wind gust (fronts and lows, which the storm wind tiers miss)
 
 so the ordinary rules in alerts/thresholds.json can use them. Heatwave: daily max above the
 1991-2020 average for that calendar day by the tier's threshold, with the overnight minimum above
@@ -54,13 +55,13 @@ def rolling_sum(values, window_days=3):
 
 
 def fetch_daily(points, key=""):
-    """{point_key: {date: (tmax, tmin, snow_cm)}} from the Open-Meteo forecast, in local dates."""
+    """{point_key: {date: (tmax, tmin, snow_cm, gust_kmh)}} from the Open-Meteo forecast, in local dates."""
     host = "customer-api.open-meteo.com" if key else "api.open-meteo.com"
     res = {}
     for i in range(0, len(points), BATCH):
         b = points[i:i + BATCH]
         url = ("https://%s/v1/forecast?latitude=%s&longitude=%s&daily=temperature_2m_max,"
-               "temperature_2m_min,snowfall_sum&forecast_days=8&timezone=auto"
+               "temperature_2m_min,snowfall_sum,wind_gusts_10m_max&forecast_days=8&timezone=auto"
                % (host, ",".join(str(p["lat"]) for p in b), ",".join(str(p["lon"]) for p in b)))
         if key:
             url += "&apikey=" + key
@@ -68,9 +69,10 @@ def fetch_daily(points, key=""):
             d = json.loads(r.read())
         for p, x in zip(b, d if isinstance(d, list) else [d]):
             dd = x["daily"]
+            gusts = dd.get("wind_gusts_10m_max") or [None] * len(dd["time"])
             res["%.2f,%.2f" % (p["lat"], p["lon"])] = {
-                t: (a, b_, s) for t, a, b_, s in zip(dd["time"], dd["temperature_2m_max"],
-                                                     dd["temperature_2m_min"], dd["snowfall_sum"])}
+                t: (a, b_, s, g) for t, a, b_, s, g in zip(dd["time"], dd["temperature_2m_max"],
+                                                           dd["temperature_2m_min"], dd["snowfall_sum"], gusts)}
     return res
 
 
@@ -108,9 +110,10 @@ def augment_run(run, th, daily=None, climate=None, key=""):
     for p in run["points"]:
         k = "%.2f,%.2f" % (p["lat"], p["lon"])
         obs, cl = daily.get(k, {}), climate.get(k)
-        levels, snow, mins = [], [], []
+        levels, snow, mins, gusts = [], [], [], []
         for di, date in enumerate(dates):
-            tmax, tmin, sn = obs.get(date, (None, None, None))
+            tmax, tmin, sn, gust = (tuple(obs.get(date, ())) + (None,) * 4)[:4]  # 3-tuples predate gusts
+            gusts.append(gust)
             snow.append(sn)
             mins.append(tmin)
             lvl = 0
@@ -126,5 +129,7 @@ def augment_run(run, th, daily=None, climate=None, key=""):
             rec["frost_nights"] = frosts[di]
             if mins[di] is not None:
                 rec["tmin"] = mins[di]
-    return ("heat+snow+frost checked"
+            if gusts[di] is not None:
+                rec["gust"] = gusts[di]
+    return ("heat+snow+frost+gusts checked"
             + ("" if climate else " (no climatology yet: heat skipped, frost unaffected)"))
