@@ -395,6 +395,9 @@ def describe(it, run, places, labels):
     place = ", ".join(districts[:3]) or area
     around = ", around " + ", ".join(towns) if towns else ""
     general = lambda hz: "Writer: General severe weather · %s · %s. Paint: %s%s." % (hz, TIER[it["level"]], place, around)
+    # Notes are facts only. The writer treats them as authoritative and picks the "What to do" points
+    # from Josh's own list, in his voice, which never gives bare orders ("never drive through
+    # floodwater"): advice written here would be copied over it.
     notes = []
 
     if fam == "storms":
@@ -421,6 +424,7 @@ def describe(it, run, places, labels):
         inner = [(lat, lon) for lat, lon, _, r in ranked
                  if (r.get("cat") or 0) >= 4 or (r.get("wind") or 0) >= 2 or (r.get("hail") or 0) >= 3 or (r.get("stp") or 0) >= 2]
         inner_towns = places.towns_near(inner, n=3) if inner else []
+        it["inner"] = set(inner)
         writer = "Writer: Severe thunderstorms · %s. Outer: %s%s." % (TIER[it["level"]], place, around)
         if inner:
             writer += " Inner: around %s." % (", ".join(inner_towns) or "the strongest points")
@@ -456,26 +460,22 @@ def describe(it, run, places, labels):
         notes.append("Heavy rain possible %s over %s." % (when, area))
         notes.append("Three-day totals mostly %d to %d mm, up to about %d mm in the heaviest spots. Heaviest on %s, up to %d mm that day."
                      % (r5(lo), r5(hi), r5(max(totals)), day_name(run["dates"][day_i]), r5(day_peak)))
-        notes.append("Stress: rises in creeks and rivers, water over roads, never drive through floodwater.")
     elif fam == "wind":
         g, gi = peak("gust")
         n90 = len({(lat, lon) for lat, lon, _, r in pds if (r.get("gust") or 0) >= 90})
         cond = "Gusts up to %d km/h, strongest %s; 90+ km/h at %d model points." % (r5(g), day_name(run["dates"][gi]), n90)
         writer = general("Severe weather (fronts, damaging winds)")
         notes.append("Damaging wind gusts possible %s over %s, up to about %d km/h, strongest on %s." % (when, area, r5(g), day_name(run["dates"][gi])))
-        notes.append("Stress: secure loose items, keep clear of trees and powerlines, take care driving high-sided vehicles.")
     elif fam == "fire":
         f, fi = peak("ffdi")
         cond = "FFDI up to %d on %s." % (f, day_name(run["dates"][fi]))
         writer = general("Bushfire")
         notes.append("Hot, dry and windy: dangerous fire weather %s over %s%s." % (
             when, area, ", worst on %s" % day_name(run["dates"][fi]) if len(it["dates"]) > 1 else ""))
-        notes.append("Stress: follow the official fire danger rating and local fire service advice, and have a bushfire plan ready.")
     elif fam == "heat":
         cond = "%s." % "; ".join(hazards)
         writer = general("Heatwave")
         notes.append("Heatwave conditions %s over %s: days well above normal with warm nights (%s)." % (when, area, hazards[0]))
-        notes.append("Stress: check on elderly neighbours, drink water, avoid the heat of the day.")
     elif fam == "frost":
         t = min((r.get("tmin") for _, _, _, r in pds if r.get("tmin") is not None), default=None)
         cond = "Minimums down to about %s C." % ("%.0f" % t if t is not None else "?")
@@ -494,7 +494,8 @@ def describe(it, run, places, labels):
 
     writer += " %s to %s AWST." % (_awst(it["dates"][0], 0), _awst(it["dates"][-1], 1))
     it["district"] = districts[0] if districts else ""
-    return head, " · ".join(facts), cond, writer, " ".join(notes)
+    it["notes"] = " ".join(notes)
+    return head, " · ".join(facts), cond, writer, it["notes"]
 
 
 def _clock(t):
@@ -511,37 +512,77 @@ def _awst(date, end):
     return "%s %s" % (t.strftime("%a %-d %b"), _clock(t))
 
 
-# --------------------------------------------------------------------------- map link
+# --------------------------------------------------------------------------- links
+
+# The scan's hazard families as the Post Alert page's hazards (src/pages/PostAlert.jsx HAZARDS).
+PAGE_HAZARD = {"storms": "severe_thunderstorms", "rain": "heavy_rainfall", "wind": "severe_weather", "fire": "bushfire",
+               "heat": "heatwave", "frost": "frost", "snow": "snow", "tc": "tropical_cyclone"}
+POST_ALERT_URL = "https://cyclonesoz.com.au/post-alert"
+
+
+def _pack(obj):
+    """base64url(raw deflate(JSON)), what the map and the Post Alert page read after the '#'.
+
+    A browser never sends what follows '#' to a server, and neither page stores it anywhere public,
+    so no possible-alert area is published by a link. This repo and its Actions logs are public."""
+    z = zlib.compressobj(9, zlib.DEFLATED, -15)
+    return base64.urlsafe_b64encode(z.compress(json.dumps(obj, separators=(",", ":")).encode()) + z.flush()).decode().rstrip("=")
+
+
+def _grid_step(run):
+    lats = sorted({p["lat"] for p in run["points"]})
+    return round(min((b - a for a, b in zip(lats, lats[1:]) if b - a > 0.01), default=0.72), 3)
+
+
+def _day_bits(run, it):
+    """{"lat,lon": bit per model day 1-3 the point fired on}."""
+    di_of = {d: i for i, d in enumerate(run["dates"][:DAYS])}
+    bits = {}
+    for ev in it["events"]:
+        di = di_of.get(ev["date"])
+        if di is not None:
+            for k in ev["points"]:
+                bits[k] = bits.get(k, 0) | 1 << di
+    return bits
+
+
+def alert_seed(run, it, head, key):
+    """The item as a draft for the Post Alert page (cyclonesoz repo, src/lib/alertSeed.js, which
+    checks every field). Josh, 19 Nov: "a button that takes the drafted alert over to the post alerts
+    page". key, with the model run, lets the page reopen the draft instead of adding it twice."""
+    t0 = dt.datetime.fromisoformat(it["dates"][0]).replace(tzinfo=dt.timezone.utc)
+    t1 = dt.datetime.fromisoformat(it["dates"][-1]).replace(tzinfo=dt.timezone.utc) + dt.timedelta(days=1)
+    inner = it.get("inner") or set()
+    return {"v": 1, "key": "scan:%s:%s" % (run["run_date"], key),
+            "type": "thunderstorm" if it["fam"] == "storms" else "general", "hazard": PAGE_HAZARD[it["fam"]],
+            "tier": TIER[it["level"]].lower(), "title": head, "notes": it.get("notes", ""),
+            "from": t0.strftime("%Y-%m-%dT%H:%M:%SZ"), "until": t1.strftime("%Y-%m-%dT%H:%M:%SZ"), "step": _grid_step(run),
+            "cells": [list(key_ll(k)) + [1 if key_ll(k) in inner else 0] for k in sorted(_day_bits(run, it))]}
+
+
+def post_alert_link(seed):
+    return POST_ALERT_URL + "#seed=1." + _pack(seed)
+
 
 def map_link(run, entries):
-    """Link to the zoomable map (severemap/), with the areas after '#'.
+    """Link to the zoomable map (severemap/) on Josh's Mac, with the areas after the '#'.
 
-    A browser never sends what follows '#' to a server, and the map page stores nothing, so no
-    possible-alert area is published anywhere new. This repo and its Actions logs are public.
-    entries: (number in the email or 0, item, headline). Format, read by severemap/index.html:
-    "#1." + base64url(raw deflate(JSON {v, run, days, step, i: [[n, family, level, headline, when,
-    [[lat, lon, day bits]...]]...]})).
+    entries: (number in the email or 0, item, headline, Post Alert seed). Format, read by
+    severemap/index.html: "#1." + _pack({v, run, days, step, i: [[n, family, level, headline, when,
+    [[lat, lon, day bits, inner]...], seed without v/step/cells]...]}). The map rebuilds each seed for
+    its "Add to Post Alert drafts" button from the cells.
     """
-    di_of = {d: i for i, d in enumerate(run["dates"][:DAYS])}
-    lats = sorted({p["lat"] for p in run["points"]})
-    step = min((b - a for a, b in zip(lats, lats[1:]) if b - a > 0.01), default=0.72)
     out = []
-    for n, it, head in entries:
-        bits = {}
-        for ev in it["events"]:
-            di = di_of.get(ev["date"])
-            if di is not None:
-                for k in ev["points"]:
-                    bits[k] = bits.get(k, 0) | 1 << di
+    for n, it, head, seed in entries:
+        inner = {tuple(c[:2]) for c in seed["cells"] if c[2]}
         out.append([n, it["fam"], it["level"], head, days_text(it["dates"]),
-                    [list(key_ll(k)) + [b] for k, b in sorted(bits.items())]])
+                    [list(key_ll(k)) + [b, 1 if key_ll(k) in inner else 0] for k, b in sorted(_day_bits(run, it).items())],
+                    {k: v for k, v in seed.items() if k not in ("v", "step", "cells")}])
     run_local = _run_local(run["run_date"])
-    payload = {"v": 1, "run": "%s %s AWST" % (run_local.strftime("%a %-d %b"), _clock(run_local)),
-               "days": [dt.date.fromisoformat(d).strftime("%a %-d") for d in run["dates"][:DAYS]],
-               "step": round(step, 3), "i": out}
-    z = zlib.compressobj(9, zlib.DEFLATED, -15)
-    packed = z.compress(json.dumps(payload, separators=(",", ":")).encode()) + z.flush()
-    return MAP_URL + "#1." + base64.urlsafe_b64encode(packed).decode().rstrip("=")
+    return MAP_URL + "#1." + _pack({
+        "v": 1, "run": "%s %s AWST" % (run_local.strftime("%a %-d %b"), _clock(run_local)),
+        "days": [dt.date.fromisoformat(d).strftime("%a %-d") for d in run["dates"][:DAYS]],
+        "step": _grid_step(run), "i": out})
 
 
 # --------------------------------------------------------------------------- email
@@ -561,14 +602,17 @@ def compose(run, th, events, districts, data_notes=()):
     heads = [head + (" (%s)" % it["district"] if seen[head] > 1 and it["district"] else "")  # two "north-west QLD": say which
              for it, head, *_ in described]
     others = [(0, it, describe(it, run, places, labels)[0]) for it in rest]
+    seeds = [alert_seed(run, d[0], h, n) for n, (d, h) in enumerate(zip(described, heads), 1)]
+    others = [(0, it, h, alert_seed(run, it, h, "x%d" % k)) for k, (_, it, h) in enumerate(others, 1)]
 
     body = ["3-day severe watch, %s to %s. Model run %s %s AWST." % (
         days_text([first]), days_text([last]), run_local.strftime("%a %-d %b"), _clock(run_local))]
     if items:
-        body.append("Map: " + map_link(run, [(n, d[0], h) for n, (d, h) in enumerate(zip(described, heads), 1)] + others))
+        body.append("Map: " + map_link(run, [(n, d[0], h, sd) for n, (d, h, sd) in enumerate(zip(described, heads, seeds), 1)] + others))
     body.append("")
-    for n, ((it, _, facts, cond, writer, notes), head) in enumerate(zip(described, heads), 1):
-        body += ["%d. %s" % (n, head), "   " + facts, "   " + cond, "   " + writer, "   Notes: " + notes, ""]
+    for n, ((it, _, facts, cond, writer, notes), head, seed) in enumerate(zip(described, heads, seeds), 1):
+        body += ["%d. %s" % (n, head), "   " + facts, "   " + cond, "   " + writer, "   Notes: " + notes,
+                 "   Post Alert: " + post_alert_link(seed), ""]
     if not main:
         body += ["Nothing in the next 3 days reaches an SWPA threshold.", ""]
     if rest:
@@ -586,12 +630,15 @@ def compose(run, th, events, districts, data_notes=()):
 
 
 def to_html(text):
-    """The same email for mail apps: the map link as a link, headlines in bold, indents kept."""
+    """The same email for mail apps: the map and Post Alert links as links, headlines in bold, indents kept."""
     out = []
     for line in text.split("\n"):
         if line.startswith("Map: "):
             out.append('<div style="margin:6px 0">Map: <a href="%s">open the zoomable map</a> (on your Mac)</div>'
                        % html.escape(line[5:], quote=True))
+        elif line.startswith("   Post Alert: "):
+            out.append('<div style="margin-left:18px"><a href="%s">Add to Post Alert drafts</a></div>'
+                       % html.escape(line[15:], quote=True))
         elif not line:
             out.append("<div>&nbsp;</div>")
         elif re.match(r"\d+\. ", line):

@@ -41,6 +41,9 @@
   footer { padding: 8px 16px 10px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11.5px; }
   .maplibregl-popup-content { font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 10px 12px; }
   .maplibregl-popup-content b { display: block; margin-bottom: 2px; }
+  .maplibregl-popup-content a.post { display: inline-block; margin-top: 8px; padding: 5px 10px; border-radius: 6px;
+    background: var(--chip-on); color: #fff; text-decoration: none; font-weight: 600; font-size: 12.5px; }
+  .maplibregl-popup-content a.post[aria-disabled] { opacity: .5; pointer-events: none; }
   @media (max-width: 700px) {
     #panel { top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; max-height: 45vh; }
   }
@@ -107,7 +110,7 @@ function pad() {
   return narrow ? { top: 40, right: 40, bottom: innerHeight * 0.47, left: 40 } : { top: 40, right: 60, bottom: 40, left: 380 };
 }
 
-const items =(data?.i || []).map(([n, fam, level, head, when, pts], k) => ({ k, n, fam, level, head, when, pts }));
+const items = (data?.i || []).map(([n, fam, level, head, when, pts, seed], k) => ({ k, n, fam, level, head, when, pts, seed }));
 const days = data?.days || [];
 const half = (data?.step || 0.72) / 2;
 let day = -1; // -1 = all three days
@@ -147,14 +150,41 @@ function bounds(pts) {
   return b;
 }
 
-function popupHtml(it) {
-  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  return `<b>${it.n ? it.n + '. ' : ''}${esc(it.head)}</b>${esc(it.when)} · ${TIER[it.level]}`;
+// "Add to Post Alert drafts": the website's /post-alert page reads this seed after the '#', saves it
+// as a draft and opens it (cyclonesoz repo, src/lib/alertSeed.js). The seed is the email's, rebuilt
+// from the cells here so the map link does not carry every area twice.
+const POST_ALERT = 'https://cyclonesoz.com.au/post-alert';
+async function postAlertLink(it) {
+  const seed = { v: 1, ...it.seed, step: data.step, cells: it.pts.map(([lat, lon, , inner]) => [lat, lon, inner ? 1 : 0]) };
+  const stream = new Blob([JSON.stringify(seed)]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+  const bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return `${POST_ALERT}#seed=1.${btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')}`;
+}
+
+function popupBody(it) {
+  const el = document.createElement('div');
+  const b = document.createElement('b');
+  b.textContent = (it.n ? it.n + '. ' : '') + it.head;
+  el.append(b, `${it.when} · ${TIER[it.level]}`);
+  if (it.seed) {
+    const a = document.createElement('a');
+    a.className = 'post';
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.textContent = 'Add to Post Alert drafts';
+    a.setAttribute('aria-disabled', 'true');
+    // Built before the click, so the new tab is not blocked as a pop-up opened after an await.
+    postAlertLink(it).then((url) => { a.href = url; a.removeAttribute('aria-disabled'); });
+    el.append(a);
+  }
+  return el;
 }
 
 const popup = new maplibregl.Popup({ closeButton: false, maxWidth: '280px', offset: 14 });
 function show(it, at) {
-  popup.setLngLat(at || centre(cells(it).length ? cells(it) : it.pts)).setHTML(popupHtml(it)).addTo(map);
+  popup.setLngLat(at || centre(cells(it).length ? cells(it) : it.pts)).setDOMContent(popupBody(it)).addTo(map);
   document.querySelectorAll('li[data-k]').forEach((li) => li.classList.toggle('on', +li.dataset.k === it.k));
 }
 

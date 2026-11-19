@@ -88,7 +88,7 @@ class MorningEmailTest(unittest.TestCase):
         for jargon in ("SCP", "DCAPE", "SHIP", "STP"):  # the writer would copy these into member text
             self.assertNotIn(jargon, notes)
         item = body.split("\n1. ")[1].split("\n\n")[0]
-        self.assertEqual(len(item.split("\n")), 5)  # Josh: the first email was "way too long"
+        self.assertEqual(len(item.split("\n")), 6)  # Josh: the first email was "way too long"
 
     def test_map_link_carries_the_areas_after_the_hash(self):
         import base64, json, zlib
@@ -103,10 +103,29 @@ class MorningEmailTest(unittest.TestCase):
         data = json.loads(zlib.decompress(base64.urlsafe_b64decode(b64 + "=" * (-len(b64) % 4)), -15))
         self.assertEqual(data["days"], ["Thu 19", "Fri 20", "Sat 21"])
         self.assertEqual(data["step"], 0.72)
-        n, fam, level, head, when, cells = data["i"][0]
+        n, fam, level, head, when, cells, seed = data["i"][0]
         self.assertEqual((n, fam, level, head), (1, "storms", 2, "Severe storms possible in western NSW"))
-        self.assertEqual(sorted(cells), [[-30.72, 146.0, 0b100], [-30.0, 146.0, 0b101]])  # Thu and Sat, Sat only
+        self.assertEqual(sorted(cells), [[-30.72, 146.0, 0b100, 1], [-30.0, 146.0, 0b101, 1]])  # Sat only; Thu and Sat
+        self.assertEqual(seed["key"], "scan:2026-11-18T20:00:00Z:1")
         self.assertIn('<a href="http://localhost:8419/#1.', M.to_html(body))
+
+    def test_post_alert_link_carries_a_draft(self):
+        import base64, json, zlib
+        pts = [(-30.0, 146.0), (-30.72, 146.0), (-30.0, 146.72)]
+        run = run_with({p: [rec(cape=2500, shear=40, wind=2 if p == pts[0] else 1, cat=3)] * 4 for p in pts})
+        subject, body = M.compose(run, TH, [event(DATES[1], pts, ["storms_minor", "wind_mod"])], REAL_DISTRICTS, [])
+        link = body.split("Post Alert: ")[1].split("\n")[0]
+        self.assertTrue(link.startswith("https://cyclonesoz.com.au/post-alert#seed=1."))
+        b64 = link.split("#seed=1.")[1]
+        s = json.loads(zlib.decompress(base64.urlsafe_b64decode(b64 + "=" * (-len(b64) % 4)), -15))
+        self.assertEqual((s["v"], s["type"], s["hazard"], s["tier"]), (1, "thunderstorm", "severe_thunderstorms", "moderate"))
+        self.assertEqual(s["title"], "Severe storms possible in western NSW")
+        self.assertEqual((s["from"], s["until"]), ("2026-11-20T00:00:00Z", "2026-11-21T00:00:00Z"))  # Fri 8 am to Sat 8 am AWST
+        self.assertIn("destructive wind gusts", s["notes"])
+        self.assertEqual(sorted(s["cells"]), [[-30.72, 146.0, 0], [-30.0, 146.0, 1], [-30.0, 146.72, 0]])  # inner: 125+ km/h only
+        self.assertIn(">Add to Post Alert drafts</a>", M.to_html(body))
+        rain = M.alert_seed(run, {"fam": "rain", "level": 2, "dates": [DATES[0]], "events": []}, "Heavy rain", "x1")
+        self.assertEqual((rain["type"], rain["hazard"], rain["tier"]), ("general", "heavy_rainfall", "moderate"))
 
     def test_nothing_found_still_sends_a_short_email(self):
         subject, body = M.compose(run_with({}), TH, [], Districts(), [])
