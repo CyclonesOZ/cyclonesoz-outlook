@@ -573,7 +573,9 @@ def morning(run, th, report, districts, notes, mode):
     try:
         import morning_email
         subject, body = morning_email.compose(run, th, report["events"], districts, notes)
-        print("\n" + "=" * 72 + "\n" + subject + "\n\n" + body)
+        # This repo is public and so are its Actions logs: in CI only the subject goes to the log.
+        shown = subject if os.environ.get("GITHUB_ACTIONS") == "true" else subject + "\n\n" + body
+        print("\n" + "=" * 72 + "\n" + shown)
         if mode:
             key = morning_email.daily_key() if mode == "daily" else "morning-severe-test/" + dt.datetime.now(
                 dt.timezone.utc).strftime("%Y%m%dT%H%M%S")
