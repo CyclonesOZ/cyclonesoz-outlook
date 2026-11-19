@@ -433,7 +433,7 @@ def describe(it, run, places, labels):
             said.append("large hail, 3 to 6 cm")
         if stp >= 1:
             said.append("a brief tornado can't be ruled out")
-        notes.append("Severe thunderstorms possible %s over %s." % (when, place))
+        notes.append("Severe thunderstorms possible %s over %s." % (when, area))
         if said:
             notes.append("Main threat: %s with the strongest storms." % said[0])
         if len(said) > 1:
@@ -451,7 +451,7 @@ def describe(it, run, places, labels):
         lines.append("Why: %s." % "; ".join(hazards))
         writer.append("Type: General severe weather. Hazard: Heavy rainfall. Suggested tier: %s." % TIER[it["level"]])
         writer.append("Paint: %s%s." % (place, ", around " + ", ".join(towns) if towns else ""))
-        notes.append("Heavy rain possible %s over %s." % (when, place))
+        notes.append("Heavy rain possible %s over %s." % (when, area))
         notes.append("Three-day totals mostly %d to %d mm, up to about %d mm in the heaviest spots. Heaviest on %s, up to %d mm that day."
                      % (r5(lo), r5(hi), r5(max(totals)), day_name(run["dates"][day_i]), r5(day_peak)))
         notes.append("Stress: rises in creeks and rivers, water over roads, never drive through floodwater.")
@@ -461,39 +461,40 @@ def describe(it, run, places, labels):
         lines.append("Gusts up to %d km/h (%s); 90+ km/h at %d model points." % (r5(g), day_name(run["dates"][gi]), n90))
         writer.append("Type: General severe weather. Hazard: Severe weather (fronts, damaging winds). Suggested tier: %s." % TIER[it["level"]])
         writer.append("Paint: %s%s." % (place, ", around " + ", ".join(towns) if towns else ""))
-        notes.append("Damaging wind gusts possible %s over %s, up to about %d km/h, strongest on %s." % (when, place, r5(g), day_name(run["dates"][gi])))
+        notes.append("Damaging wind gusts possible %s over %s, up to about %d km/h, strongest on %s." % (when, area, r5(g), day_name(run["dates"][gi])))
         notes.append("Stress: secure loose items, keep clear of trees and powerlines, take care driving high-sided vehicles.")
     elif fam == "fire":
         f, fi = peak("ffdi")
         lines.append("FFDI up to %d (%s). %s." % (f, day_name(run["dates"][fi]), "; ".join(hazards)))
         writer.append("Type: General severe weather. Hazard: Bushfire. Suggested tier: %s." % TIER[it["level"]])
         writer.append("Paint: %s%s." % (place, ", around " + ", ".join(towns) if towns else ""))
-        notes.append("Hot, dry and windy: dangerous fire weather %s over %s, worst on %s." % (when, place, day_name(run["dates"][fi])))
+        notes.append("Hot, dry and windy: dangerous fire weather %s over %s%s." % (
+            when, area, ", worst on %s" % day_name(run["dates"][fi]) if len(it["dates"]) > 1 else ""))
         notes.append("Stress: follow the official fire danger rating and local fire service advice, and have a bushfire plan ready.")
     elif fam == "heat":
         lines.append("Why: %s." % "; ".join(hazards))
         writer.append("Type: General severe weather. Hazard: Heatwave. Suggested tier: %s." % TIER[it["level"]])
         writer.append("Paint: %s%s." % (place, ", around " + ", ".join(towns) if towns else ""))
-        notes.append("Heatwave conditions %s over %s: days well above normal with warm nights (%s)." % (when, place, hazards[0]))
+        notes.append("Heatwave conditions %s over %s: days well above normal with warm nights (%s)." % (when, area, hazards[0]))
         notes.append("Stress: check on elderly neighbours, drink water, avoid the heat of the day.")
     elif fam == "frost":
         t = min((r.get("tmin") for _, _, _, r in pds if r.get("tmin") is not None), default=None)
         lines.append("Coldest minimum about %s C. %s." % ("%.0f" % t if t is not None else "?", "; ".join(hazards)))
         writer.append("Type: General severe weather. Hazard: Frost. Suggested tier: %s." % TIER[it["level"]])
         writer.append("Paint: %s." % place)
-        notes.append("Frost likely %s over %s, minimums down to about %s C." % (when, place, "%.0f" % t if t is not None else "zero"))
+        notes.append("Frost likely %s over %s, minimums down to about %s C." % (when, area, "%.0f" % t if t is not None else "zero"))
     elif fam == "snow":
         s = peak("snow72")[0]
         lines.append("Up to %d cm of snow over 72 hours." % r5(s))
         writer.append("Type: General severe weather. Hazard: Blizzards / heavy snow. Suggested tier: %s." % TIER[it["level"]])
         writer.append("Paint: %s." % place)
-        notes.append("Heavy snow possible %s over %s, up to about %d cm over three days." % (when, place, r5(s)))
+        notes.append("Heavy snow possible %s over %s, up to about %d cm over three days." % (when, area, r5(s)))
     elif fam == "tc":
         c, ci = peak("tc_cat")
         lines.append("%s. Peak category %d in range." % ("; ".join(hazards), c))
         writer.append("Type: General severe weather. Hazard: Tropical cyclone (or Tropical low). Suggested tier: %s." % TIER[it["level"]])
         writer.append("Paint: %s." % place)
-        notes.append("A tropical system may affect %s %s. Check the Cyclone Centre track before writing." % (place, when))
+        notes.append("A tropical system may affect %s %s. Check the Cyclone Centre track before writing." % (area, when))
 
     seen = it["first_seen"]
     if seen and seen < run["run_date"]:
