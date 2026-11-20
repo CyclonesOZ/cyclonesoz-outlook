@@ -8,6 +8,12 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import alert_scan  # noqa: E402
 import morning_email as M  # noqa: E402
 
+try:
+    import fine_areas as F  # needs numpy, scipy, contourpy (installed in alert-scan.yml)
+    HAVE_NUMPY = True
+except ImportError:
+    F, HAVE_NUMPY = None, False
+
 TH = {"rules": [
     {"id": "storms_minor", "level": 1, "label": "Severe storms (MDT)"},
     {"id": "wind_mod", "level": 2, "label": "Destructive winds (125+ km/h)"},
@@ -90,42 +96,68 @@ class MorningEmailTest(unittest.TestCase):
         item = body.split("\n1. ")[1].split("\n\n")[0]
         self.assertEqual(len(item.split("\n")), 6)  # Josh: the first email was "way too long"
 
-    def test_map_link_carries_the_areas_after_the_hash(self):
+    @staticmethod
+    def _unpack(link, marker):
         import base64, json, zlib
-        pts = [(-30.0, 146.0), (-30.72, 146.0)]
+        b64 = link.split(marker)[1]
+        return json.loads(zlib.decompress(base64.urlsafe_b64decode(b64 + "=" * (-len(b64) % 4)), -15))
+
+    @unittest.skipUnless(HAVE_NUMPY, "outlines need numpy, scipy and contourpy")
+    def test_map_link_carries_drawn_outlines_after_the_hash(self):
+        pts = [(-30.0, 146.0), (-30.72, 146.0), (-30.0, 146.72)]  # three points: one or two would be a speck
         run = run_with({p: [rec(cape=2500, shear=40, wind=2, cat=3)] * 4 for p in pts})
         run["points"].append({"lat": -29.28, "lon": 146.0, "d": []})
         subject, body = M.compose(run, TH, [event(DATES[0], pts[:1], ["wind_mod"]), event(DATES[2], pts, ["wind_mod"])],
                                   REAL_DISTRICTS, [])
         link = body.split("Map: ")[1].split("\n")[0]
-        self.assertTrue(link.startswith("http://localhost:8419/#1."))
-        b64 = link.split("#1.")[1]
-        data = json.loads(zlib.decompress(base64.urlsafe_b64decode(b64 + "=" * (-len(b64) % 4)), -15))
+        self.assertTrue(link.startswith("http://localhost:8419/#2."))
+        data = self._unpack(link, "#2.")
         self.assertEqual(data["days"], ["Thu 19", "Fri 20", "Sat 21"])
-        self.assertEqual(data["step"], 0.72)
-        n, fam, level, head, when, cells, seed = data["i"][0]
-        self.assertEqual((n, fam, level, head), (1, "storms", 2, "Severe storms possible in western NSW"))
-        self.assertEqual(sorted(cells), [[-30.72, 146.0, 0b100, 1], [-30.0, 146.0, 0b101, 1]])  # Sat only; Thu and Sat
+        n, fam, level, head, when, bits, outer, inner, seed = data["i"][0]
+        self.assertEqual((n, fam, level, head, bits), (1, "storms", 2, "Severe storms possible in western NSW", 0b101))
+        ring = F.unpack_rings(outer)[0]
+        self.assertTrue(24 <= len(ring) <= 64)  # smooth, about as many points as Josh's own outlines
+        for lat, lon in pts:  # the outlook's boxes sit inside the outline, with a margin
+            self.assertTrue(F._inside((lon, lat), ring))
+        self.assertFalse(F._inside((146.0, -32.5), ring))
         self.assertEqual(seed["key"], "scan:2026-11-18T20:00:00Z:1")
-        self.assertIn('<a href="http://localhost:8419/#1.', M.to_html(body))
+        self.assertIn('<a href="http://localhost:8419/#2.', M.to_html(body))
 
-    def test_post_alert_link_carries_a_draft(self):
-        import base64, json, zlib
+    @unittest.skipUnless(HAVE_NUMPY, "outlines need numpy, scipy and contourpy")
+    def test_post_alert_link_carries_a_drawn_draft(self):
         pts = [(-30.0, 146.0), (-30.72, 146.0), (-30.0, 146.72)]
         run = run_with({p: [rec(cape=2500, shear=40, wind=2 if p == pts[0] else 1, cat=3)] * 4 for p in pts})
         subject, body = M.compose(run, TH, [event(DATES[1], pts, ["storms_minor", "wind_mod"])], REAL_DISTRICTS, [])
         link = body.split("Post Alert: ")[1].split("\n")[0]
         self.assertTrue(link.startswith("https://cyclonesoz.com.au/post-alert#seed=1."))
-        b64 = link.split("#seed=1.")[1]
-        s = json.loads(zlib.decompress(base64.urlsafe_b64decode(b64 + "=" * (-len(b64) % 4)), -15))
-        self.assertEqual((s["v"], s["type"], s["hazard"], s["tier"]), (1, "thunderstorm", "severe_thunderstorms", "moderate"))
+        s = self._unpack(link, "#seed=1.")
+        self.assertEqual((s["v"], s["type"], s["hazard"], s["tier"]), (2, "thunderstorm", "severe_thunderstorms", "moderate"))
         self.assertEqual(s["title"], "Severe storms possible in western NSW")
         self.assertEqual((s["from"], s["until"]), ("2026-11-20T00:00:00Z", "2026-11-21T00:00:00Z"))  # Fri 8 am to Sat 8 am AWST
         self.assertIn("destructive wind gusts", s["notes"])
-        self.assertEqual(sorted(s["cells"]), [[-30.72, 146.0, 0], [-30.0, 146.0, 1], [-30.0, 146.72, 0]])  # inner: 125+ km/h only
+        outer, inner = F.unpack_rings(s["outer"]), F.unpack_rings(s["inner"])
+        self.assertEqual((len(outer), len(inner)), (1, 1))
+        self.assertTrue(F._inside((146.0, -30.0), inner[0]))  # inner: the 125+ km/h point only
+        self.assertFalse(F._inside((146.0, -30.72), inner[0]))
         self.assertIn(">Add to Post Alert drafts</a>", M.to_html(body))
-        rain = M.alert_seed(run, {"fam": "rain", "level": 2, "dates": [DATES[0]], "events": []}, "Heavy rain", "x1")
-        self.assertEqual((rain["type"], rain["hazard"], rain["tier"]), ("general", "heavy_rainfall", "moderate"))
+
+    def test_without_numpy_the_links_fall_back_to_boxes(self):
+        saved = sys.modules.get("fine_areas")
+        sys.modules["fine_areas"] = None  # import fails, as on a runner without numpy
+        try:
+            pts = [(-30.0, 146.0), (-30.72, 146.0), (-30.0, 146.72)]
+            run = run_with({p: [rec(cape=2500, shear=40, wind=2 if p == pts[0] else 1, cat=3)] * 4 for p in pts})
+            subject, body = M.compose(run, TH, [event(DATES[1], pts, ["storms_minor", "wind_mod"])], REAL_DISTRICTS, [])
+            s = self._unpack(body.split("Post Alert: ")[1].split("\n")[0], "#seed=1.")
+            self.assertEqual(s["v"], 1)
+            self.assertEqual(sorted(s["cells"]), [[-30.72, 146.0, 0], [-30.0, 146.0, 1], [-30.0, 146.72, 0]])
+            self.assertTrue(body.split("Map: ")[1].startswith("http://localhost:8419/#1."))
+            self.assertIn("outlines SKIPPED", body)
+        finally:
+            if saved is None:
+                del sys.modules["fine_areas"]
+            else:
+                sys.modules["fine_areas"] = saved
 
     def test_nothing_found_still_sends_a_short_email(self):
         subject, body = M.compose(run_with({}), TH, [], Districts(), [])

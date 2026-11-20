@@ -27,14 +27,22 @@ permissions:
 jobs:
   scan:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 30   # the morning email waits up to 15 min for the 0.25 deg model run
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
 
+      # The morning email's outlines and refined wind/hail/rain read our own ECMWF grids
+      # (pipeline/fine_grid.py, fine_areas.py), which need these. Without them it falls back to the boxes.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Python packages
+        run: python3 -m pip install --quiet numpy==2.2.6 scipy==1.15.3 pillow==11.3.0 contourpy==1.3.2
+
       - name: Run tests
-        run: python3 pipeline/test_alert_scan.py && python3 pipeline/test_extra_hazards.py && python3 pipeline/test_proposals.py && python3 pipeline/test_morning_email.py
+        run: python3 pipeline/test_alert_scan.py && python3 pipeline/test_extra_hazards.py && python3 pipeline/test_proposals.py && python3 pipeline/test_morning_email.py && python3 pipeline/test_fine_areas.py
 
       - name: Scan and email
         env:
@@ -46,6 +54,9 @@ jobs:
           ALERT_FROM: ${{ secrets.ALERT_FROM }}
           ALERT_TO: ${{ secrets.ALERT_TO }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          # read-only key for the model viewer's paid frames (models.cyclonesoz.com); sent as a header, never printed
+          MODEL_GATE_KEY: ${{ secrets.MODEL_GATE_KEY }}
+          MODEL_CACHE_DIR: ${{ runner.temp }}/models
         run: |
           if [ "${{ inputs.morning_test }}" = "true" ]; then
             python3 pipeline/alert_scan.py --morning-only --send

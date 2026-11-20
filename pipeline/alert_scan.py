@@ -29,6 +29,7 @@ import math
 import os
 import smtplib
 import sys
+import time
 from email.message import EmailMessage
 from zoneinfo import ZoneInfo
 
@@ -539,8 +540,9 @@ def main():
               file=sys.stderr)
         raise
     report, new_state = scan(run, th, state, districts, published, regions)
+    rescan = lambda r2, t2: scan(r2, t2, state, districts, published, regions)[0]
     if args.morning_only:
-        return morning(run, th, report, districts, [extra_note, tc_note], "test" if args.send else None)
+        return morning(run, th, report, districts, [extra_note, tc_note], "test" if args.send else None, rescan)
     live = not args.dry_run
     note = ("TEST (dry run, nothing sent or saved)" if args.dry_run else
             "LIVE scan. Shadow mode: this goes only to you, nothing is published to subscribers.")
@@ -566,15 +568,62 @@ def main():
             print("\n[email %s]" % ("sent" if sent else "not configured: saved to last_email.txt only"))
         except Exception as e:  # a mail failure must never fail the build
             print("\n[email FAILED: %s]" % e, file=sys.stderr)
-    morning(run, th, report, districts, [extra_note, tc_note], "daily" if live else None)
+    morning(run, th, report, districts, [extra_note, tc_note], "daily" if live else None, rescan)
 
 
-def morning(run, th, report, districts, notes, mode):
+def fine_for_morning(run, th, rescan):
+    """Our own ECMWF grids (fine_grid.py) for the morning email: the run with its wind, hail, gust
+    and rain refined over each point's box, the morning rules, the morning's events, and the grids
+    for drawing. Returns (run, th, events, fine, note); on any failure the inputs come back as they
+    were, with the reason in the note, and the email goes out on the outlook's boxes."""
+    try:
+        import numpy as np
+        import fine_grid
+        import fine_areas
+        from scipy.spatial import cKDTree
+        wait_until = time.time() + (900 if os.environ.get("GITHUB_ACTIONS") == "true" else 0)
+        while True:  # the 0.25 deg run reaches the bucket ~3:58 am AWST; the outlook ~4:05
+            mrun = fine_grid.latest_run(cache_dir=os.environ.get("MODEL_CACHE_DIR"))
+            fresh = mrun and (dt.datetime.now(dt.timezone.utc) - mrun.run).total_seconds() < 20 * 3600
+            if fresh or time.time() > wait_until:
+                break
+            time.sleep(60)
+        if not mrun:
+            return run, th, None, None, "fine grid SKIPPED (no complete ECMWF run in the last 40 h)"
+        tree = cKDTree([(p["lat"], p["lon"]) for p in run["points"]])
+        trop = np.array([bool(p.get("tropical")) for p in run["points"]])
+
+        def strict_of(lats, lons):
+            LA, LO = np.meshgrid(lats, lons, indexing="ij")
+            dist, idx = tree.query(np.column_stack([LA.ravel(), LO.ravel()]))
+            return (trop[idx] & (dist < 0.75)).reshape(LA.shape)
+
+        fine = fine_areas.FineDays(mrun, run["dates"][:3], th.get("fine"), strict_of=strict_of)
+        if not fine.dates:
+            return run, th, None, None, "fine grid SKIPPED (%s does not cover these days)" % mrun.label
+        import morning_email
+        run_m = fine_areas.patch_run(run, fine, morning_email._grid_step(run))
+        run_m["fine_key"] = mrun.key
+        th_m = fine_areas.morning_rules(th)
+        events = rescan(run_m, th_m)["events"]
+        return run_m, th_m, events, fine, "shapes, wind, hail and rain from %s" % mrun.label
+    except Exception as e:
+        return run, th, None, None, "fine grid SKIPPED (%s: %s)" % (type(e).__name__, e)
+
+
+def morning(run, th, report, districts, notes, mode, rescan=None):
     """The 3-day severe email (pipeline/morning_email.py). mode: 'daily' sends once per AWST date,
     'test' sends under a one-off key, None only prints. Never raises into the scan."""
     try:
         import morning_email
-        subject, body = morning_email.compose(run, th, report["events"], districts, notes)
+        fine, events = None, report["events"]
+        if rescan and os.environ.get("MORNING_FINE", "1") != "0":
+            run, th, ev2, fine, note = fine_for_morning(run, th, rescan)
+            print("[fine] " + note)
+            notes = list(notes) + [note]
+            if ev2 is not None:
+                events = ev2
+        subject, body = morning_email.compose(run, th, events, districts, notes, fine=fine)
         # This repo is public and so are its Actions logs: in CI only the subject goes to the log.
         shown = subject if os.environ.get("GITHUB_ACTIONS") == "true" else subject + "\n\n" + body
         print("\n" + "=" * 72 + "\n" + shown)

@@ -14,6 +14,11 @@ passes two kinds of request through, so the page can be same-origin:
                   browser; a server-side read needs no CORS.
   /vendor/...  -> cdn.jsdelivr.net/npm/...           MapLibre and PMTiles, pinned. MapLibre's
                   worker must be same-origin. Kept on disk after the first fetch.
+  /models/...  -> https://models.cyclonesoz.com/...  the model viewer's ECMWF frames, for the map's
+                  overlays (PWAT, rain, temperature, wind, shear, CAPE, SCP, STP, SHIP; Josh, 20 Nov:
+                  "like what you do on the outlook editor"). Paid fields need our gate key, read
+                  from ~/.cyclonesoz/models.env and sent from here only; the page never sees it.
+                  Same path allowlist as the Edit room's proxy (editroom/server.py).
 
 Listens on 127.0.0.1 only. Installed to run at login by severemap/install.sh.
 
@@ -31,6 +36,8 @@ import re
 import shutil
 import socketserver
 import sys
+import threading
+import time
 import urllib.error
 import urllib.request
 
@@ -46,6 +53,9 @@ TYPES = {".html": "text/html; charset=utf-8", ".json": "application/json", ".js"
 # Only these, so the server is not an open proxy. Versions match the website's package.json.
 VENDOR = re.compile(r"^/(maplibre-gl@6\.14\.0/dist/maplibre-gl(-worker)?\.mjs|maplibre-gl@6\.14\.0/dist/maplibre-gl\.css"
                     r"|pmtiles@4\.5\.0/dist/pmtiles\.js)$")
+MODELS = "https://models.cyclonesoz.com"
+MODEL_PATH = re.compile(r"^/(index\.json|ifs-0p(?:1|25)/\d{10}/(?:manifest\.json|[a-z0-9]+/\d{3}\.png))$")
+_frames, _frames_lock, FRAMES_KEEP = {}, threading.Lock(), 600   # path -> (fetched at, bytes)
 TILE_PATH = re.compile(r"^/[A-Za-z0-9_\-]+\.pmtiles$|^/fonts/[A-Za-z0-9 ,%_\-]+/\d+-\d+\.pbf$")
 PASS = ("Content-Type", "Content-Length", "Content-Range", "Content-Encoding", "Accept-Ranges", "ETag",
         "Last-Modified", "Cache-Control")
@@ -60,7 +70,41 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self.tiles(path[6:])
         if path.startswith("/vendor/") and VENDOR.match(path[7:]):
             return self.vendor(path[7:])
+        if path.startswith("/models/") and MODEL_PATH.match(path[7:]):
+            return self.models(path[7:])
         self.send_error(404)
+
+    def models(self, rest):
+        is_json = rest.endswith(".json")
+        with _frames_lock:
+            hit = _frames.get(rest)
+        if not hit or (is_json and time.time() - hit[0] > 60):   # frames never change; run lists do
+            req = urllib.request.Request(MODELS + rest, headers={"User-Agent": UA})
+            key = gate_key()
+            if key:
+                req.add_header("X-Gate-Key", key)
+            try:
+                with urllib.request.urlopen(req, timeout=60) as r:
+                    body = r.read()
+            except urllib.error.HTTPError as e:
+                return self.send_error(e.code if e.code in (403, 404) else 502, "models: %s" % e.code)
+            except (OSError, urllib.error.URLError) as e:
+                return self.send_error(502, "models: %s" % e)
+            hit = (time.time(), body)
+            with _frames_lock:
+                if len(_frames) >= FRAMES_KEEP:
+                    for k in sorted(_frames, key=lambda k: _frames[k][0])[:FRAMES_KEEP // 4]:
+                        del _frames[k]
+                _frames[rest] = hit
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json" if is_json else "image/png")
+        self.send_header("Content-Length", str(len(hit[1])))
+        self.send_header("Cache-Control", "no-cache" if is_json else "max-age=604800, immutable")
+        self.end_headers()
+        try:
+            self.wfile.write(hit[1])
+        except (BrokenPipeError, ConnectionResetError):
+            pass
 
     def file(self, fn, cache):
         try:
@@ -112,6 +156,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         if args and str(args[1])[:1] in "45":
             sys.stderr.write("%s %s\n" % (self.log_date_time_string(), fmt % args))
+
+
+def gate_key():
+    """Our server key for the model data gate (MODEL_GATE_KEY in ~/.cyclonesoz/models.env)."""
+    try:
+        with open(os.path.expanduser("~/.cyclonesoz/models.env")) as f:
+            for line in f:
+                if line.startswith("MODEL_GATE_KEY="):
+                    return line.split("=", 1)[1].strip().strip("'\"")
+    except OSError:
+        pass
+    return ""
 
 
 class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):

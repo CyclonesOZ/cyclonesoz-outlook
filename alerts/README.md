@@ -75,6 +75,21 @@ changing the map). The areas travel in the link after the `#`, which a browser n
 server, so no draft area is published: this repo and its Actions logs are public. The page draws
 our own basemap from tiles.cyclonesoz.com through the local server. The link only works on that Mac.
 
+**Outlines, refined wind/rain/hail, overlays** (Josh, 20 Nov 2026: "make the shapes and polygon drafts a
+lot better", "nice and smooth, like the polygons I've been producing", the 20-40% wind overstatement,
+heavy rain as rain above the seasonal normal in moist air with his PWAT lines, large hail when it
+emerges, specks merged or hidden unless on a metro, model overlays on the map). The outlook still
+decides whether there is an area; our own ECMWF grids decide where inside it
+(`pipeline/fine_grid.py`, 0.25 deg at ~3:58 am AWST or 0.1 deg later, from models.cyclonesoz.com
+with the `MODEL_GATE_KEY` secret) and set the wind, hail and rain numbers (`pipeline/fine_areas.py`;
+knobs in `alerts/thresholds.json` "fine"). Each area is drawn as one smooth outline round its cells
+(blurred field, contour, Chaikin, ~40-64 points like Josh's hand-drawn ones). The heavy-rain rule uses
+`data/fine_climatology.npz` (SILO 1991-2020 monthly rain, CC BY 4.0; PWAT threshold = Josh's lines
+fitted to NCEP R1 precipitable water, public domain), built once by `pipeline/build_fine_climatology.py`.
+The map link (`#2.`) and Post Alert seeds (`v: 2`) carry the outlines; the map's overlays come through
+`severemap/server.py`'s `/models/` proxy, which holds the gate key. Without the key the outlines are
+drawn round the outlook's own boxes; without the packages the email falls back to the boxes themselves.
+
 **Known limits.** Model days are 00Z-24Z (windows are shown in local time, by a crude state-level
 zone). The grid is ~80 km, so districts, not postcodes, are named. Postcodes come in a later step.
 

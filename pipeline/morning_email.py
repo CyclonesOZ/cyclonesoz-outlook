@@ -56,7 +56,7 @@ TIER = {1: "Minor", 2: "Moderate", 3: "Significant", 4: "Major"}
 
 # Rule id prefix -> hazard family. Families are what an SWPA is issued for.
 FAMILY = {"storms": "storms", "hail": "storms", "wind": "storms", "tor": "storms",
-          "rain": "rain", "rain3": "rain", "gust": "wind", "fire": "fire", "heat": "heat",
+          "rain": "rain", "rain3": "rain", "rainf": "rain", "gust": "wind", "fire": "fire", "heat": "heat",
           "frost": "frost", "snow": "snow", "tc": "tc"}
 ORDER = ["tc", "storms", "rain", "wind", "snow", "heat", "fire", "frost"]
 HEAD = {"storms": "Severe storms possible in", "rain": "Heavy rain possible in",
@@ -450,6 +450,23 @@ def describe(it, run, places, labels):
                      % (format(r100(cape), ","), "strong" if shear >= 40 else "moderate" if shear >= 25 else "weak", r5(shear),
                         ", with some supercells" if shear >= 35 and cape >= 1500 else ""))
         notes.append("Rain is secondary: up to about %d mm under storms." % r5(rain) if rain >= 5 else "Little rain with them.")
+    elif fam == "rain" and run.get("fine"):
+        # patch_run's numbers: ECMWF rain over each point's box, the month's normal, and the moisture
+        totals = sorted(rain72(run, lat, lon) for lat, lon in sorted(set(pts)))
+        day_peak, day_i = peak("rain")
+        pw = max((r.get("pw") or 0) for _, _, _, r in pds)
+        thr = statistics.median([r.get("pw_thr") or 0 for _, _, _, r in pds])
+        normals = [r.get("normal") for _, _, _, r in pds if r.get("normal")]
+        month = dt.date.fromisoformat(it["dates"][0]).strftime("%B")
+        pct = "" if not normals else ", about %d%% of the %s average" % (
+            r5(100 * max(totals) / statistics.median(normals)), month)
+        cond = "Up to %d mm over 3 days%s. Heaviest %s, up to %d mm. Precipitable water up to %d mm (heavy-rain level here %d)." % (
+            r5(max(totals)), pct, day_name(run["dates"][day_i]), r5(day_peak), round(pw), round(thr))
+        writer = general("Heavy rainfall")
+        notes.append("Heavy rain possible %s over %s." % (when, area))
+        notes.append("Up to about %d mm over three days in the heaviest spots%s. Heaviest on %s, up to %d mm that day."
+                     % (r5(max(totals)), pct, day_name(run["dates"][day_i]), r5(day_peak)))
+        notes.append("The air is very moist for this time of year, so falls can be heavy where rain sets in.")
     elif fam == "rain":
         totals = sorted(rain72(run, lat, lon) for lat, lon in sorted(set(pts)))
         lo, hi = (statistics.quantiles(totals, n=4)[0], statistics.quantiles(totals, n=4)[2]) if len(totals) >= 4 else (min(totals), max(totals))
@@ -549,15 +566,26 @@ def _day_bits(run, it):
 def alert_seed(run, it, head, key):
     """The item as a draft for the Post Alert page (cyclonesoz repo, src/lib/alertSeed.js, which
     checks every field). Josh, 19 Nov: "a button that takes the drafted alert over to the post alerts
-    page". key, with the model run, lets the page reopen the draft instead of adding it twice."""
+    page". key, with the model run, lets the page reopen the draft instead of adding it twice.
+
+    v2 (20 Nov) carries the drawn outlines (fine_areas.outline) instead of the outlook's boxes:
+    outer and inner as packed rings, hundredths of a degree, lon/lat, first point then steps."""
     t0 = dt.datetime.fromisoformat(it["dates"][0]).replace(tzinfo=dt.timezone.utc)
     t1 = dt.datetime.fromisoformat(it["dates"][-1]).replace(tzinfo=dt.timezone.utc) + dt.timedelta(days=1)
-    inner = it.get("inner") or set()
-    return {"v": 1, "key": "scan:%s:%s" % (run["run_date"], key),
+    seed = {"key": "scan:%s:%s" % (run["run_date"], key),
             "type": "thunderstorm" if it["fam"] == "storms" else "general", "hazard": PAGE_HAZARD[it["fam"]],
             "tier": TIER[it["level"]].lower(), "title": head, "notes": it.get("notes", ""),
-            "from": t0.strftime("%Y-%m-%dT%H:%M:%SZ"), "until": t1.strftime("%Y-%m-%dT%H:%M:%SZ"), "step": _grid_step(run),
-            "cells": [list(key_ll(k)) + [1 if key_ll(k) in inner else 0] for k in sorted(_day_bits(run, it))]}
+            "from": t0.strftime("%Y-%m-%dT%H:%M:%SZ"), "until": t1.strftime("%Y-%m-%dT%H:%M:%SZ")}
+    shape = it.get("shape")
+    if shape:
+        seed.update({"v": 2, "outer": shape["outer"], "inner": shape["inner"]})
+        if it["fam"] != "storms" and shape["inner"] and shape.get("inner_tier"):
+            seed["inner_tier"] = shape["inner_tier"]
+        return seed
+    inner = it.get("inner") or set()
+    seed.update({"v": 1, "step": _grid_step(run),
+                 "cells": [list(key_ll(k)) + [1 if key_ll(k) in inner else 0] for k in sorted(_day_bits(run, it))]})
+    return seed
 
 
 def post_alert_link(seed):
@@ -571,7 +599,25 @@ def map_link(run, entries):
     severemap/index.html: "#1." + _pack({v, run, days, step, i: [[n, family, level, headline, when,
     [[lat, lon, day bits, inner]...], seed without v/step/cells]...]}). The map rebuilds each seed for
     its "Add to Post Alert drafts" button from the cells.
+
+    "#2." when the items carry drawn outlines: i: [[n, family, level, headline, when, day bits,
+    outer, inner, seed without v/outer/inner]...], plus "model" (which ECMWF run the shapes and the
+    overlays come from, e.g. "ifs-0p25/2026111912").
     """
+    if all(sd.get("v") == 2 for _, _, _, sd in entries):
+        out = []
+        for n, it, head, seed in entries:
+            bits = 0
+            for d in it["dates"]:
+                if d in run["dates"][:DAYS]:
+                    bits |= 1 << run["dates"].index(d)
+            out.append([n, it["fam"], it["level"], head, days_text(it["dates"]), bits, seed["outer"], seed["inner"],
+                        {k: v for k, v in seed.items() if k not in ("v", "outer", "inner")}])
+        run_local = _run_local(run["run_date"])
+        return MAP_URL + "#2." + _pack({
+            "v": 2, "run": "%s %s AWST" % (run_local.strftime("%a %-d %b"), _clock(run_local)),
+            "days": [dt.date.fromisoformat(d).strftime("%a %-d") for d in run["dates"][:DAYS]],
+            "dates": run["dates"][:DAYS], "model": run.get("fine_key") or "", "i": out})
     out = []
     for n, it, head, seed in entries:
         inner = {tuple(c[:2]) for c in seed["cells"] if c[2]}
@@ -587,10 +633,71 @@ def map_link(run, entries):
 
 # --------------------------------------------------------------------------- email
 
-def compose(run, th, events, districts, data_notes=()):
+def _near_metro(pts):
+    import fine_areas
+    return next((m for m in (fine_areas.near_metro(*p) for p in pts) if m), None)
+
+
+def settle_tiny(items, fine, run):
+    """Josh, 20 Nov: "those tiny little one or two pixel zones either need to be automatically merged
+    into a neighbouring bigger severe weather zone or hidden from the map unless situated within a
+    major metro centre". Tiny: one or two outlook points, unless the fine grid shows a real area
+    (10,000 km2+) there. Returns (items kept, number hidden)."""
+    import fine_areas as F
+    step = _grid_step(run)
+    for it in items:
+        it["support"] = F.item_support(it, fine, step) if fine else None
+        it["tiny"] = len(it["pts"]) <= 2 and not (it["support"] and it["support"]["km2"] >= 2 * F.TINY_ITEM_KM2)
+    kept, hidden = [], 0
+    big = [it for it in items if not it["tiny"]]
+    for it in items:
+        if not it["tiny"]:
+            kept.append(it)
+            continue
+        host = min((b for b in big if b["fam"] == it["fam"]), default=None,
+                   key=lambda b: min(math.hypot(a[0] - c[0], a[1] - c[1]) for a in b["pts"] for c in it["pts"]))
+        if host and min(math.hypot(a[0] - c[0], a[1] - c[1]) for a in host["pts"] for c in it["pts"]) <= F.TINY_MERGE_DEG:
+            host["events"] += it["events"]
+            host["pts"] = sorted(set(host["pts"]) | set(it["pts"]))
+            host["dates"] = sorted(set(host["dates"]) | set(it["dates"]))
+            host["level"] = max(host["level"], it["level"])
+            host["rules"] = host["rules"] + [r for r in it["rules"] if r not in host["rules"]]
+            host["first_seen"] = min(host["first_seen"], it["first_seen"])
+            if host["support"] and it["support"]:
+                host["support"] = {"cells": host["support"]["cells"] + it["support"]["cells"],
+                                   "inner": host["support"]["inner"] + it["support"]["inner"],
+                                   "res": host["support"]["res"], "km2": host["support"]["km2"] + it["support"]["km2"]}
+        elif _near_metro(it["pts"]):
+            kept.append(it)
+        else:
+            hidden += 1
+    return kept, hidden
+
+
+def shape_item(it, run):
+    """Drawn outlines for an item, packed for the links (fine_areas.outline)."""
+    import fine_areas as F
+    o = F.outline(it, it.get("support"), _grid_step(run))
+    shape = {"outer": F.pack_rings(o["outer"]), "inner": F.pack_rings(o["inner"]), "fine": o["fine"]}
+    if it["fam"] != "storms" and it["level"] > 1:
+        shape["inner_tier"] = TIER[it["level"]].lower()
+    return shape
+
+
+def compose(run, th, events, districts, data_notes=(), fine=None):
     labels = {r["id"]: r["label"] for r in th["rules"]}
     places = Places(districts)
     items = build_items(events, th, places)
+    hidden = 0
+    try:  # outlines need numpy/scipy/contourpy; without them the email falls back to the boxes
+        import fine_areas  # noqa: F401
+        drawn = True
+    except Exception as e:
+        drawn = False
+        data_notes = list(data_notes) + ["outlines SKIPPED (%s)" % e]
+    if drawn:
+        items, hidden = settle_tiny(items, fine, run)
+        items.sort(key=lambda it: (-it["level"], -it["n_pc"], ORDER.index(it["fam"]), -len(it["pts"])))
     worth = [it for it in items if is_main(it)]
     main, rest = worth[:MAX_ITEMS], worth[MAX_ITEMS:] + [it for it in items if not is_main(it)]
     run_local = _run_local(run["run_date"])
@@ -602,6 +709,9 @@ def compose(run, th, events, districts, data_notes=()):
     heads = [head + (" (%s)" % it["district"] if seen[head] > 1 and it["district"] else "")  # two "north-west QLD": say which
              for it, head, *_ in described]
     others = [(0, it, describe(it, run, places, labels)[0]) for it in rest]
+    if drawn:
+        for it in main + rest:
+            it["shape"] = shape_item(it, run)
     seeds = [alert_seed(run, d[0], h, n) for n, (d, h) in enumerate(zip(described, heads), 1)]
     others = [(0, it, h, alert_seed(run, it, h, "x%d" % k)) for k, (_, it, h) in enumerate(others, 1)]
 
@@ -617,6 +727,8 @@ def compose(run, th, events, districts, data_notes=()):
         body += ["Nothing in the next 3 days reaches an SWPA threshold.", ""]
     if rest:
         body += ["Also on the map: %d smaller area%s, shown lighter with dashed edges." % (len(rest), "" if len(rest) == 1 else "s"), ""]
+    if hidden:
+        body += ["Hidden: %d speck%s of one or two model points, away from the capitals and big cities." % (hidden, "" if hidden == 1 else "s"), ""]
     body.append("Model days run 8 am to 8 am AWST. Automatic detection from the raw model run, not a forecast. Nothing has gone to members.")
     notes = [n for n in data_notes if n]
     if notes:
