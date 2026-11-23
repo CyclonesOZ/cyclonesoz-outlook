@@ -23,6 +23,8 @@ import re
 import subprocess
 import sys
 import tempfile
+import urllib.error
+import urllib.request
 
 HOME = os.path.expanduser("~")
 BASE = os.path.join(HOME, ".cyclonesoz", "severe-map")
@@ -31,6 +33,11 @@ PY = os.path.join(BASE, "venv", "bin", "python")
 DATA = os.path.join(BASE, "data")
 LOG = os.path.join(BASE, "refresh.log")
 ENV_FILE = os.path.join(HOME, ".cyclonesoz", "models.env")
+# Upload to the admin-only severe watch on cyclonesoz.com.au (/hq/severe-watch, SevereWatch entity).
+# Off until ~/.cyclonesoz/severe-watch.env holds SEVERE_WATCH_SECRET (the same value is a secret on the
+# CyclonesOZ Base44 app). The page there decodes the same fragment the email link carries.
+UPLOAD_URL = "https://cyclonesoz.com.au/api/apps/69fbea2b450e42a3a7c55ce9/functions/severeWatchUpload"
+UPLOAD_ENV = os.path.join(HOME, ".cyclonesoz", "severe-watch.env")
 LINK = re.compile(r"http://localhost:8419/(#[12]\.[A-Za-z0-9_-]+)")
 KEEP_DAYS = 30
 PERTH = dt.timezone(dt.timedelta(hours=8))
@@ -62,6 +69,30 @@ def gate_env():
     env["MODEL_CACHE_DIR"] = os.path.join(BASE, "cache")
     os.makedirs(env["MODEL_CACHE_DIR"], exist_ok=True)
     return env
+
+
+def upload(rec):
+    """Send the run to /hq/severe-watch. A failure only logs: the map on this Mac is unaffected."""
+    secret = ""
+    try:
+        for line in open(UPLOAD_ENV):
+            k, _, v = line.strip().partition("=")
+            if k == "SEVERE_WATCH_SECRET":
+                secret = v.strip().strip('"').strip("'")
+    except OSError:
+        return "upload off (no %s)" % UPLOAD_ENV
+    if len(secret) < 32:
+        return "upload off (no secret)"
+    body = json.dumps({k: rec.get(k) or "" for k in ("generated_at", "subject", "fragment", "note", "repo")}).encode()
+    req = urllib.request.Request(UPLOAD_URL, data=body, method="POST", headers={
+        "content-type": "application/json", "x-severe-watch": secret, "user-agent": "cyclonesoz-severe-map/1.0"})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            return "uploaded (%s)" % json.loads(r.read() or b"{}").get("id", "ok")
+    except urllib.error.HTTPError as e:
+        return "upload failed: HTTP %s" % e.code
+    except Exception as e:  # network down: try again on the next run
+        return "upload failed: %s" % e
 
 
 def main():
@@ -106,7 +137,7 @@ def main():
     for name in sorted(os.listdir(DATA)):
         if re.match(r"^\d{4}-\d{2}-\d{2}\.json$", name) and name[:10] < (now - dt.timedelta(days=KEEP_DAYS)).strftime("%Y-%m-%d"):
             os.remove(os.path.join(DATA, name))
-    log("ok: %s%s" % (subject or "(no subject)", "" if m else " [no map link]"))
+    log("ok: %s%s; %s" % (subject or "(no subject)", "" if m else " [no map link]", upload(rec)))
     return 0
 
 
