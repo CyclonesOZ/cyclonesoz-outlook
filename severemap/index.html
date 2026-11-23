@@ -109,13 +109,31 @@ async function decode(hash) {
   return JSON.parse(text);
 }
 
+// The newest morning scan this Mac ran itself (severemap/refresh.py, server.py /latest.json).
+// Opened without a link, the map shows that and checks for a newer one every 10 minutes
+// (Josh, 23 Nov 2026: "so it refreshes every day").
+let latest = null;
+async function fetchLatest() {
+  try {
+    const r = await fetch('/latest.json', { cache: 'no-store' });
+    return r.ok ? await r.json() : null;
+  } catch { return null; }
+}
+
 async function load() {
   let data = null, hash = location.hash;
   try { data = await decode(hash); } catch (e) { console.error('bad map link', e); }
-  try {
-    if (data) localStorage.setItem(KEY, hash);
-    else if ((hash = localStorage.getItem(KEY))) data = await decode(hash);
-  } catch { /* storage blocked: the link still works */ }
+  if (data) {
+    try { localStorage.setItem(KEY, hash); } catch { /* storage blocked: the link still works */ }
+    return data;
+  }
+  latest = await fetchLatest();
+  if (latest?.fragment) {
+    try { data = await decode(latest.fragment); } catch (e) { console.error('bad latest.json', e); }
+    if (data) return data;
+  }
+  if (latest) return null; // today's scan found nothing: say so rather than show an old link
+  try { if ((hash = localStorage.getItem(KEY))) data = await decode(hash); } catch { /* none */ }
   return data;
 }
 
@@ -159,9 +177,12 @@ const items = (data?.i || []).map((row, k) => {
 let day = -1; // -1 = all three days
 let markers = [];
 
+const checked = latest?.generated_at
+  ? ` · updated ${new Date(latest.generated_at).toLocaleString('en-AU', { timeZone: 'Australia/Perth', weekday: 'short', hour: 'numeric', minute: '2-digit' })}`
+  : '';
 document.getElementById('run').textContent = data
-  ? `${days[0] || ''} to ${days[days.length - 1] || ''} · from the ${data.run} run`
-  : 'Open this from the map link in the morning email.';
+  ? `${days[0] || ''} to ${days[days.length - 1] || ''} · from the ${data.run} run${location.hash ? '' : checked}`
+  : latest ? `${latest.note || 'No areas'}${checked}` : 'Open this from the map link in the morning email.';
 
 const showsOn = (it) => day < 0 || (V2 ? (it.bits >> day) & 1 : it.pts.some(([, , m]) => (m >> day) & 1));
 const cells = (it) => it.pts.filter(([, , m]) => day < 0 || (m >> day) & 1);
@@ -271,7 +292,12 @@ function draw() {
 
 function list() {
   const ol = document.getElementById('list');
-  if (!data) { ol.innerHTML = '<div class="empty">No areas loaded. The link in each morning email opens this map with that morning\'s areas.</div>'; return; }
+  if (!data) {
+    ol.innerHTML = latest
+      ? '<div class="empty">This morning\'s scan found nothing to show. The map checks again by itself.</div>'
+      : '<div class="empty">No areas loaded yet. The Mac runs the scan every morning; until then, the link in the morning email opens this map with that morning\'s areas.</div>';
+    return;
+  }
   if (!items.length) { ol.innerHTML = '<div class="empty">Nothing in the next 3 days reaches an SWPA threshold.</div>'; return; }
   const row = (it) => {
     const li = document.createElement('li');
@@ -514,6 +540,13 @@ map.on('mousemove', (e) => {
 map.getCanvas().addEventListener('mouseleave', () => { probe.style.display = 'none'; });
 
 addEventListener('hashchange', () => location.reload()); // another morning's link opened in this tab
+// Opened without a link: pick up the next morning's scan by itself.
+if (!location.hash) {
+  setInterval(async () => {
+    const l = await fetchLatest();
+    if (l?.generated_at && l.generated_at !== latest?.generated_at && l.fragment !== latest?.fragment) location.reload();
+  }, 10 * 60 * 1000);
+}
 list();
 dayButtons();
 fieldButtons();

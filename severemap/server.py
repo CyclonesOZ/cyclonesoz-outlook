@@ -20,6 +20,10 @@ passes two kinds of request through, so the page can be same-origin:
                   from ~/.cyclonesoz/models.env and sent from here only; the page never sees it.
                   Same path allowlist as the Edit room's proxy (editroom/server.py).
 
+  /latest.json -> the newest morning scan this Mac ran itself (severemap/refresh.py, 23 Nov 2026),
+                  so the bare address opens on today's areas. /day/<YYYY-MM-DD>.json for earlier days,
+                  /days.json lists them. Read from ~/.cyclonesoz/severe-map/data; nothing leaves the Mac.
+
 Listens on 127.0.0.1 only. Installed to run at login by severemap/install.sh.
 
     python3 severemap/server.py            # port 8419, or SEVERE_MAP_PORT
@@ -31,6 +35,7 @@ left as a placeholder that the page fills in:
       process.stdout.write(JSON.stringify(getBasemapStyle('light', {origin: '__ORIGIN__'})))"
 """
 import http.server
+import json
 import os
 import re
 import shutil
@@ -47,6 +52,8 @@ CACHE = os.path.join(HERE, "vendor-cache")
 TILES = "https://tiles.cyclonesoz.com"
 CDN = "https://cdn.jsdelivr.net/npm"
 UA = "cyclonesoz-severe-map/1.0"
+DATA = os.environ.get("SEVERE_MAP_DATA", os.path.join(os.path.expanduser("~"), ".cyclonesoz", "severe-map", "data"))
+DAY_PATH = re.compile(r"^/day/(\d{4}-\d{2}-\d{2})\.json$")
 PAGES = {"/": "index.html", "/index.html": "index.html", "/basemap-style.json": "basemap-style.json"}
 TYPES = {".html": "text/html; charset=utf-8", ".json": "application/json", ".js": "text/javascript",
          ".mjs": "text/javascript", ".css": "text/css"}
@@ -66,6 +73,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
         path = self.path.split("?", 1)[0].split("#", 1)[0]
         if path in PAGES:
             return self.file(os.path.join(HERE, PAGES[path]), cache="no-cache")
+        if path == "/latest.json":
+            return self.file(os.path.join(DATA, "latest.json"), cache="no-store")
+        if path == "/days.json":
+            try:
+                days = sorted((n[:10] for n in os.listdir(DATA) if re.match(r"^\d{4}-\d{2}-\d{2}\.json$", n)), reverse=True)
+            except OSError:
+                days = []
+            return self.json_reply({"days": days})
+        m = DAY_PATH.match(path)
+        if m:
+            return self.file(os.path.join(DATA, m.group(1) + ".json"), cache="no-store")
         if path.startswith("/tiles/") and TILE_PATH.match(path[6:]):
             return self.tiles(path[6:])
         if path.startswith("/vendor/") and VENDOR.match(path[7:]):
@@ -105,6 +123,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(hit[1])
         except (BrokenPipeError, ConnectionResetError):
             pass
+
+    def json_reply(self, obj):
+        body = json.dumps(obj).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
 
     def file(self, fn, cache):
         try:
