@@ -1,0 +1,87 @@
+{
+  "_README": "Ground truth: Front Line alerts Josh has actually issued, read from the PostcodeAlert entity in Base44 app 69fbea2b450e42a3a7c55ce9 on 23 Oct 2026. Used by pipeline/calibrate_against_issued.py to check that the thresholds in thresholds.json would have caught what Josh judged alert-worthy. Josh, 23 Oct 2026: 'Compare it to what I've previously issued for frontline alerts to make sure that you're not hallucinating.'",
+  "_SCOPE": "SWPA045 to SWPA052 is the complete PostcodeAlert history - the entity has 13 rows and no more. Lower alert numbers (SWPA001-044) predate postcode targeting and are not in this entity, so they cannot be used here. Only two of the nine hazards in the PostcodeAlert enum have ever been issued: heavy_rainfall (7) and severe_thunderstorms (5). The other seven (heatwave, frost, tropical_cyclone, tropical_low, severe_weather, snow, bushfire) have NO issued history, so no threshold for them can be calibrated against Josh's own practice - they rest on BoM/industry benchmarks and the rulebook instead. Said plainly rather than implied.",
+  "_POSTCODES": "`anchors` is a sample of each alert's postcodes, transcribed exactly from the entity, enough to locate the alert geographically. For the three small alerts it is the complete assignment (noted per row). It is deliberately not the full list for the large alerts: transcribing ~1,500 postcodes by hand would risk inventing data, which is the exact failure Josh asked to avoid. `max_tier` is the highest tier that appears in the full assignment.",
+  "alerts": [
+    {
+      "alert_no": "SWPA045", "hazard": "heavy_rainfall", "status": "published",
+      "issued_at": "2026-10-18T02:26:17Z", "title": "Heavy rainfall expected across central-western Queensland",
+      "max_tier": "minor", "anchors_complete": true,
+      "anchors": ["4472", "4474", "4475", "4478", "4480", "4492", "4493", "4725", "4727", "4730", "4731", "4736"]
+    },
+    {
+      "alert_no": "SWPA046", "hazard": "heavy_rainfall", "status": "published",
+      "issued_at": "2026-10-18T22:52:30Z", "title": "Persistent rain and storm risk for Southeast Queensland and Northern New South Wales",
+      "max_tier": "moderate", "anchors_complete": false,
+      "anchors": ["2422", "2450", "2460", "2480", "2487", "4000", "4211", "4550", "4570", "4600"]
+    },
+    {
+      "alert_no": "SWPA047b", "hazard": "severe_thunderstorms", "status": "published",
+      "issued_at": "2026-10-19T09:17:22Z", "title": "Severe thunderstorms approaching for parts of South Australia and Victoria",
+      "max_tier": "minor", "anchors_complete": false,
+      "anchors": ["3280", "3300", "3400", "5000", "5118", "5253", "5290", "5570"]
+    },
+    {
+      "alert_no": "SWPA047a", "hazard": "heavy_rainfall", "status": "published",
+      "issued_at": "2026-10-19T22:13:17Z", "title": "Heavy rainfall expected along the Gold Coast and Northeast NSW coast",
+      "max_tier": "minor", "anchors_complete": false,
+      "anchors": ["2456", "2480", "2487", "4211", "4217", "4227", "4275"]
+    },
+    {
+      "alert_no": "SWPA048", "hazard": "severe_thunderstorms", "status": "published",
+      "issued_at": "2026-10-20T08:41:10Z", "title": "Severe thunderstorm risk across Southwest Queensland",
+      "max_tier": "minor", "anchors_complete": true,
+      "anchors": ["2832", "2834", "2838", "2839", "2840", "4470", "4471", "4472", "4474", "4475",
+                  "4477", "4478", "4479", "4480", "4481", "4488", "4489", "4490", "4491", "4493",
+                  "4722", "4724", "4725", "4726", "4727", "4728", "4730", "4731", "4732", "4733", "4736"]
+    },
+    {
+      "alert_no": "SWPA049b", "hazard": "heavy_rainfall", "status": "published",
+      "issued_at": "2026-10-21T03:02:14Z", "title": "Heavy rainfall set for Southeast Queensland",
+      "max_tier": "significant", "anchors_complete": false,
+      "anchors": ["4000", "4210", "4211", "4271", "4275", "4504", "4510", "4550", "4552"]
+    },
+    {
+      "alert_no": "SWPA049a", "hazard": "heavy_rainfall", "status": "published",
+      "issued_at": "2026-10-21T03:08:41Z", "title": "Heavy Rainfall Expected for Northeast New South Wales",
+      "max_tier": "significant", "anchors_complete": false,
+      "anchors": ["2350", "2371", "2440", "2471", "2472", "2477", "2480", "2482"]
+    },
+    {
+      "alert_no": "SWPA051b", "hazard": "severe_thunderstorms", "status": "published",
+      "issued_at": "2026-10-21T21:23:22Z", "title": "Slow-moving severe storms bring flash flooding risk to South East Queensland",
+      "max_tier": "significant", "anchors_complete": false,
+      "anchors": ["4035", "4053", "4054", "4211", "4271", "4275", "4500", "4505", "4510", "4516"]
+    },
+    {
+      "alert_no": "SWPA051a", "hazard": "severe_thunderstorms", "status": "published",
+      "issued_at": "2026-10-22T01:28:58Z", "title": "Major Flood and Storm Emergency for Caboolture",
+      "max_tier": "major", "anchors_complete": true,
+      "anchors": ["4503", "4504", "4505", "4506", "4508", "4509", "4510", "4511", "4512", "4513", "4516"]
+    },
+    {
+      "alert_no": "SWPA052b", "hazard": "heavy_rainfall", "status": "published",
+      "issued_at": "2026-10-22T21:29:39Z", "title": "Persistent rainfall and thunderstorm risk",
+      "max_tier": "moderate", "anchors_complete": false,
+      "anchors": ["4000", "4287", "4307", "4340", "4371", "4516", "4517", "4518"]
+    },
+    {
+      "alert_no": "SWPA052a", "hazard": "heavy_rainfall", "status": "published",
+      "issued_at": "2026-10-22T21:40:54Z", "title": "Heavy rainfall expected for Northeast New South Wales",
+      "max_tier": "minor", "anchors_complete": false,
+      "anchors": ["2361", "2370", "2440", "2450", "2460", "2480", "2487", "2490", "4383"]
+    },
+    {
+      "alert_no": "SWPA050", "hazard": "severe_thunderstorms", "status": "test_sent",
+      "issued_at": "2026-10-21T21:15:00Z", "title": "Severe Flash Flooding Event for South East Queensland",
+      "max_tier": "significant", "anchors_complete": false,
+      "anchors": ["4017", "4022", "4035", "4036", "4054", "4500", "4505", "4510", "4520"]
+    },
+    {
+      "alert_no": "SWPA049draft", "hazard": "heavy_rainfall", "status": "draft",
+      "issued_at": "2026-10-21T04:00:00Z", "title": "Significant Rainfall Forecast for Northeast New South Wales",
+      "max_tier": "significant", "anchors_complete": false,
+      "anchors": ["2371", "2456", "2463", "2464", "2471", "2472", "2473", "2480"]
+    }
+  ]
+}

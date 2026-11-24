@@ -1,0 +1,98 @@
+{
+  "_README": "Climate regions for region-relative thresholds. Josh, 23 Oct 2026: 'rainfall is not a blanket one size fits all. Same with temperature... build those thresholds, not for every postcode, but for every region around Australia.' Matched in ORDER, first hit wins, so narrower regions are listed before the broad ones they sit inside. 'default' catches anything unmatched so a point can never end up with no region. lat is negative (degrees south); bounds are [min, max] inclusive of min, exclusive of max, except the final bound of each axis.",
+  "_PROVENANCE": "The boundaries follow real Australian rainfall climate divisions (the tropics at ~19 S, the arid interior, the Mediterranean south-west, the east-coast-low belt, the alpine zone, Tasmania). The mm values in thresholds.json are a FIRST PASS chosen from the rainfall character of each region, not fitted to climatology - no SILO/ERA5 percentile data is in this repo yet. RULEBOOK.md section 0 makes the same admission about its own floors. Once pipeline/build_climatology.py is extended to rainfall percentiles, these regional constants should be replaced by per-cell percentiles with these numbers as the absolute floor. Until then: tunable, and worth checking against a season of real events.",
+  "default": "interior_arid",
+  "regions": [
+    {
+      "id": "tasmania",
+      "label": "Tasmania",
+      "lat": [-44.0, -39.0],
+      "lon": [143.0, 149.0],
+      "notes": "West coast is among the wettest country in Australia, the midlands and east much drier. One region for now; split west/east if it proves too coarse."
+    },
+    {
+      "id": "alpine",
+      "label": "Alpine (Snowy Mountains and Victorian Alps)",
+      "lat": [-37.6, -35.3],
+      "lon": [146.0, 148.8],
+      "notes": "Orographic rain and snow. Listed before murray_darling and nsw_qld_coast because it sits inside both."
+    },
+    {
+      "id": "tropical_qld_coast",
+      "label": "Tropical Queensland Coast",
+      "lat": [-25.0, -15.0],
+      "lon": [145.5, 154.0],
+      "notes": "Tully, Innisfail, Cairns, Mackay. The highest 24-hour rainfall totals in the country; monsoon plus orographic plus tropical cyclone."
+    },
+    {
+      "id": "tropical_north",
+      "label": "Tropical North (Top End, Kimberley, Cape York, Gulf)",
+      "lat": [-19.0, -10.0],
+      "lon": [113.0, 154.0],
+      "notes": "Monsoonal. A 100 mm day is unremarkable in the wet season, so a blanket national bar either floods the queue here or misses everything in the south."
+    },
+    {
+      "id": "pilbara_gascoyne",
+      "label": "Pilbara and Gascoyne",
+      "lat": [-28.0, -19.0],
+      "lon": [113.0, 121.0],
+      "notes": "Arid on average but takes very large falls from decaying tropical cyclones, so the bar sits above the arid interior."
+    },
+    {
+      "id": "qld_inland",
+      "label": "Inland Queensland",
+      "lat": [-29.0, -19.0],
+      "lon": [138.0, 152.0],
+      "notes": "Summer-dominant storm and trough rain. Channel Country flooding comes from totals that would be modest on the coast."
+    },
+    {
+      "id": "nsw_qld_coast",
+      "label": "NSW and South-East Queensland Coast",
+      "lat": [-37.6, -25.0],
+      "lon": [149.5, 154.0],
+      "notes": "East coast low belt. Very high 24-hour totals are a normal part of the climatology here."
+    },
+    {
+      "id": "southwest_wa",
+      "label": "South-West WA",
+      "lat": [-35.5, -28.0],
+      "lon": [113.0, 121.0],
+      "notes": "Mediterranean, winter-dominant frontal rain. Perth, the Darling Scarp and the far south-west."
+    },
+    {
+      "id": "sa_southeast",
+      "label": "South Australia and Western Victoria",
+      "lat": [-39.0, -31.0],
+      "lon": [129.0, 142.0],
+      "notes": "Temperate, winter-dominant, moderate falls. Adelaide, the gulfs, the Wimmera and the Mallee."
+    },
+    {
+      "id": "murray_darling",
+      "label": "Murray-Darling and Inland South-East",
+      "lat": [-37.6, -29.0],
+      "lon": [142.0, 149.5],
+      "notes": "Moderate falls but highly flood-sensitive, so the escalation on wet soil matters more here than the raw bar."
+    },
+    {
+      "id": "vic_south",
+      "label": "Southern Victoria and Gippsland",
+      "lat": [-39.0, -37.6],
+      "lon": [142.0, 151.0],
+      "notes": "Melbourne, the Otways, Western Port and Gippsland. Added 23 Oct 2026 after a coverage check: these 33 grid points matched no box and were falling through to the arid-interior default, which would have put a 40 mm bar over Melbourne. Temperate and winter-dominant, wetter in the ranges and in Gippsland."
+    },
+    {
+      "id": "interior_arid",
+      "label": "Arid Interior",
+      "lat": [-31.0, -19.0],
+      "lon": [121.0, 142.0],
+      "notes": "Also the default for any point no other region claims. The driest country in Australia: 40 mm in a day is a significant event and can cut roads. The lon reach to 142 picks up northern SA and the Broken Hill country below 29 S; qld_inland is matched earlier so it still claims the same longitudes north of 29 S."
+    },
+    {
+      "id": "nullarbor_goldfields",
+      "label": "Nullarbor and Goldfields",
+      "lat": [-35.5, -28.0],
+      "lon": [121.0, 129.0],
+      "notes": "Arid to semi-arid southern belt between the south-west and South Australia. Occasional heavy falls from decayed tropical moisture."
+    }
+  ]
+}

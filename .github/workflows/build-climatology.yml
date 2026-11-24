@@ -1,12 +1,21 @@
 name: Build climatology
 
-# One-off (re-runnable): 1991-2020 average daily max/min per model grid point, for heatwave anomalies.
-# Resumable if the API limit stops it. Commits data/climatology.json only; touches nothing else.
+# One-off (re-runnable): 1991-2020 average daily max/min per model grid point, for heatwave
+# anomalies. Source is SILO (Queensland Government, CC-BY 4.0) — see pipeline/build_climatology.py
+# for why not Open-Meteo: its ERA5 archive needs the API Professional or Enterprise plan, and the
+# 19 Oct 2026 run failed on exactly that 403.
+#
+# About an hour: ~1,342 points at ~2.5 s each, one request per point. If it runs out of time the
+# resume cache is committed too, so re-running simply continues from where it stopped.
 on:
   workflow_dispatch: {}
 
 permissions:
   contents: write
+
+concurrency:
+  group: build-climatology
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -15,13 +24,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build
-        env:
-          OPENMETEO_KEY: ${{ secrets.OPENMETEO_KEY }}
-        run: python3 pipeline/build_climatology.py
+        run: python3 pipeline/build_climatology.py --source silo
       - name: Commit
+        # always() so a timeout still saves the partial cache: without it a run that stops at
+        # point 1,300 throws away an hour of fetching and the next run starts from zero.
+        if: always()
         run: |
           git config user.name  "outlook-bot"
           git config user.email "actions@github.com"
-          git add data/climatology.json
-          git commit -m "Build heatwave climatology" || echo "no change"
+          git add -f data/climatology.json data/.climatology_cache.json || true
+          if git diff --cached --quiet; then echo "no change"; exit 0; fi
+          git commit -m "Build heatwave climatology (SILO)"
+          git pull --rebase --autostash
           git push

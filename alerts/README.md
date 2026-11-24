@@ -9,7 +9,38 @@ python3 pipeline/alert_scan.py --backtest    # replay every archived raw run, co
 python3 pipeline/test_alert_scan.py          # unit tests
 ```
 
-**Thresholds are placeholders** until the real ones are supplied. Edit `alerts/thresholds.json`:
+## Thresholds are region-relative, and calibrated against Josh's own alerts
+
+Rainfall and frost mean different things in different parts of Australia, so a rule's value can be a
+**region bar** (`{"$ref_region_bar": "rain_3day"}`) resolved per point against the 13 climate regions
+in `alerts/regions.json`. Storms, hail, wind, tornado and fire already ride dimensionless model
+tiers, and heat is an anomaly against each point's own climatology, so those need no region gate.
+
+`pipeline/calibrate_against_issued.py` checks the thresholds against **every Front Line alert Josh
+has actually issued** (`alerts/issued-calibration.json`, the complete PostcodeAlert history). Run it
+after any threshold change:
+
+```bash
+python3 pipeline/calibrate_against_issued.py   # currently: fired 13, missed 0, of 13
+```
+
+`pipeline/test_regions.py` fails if a change stops surfacing one of those alerts.
+
+**Why rain accumulates.** Measured against that history, the model's single-day peak over the areas
+Josh alerted was 25-46 mm while the bar was 75 mm, so single-day rules missed 8 of 10. His validity
+windows run 4-7 days. The `accumulate_days` condition sums a field over N consecutive days;
+`rain3_minor` / `rain3_mod` use it.
+
+## Two hazards are built but idle, each waiting on one thing
+
+| Hazard | Waiting on |
+|---|---|
+| **heatwave** | `data/climatology.json`, which has never been built, so heat has been silently skipped on every run to date. The rules and the anomaly maths are already there. Run the one-off: `gh workflow run "Build climatology"`. |
+| **tropical cyclone / low** | A Base44 read token. Add repo secrets `BASE44_APP_ID` and `BASE44_TOKEN` and pass them through in `alert-scan.yml`. `pipeline/tropical.py` then reads the `TropicalSystem` entity (ensemble consensus track, cone radii, member fraction) and sets `tc_cat` / `tc_prob`. Without the token it returns no systems and the four `tc_*` rules stay idle. |
+
+Both degrade silently and safely: a missing field never fires a rule, so neither can half-work.
+
+**Remaining thresholds are placeholders** until the real ones are supplied. Edit `alerts/thresholds.json`:
 a rule fires at a grid point/day when all its `when` conditions hold; neighbouring firing points form
 an event once some rule has `min_points` inside the cluster. `level` only drives escalation detection;
 it is not an impact rating.
@@ -22,6 +53,42 @@ email goes out every run, and a stale or failed model run sends a WARNING instea
 **Email delivery.** Set repo secrets `ALERT_SMTP_HOST`, `ALERT_SMTP_PORT`, `ALERT_SMTP_USER`,
 `ALERT_SMTP_PASS`, `ALERT_FROM`, `ALERT_TO`. Without them the email is only printed and saved to
 `docs/archive/alerts/last_email.txt`.
+
+**The morning 3-day severe email** (Josh, 19 Nov 2026) is the one Josh actually reads. Same run,
+same events, days 1-3 only, sent through Resend once per Perth date (`RESEND_API_KEY` repo secret).
+For each area that could need an SWPA, five lines: a headline ("Severe storms possible in western
+NSW"), when / tier / near, the conditions, a Post Alert writer line (alert type, area, valid times
+in AWST) and notes to paste into "Your notes for Claude". Code in `pipeline/morning_email.py`; areas
+are named by BoM forecast district through its `AREA` table. To see it from the latest run:
+
+```
+python3 pipeline/alert_scan.py --morning-only            # print it, change nothing
+```
+
+or run the Alert scan workflow by hand with "morning_test" ticked (emails it under a test key).
+Wind gusts (`gust_minor`, `gust_mod`) were added for it on 19 Nov; they are not calibrated.
+
+**The map** (Josh, 19 Nov: "email gives me the details, plus a link to the local host map which is
+zoomable"). The email opens with a link to `http://localhost:8419/`, served on Josh's Mac by
+`severemap/server.py` (installed to run at login by `sh severemap/install.sh`; run it again after
+changing the map). The areas travel in the link after the `#`, which a browser never sends to a
+server, so no draft area is published: this repo and its Actions logs are public. The page draws
+our own basemap from tiles.cyclonesoz.com through the local server. The link only works on that Mac.
+
+**Outlines, refined wind/rain/hail, overlays** (Josh, 20 Nov 2026: "make the shapes and polygon drafts a
+lot better", "nice and smooth, like the polygons I've been producing", the 20-40% wind overstatement,
+heavy rain as rain above the seasonal normal in moist air with his PWAT lines, large hail when it
+emerges, specks merged or hidden unless on a metro, model overlays on the map). The outlook still
+decides whether there is an area; our own ECMWF grids decide where inside it
+(`pipeline/fine_grid.py`, 0.25 deg at ~3:58 am AWST or 0.1 deg later, from models.cyclonesoz.com
+with the `MODEL_GATE_KEY` secret) and set the wind, hail and rain numbers (`pipeline/fine_areas.py`;
+knobs in `alerts/thresholds.json` "fine"). Each area is drawn as one smooth outline round its cells
+(blurred field, contour, Chaikin, ~40-64 points like Josh's hand-drawn ones). The heavy-rain rule uses
+`data/fine_climatology.npz` (SILO 1991-2020 monthly rain, CC BY 4.0; PWAT threshold = Josh's lines
+fitted to NCEP R1 precipitable water, public domain), built once by `pipeline/build_fine_climatology.py`.
+The map link (`#2.`) and Post Alert seeds (`v: 2`) carry the outlines; the map's overlays come through
+`severemap/server.py`'s `/models/` proxy, which holds the gate key. Without the key the outlines are
+drawn round the outlook's own boxes; without the packages the email falls back to the boxes themselves.
 
 **Known limits.** Model days are 00Z-24Z (windows are shown in local time, by a crude state-level
 zone). The grid is ~80 km, so districts, not postcodes, are named. Postcodes come in a later step.

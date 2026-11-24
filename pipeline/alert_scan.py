@@ -29,10 +29,13 @@ import math
 import os
 import smtplib
 import sys
+import time
 from email.message import EmailMessage
 from zoneinfo import ZoneInfo
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from regions import Regions, resolve_value  # noqa: E402  (needs the sys.path line above)
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RAW = os.path.join(ROOT, "docs", "archive", "raw", "outlook.json")
 PUBLISHED = os.path.join(ROOT, "docs", "outlook.json")
@@ -80,11 +83,35 @@ def add_rolling_rain(run):
             d["rain5"] = round(sum(r[max(0, i - 4):i + 1]), 1)
 
 
-def rule_fires(rule, rec):
-    """True if every condition holds. A missing field never fires (no guessing)."""
+def rule_fires(rule, rec, region=None, bars=None, series=None, di=None):
+    """True if every condition holds. A missing field never fires (no guessing).
+
+    `region` is the climate region of the point being evaluated, so a condition value may be
+    a per-region bar instead of one national number — 40 mm is a significant day in the arid
+    interior and an ordinary one on the tropical Queensland coast. A plain numeric value and
+    region=None behave exactly as before.
+
+    A condition with `accumulate_days: N` sums its field over N consecutive model days starting
+    at this one, instead of testing the single day. Josh's own heavy-rainfall alerts are issued
+    over 4-7 day validity windows on multi-day totals: measured against the 13 alerts in
+    alerts/issued-calibration.json, the model's single-day peak over the alerted area was only
+    25-46 mm, so no single-day bar that is not absurdly low can see the events he actually calls.
+    The 3-day totals for the same events were 49-86 mm, which is separable. Needs `series` (the
+    point's day list) and `di`; a window running past the end of the run does not fire, so a
+    partial window can never look like a small total.
+    """
     for c in rule["when"]:
-        v = rec.get(c["field"])
-        if v is None or not OPS[c["op"]](v, c["value"]):
+        window = c.get("accumulate_days")
+        if window:
+            if series is None or di is None or di + window > len(series):
+                return False
+            v = sum((series[i].get(c["field"]) or 0) for i in range(di, di + window))
+        else:
+            v = rec.get(c["field"])
+            if v is None:
+                return False
+        limit = resolve_value(c["value"], region, bars)
+        if not OPS[c["op"]](v, limit):
             return False
     return True
 
@@ -101,13 +128,22 @@ def published_index(published):
     return {point_key(p): {dates[i]: d for i, d in enumerate(p["d"]) if i < len(dates)} for p in published["points"]}
 
 
-def triggered_points(run, th, pub_idx=None):
+def triggered_points(run, th, regions=None, pub_idx=None):
     """{day_index: {point_index: [rule ids]}} for the days the scan covers.
+
+    Each point is resolved to a climate region once and that region is handed to every rule,
+    so region-relative bars (thresholds.json region_bars) apply per point. With regions=None
+    every rule falls back to its national default, which is the pre-region behaviour.
 
     A rule with "source": "published" reads Josh's edited map (his storm categories, hail and wind
     tiers) instead of the raw model run, wherever the published map has that point and day."""
     lo, hi = th["scan_days"]
+    bars = th.get("region_bars")
     out = {}
+    point_region = {}
+    if regions is not None:
+        for pi, p in enumerate(run["points"]):
+            point_region[pi] = regions.region_for(p.get("lat"), p.get("lon"))
     for di in range(lo - 1, min(hi, len(run["dates"]))):
         hits = {}
         date = run["dates"][di]
@@ -115,10 +151,12 @@ def triggered_points(run, th, pub_idx=None):
             if di >= len(p["d"]):
                 continue
             rec = p["d"][di]
+            reg = point_region.get(pi)
             prec = pub_idx.get(point_key(p), {}).get(date) if pub_idx else None
             ids = [r["id"] for r in th["rules"]
                    if r["days"][0] - 1 <= di <= r["days"][1] - 1
-                   and rule_fires(r, prec if (r.get("source") == "published" and prec is not None) else rec)]
+                   and rule_fires(r, prec if (r.get("source") == "published" and prec is not None) else rec,
+                                  reg, bars, p["d"], di)]
             if ids:
                 hits[pi] = ids
         if hits:
@@ -221,14 +259,14 @@ def local_window(date_str, lat, lon):
 
 # --------------------------------------------------------------------------- events
 
-def build_events(run, th, districts, published=None):
+def build_events(run, th, districts, published=None, regions=None):
     """One event per (date, connected cluster) that satisfies some rule's min_points."""
     pts = run["points"]
     rules = {r["id"]: r for r in th["rules"]}
     pub_idx = {d: i for i, d in enumerate(published["dates"])} if published else {}
     pidx = published_index(published)
     events = []
-    for di, hits in sorted(triggered_points(run, th, pidx).items()):
+    for di, hits in sorted(triggered_points(run, th, regions, pidx).items()):
         date = run["dates"][di]
         for group in clusters(pts, hits, th["neighbour_deg"]):
             per_rule = {}
@@ -254,8 +292,16 @@ def build_events(run, th, districts, published=None):
                 "rules": sorted(live, key=lambda r: (-rules[r]["level"], r)),
                 "level": max(rules[r]["level"] for r in live),
                 "districts": districts.names_for([(pts[pi]["lat"], pts[pi]["lon"]) for pi in members])[:6],
-                "peak": {f: max(r.get(f, 0) for r in recs) for f in
-                         ("cape", "shear", "scp", "ship", "dcape", "rain", "hail", "wind", "cat", "heat", "snow72")},
+                "regions": (sorted({regions.region_for(pts[pi]["lat"], pts[pi]["lon"]) for pi in members})
+                            if regions is not None else []),
+                "peak": dict(
+                    {f: max(r.get(f, 0) for r in recs) for f in
+                     ("cape", "shear", "scp", "ship", "dcape", "rain", "hail", "wind", "cat", "heat", "snow72")},
+                    # Largest 3-day rain total opening on this day, across the cluster's points.
+                    rain3=max((sum((pts[pi]["d"][i].get("rain") or 0)
+                                   for i in range(di, min(di + 3, len(pts[pi]["d"]))))
+                               for pi in members), default=0),
+                ),
                 "window_local": local_window(date, lat, lon),
                 "basis": "published map" if from_pub else "raw model run",
                 # an accumulation rule (rain over 5 days) is about rain that fell BEFORE the day it fires,
@@ -311,9 +357,9 @@ def told_snapshot(ev):
     return {k: ev[k] for k in ("level", "n_points", "centroid", "rules")}
 
 
-def scan(run, th, state, districts, published=None):
+def scan(run, th, state, districts, published=None, regions=None):
     """Returns (report, new_state). report = {'changes': [...], 'quiet': [...], 'events': [...]}"""
-    events = build_events(run, th, districts, published)
+    events = build_events(run, th, districts, published, regions)
     today = run["dates"][0]
     old = [e for e in state.get("events", []) if e["date"] >= today]
     pairs, fresh, gone = match_events(events, old)
@@ -367,8 +413,14 @@ def scan(run, th, state, districts, published=None):
 # --------------------------------------------------------------------------- email
 
 def fmt_peak(p):
-    return "CAPE %d, shear %d kt, SCP %.1f, SHIP %.1f, DCAPE %d, rain up to %.0f mm; hail tier %d, wind tier %d" % (
-        p["cape"], p["shear"], p["scp"], p["ship"], p["dcape"], p["rain"], p["hail"], p["wind"])
+    # rain3 is shown beside the single-day figure because a 3-day rule fires on the window that
+    # STARTS at this day: a day with 0 mm of its own can legitimately open a wet 3-day window, and
+    # "Persistent rain ... rain up to 0 mm" reads like a bug when it is not.
+    rain = "rain up to %.0f mm" % p["rain"]
+    if p.get("rain3"):
+        rain += " (%.0f mm over 3 days from this one)" % p["rain3"]
+    return "CAPE %d, shear %d kt, SCP %.1f, SHIP %.1f, DCAPE %d, %s; hail tier %d, wind tier %d" % (
+        p["cape"], p["shear"], p["scp"], p["ship"], p["dcape"], rain, p["hail"], p["wind"])
 
 
 def describe(status, ev, rule_labels):
@@ -521,6 +573,9 @@ def main():
     ap.add_argument("--state", default=STATE)
     ap.add_argument("--max-age-hours", type=float, default=14,
                     help="warn instead of scanning when the raw run is older than this")
+    ap.add_argument("--morning-only", action="store_true",
+                    help="print the 3-day severe email from the latest run; no state written")
+    ap.add_argument("--send", action="store_true", help="with --morning-only: also email it (test key)")
     args = ap.parse_args()
 
     th, districts = load_json(THRESHOLDS), Districts(DISTRICTS)
@@ -529,12 +584,14 @@ def main():
 
     run = load_run(args.run)
     state = load_json(args.state) if os.path.exists(args.state) else {}
-    if state.get("run_date") == run["run_date"] and not args.dry_run:
+    if state.get("run_date") == run["run_date"] and not args.dry_run and not args.morning_only:
         print("Run %s already scanned; nothing to do." % run["run_date"])
         return
     age_h = (dt.datetime.now(dt.timezone.utc)
              - dt.datetime.fromisoformat(run["run_date"].replace("Z", "+00:00"))).total_seconds() / 3600
-    if age_h > args.max_age_hours:
+    # --morning-only is a preview or test: it uses the latest run whatever its age (the email names
+    # the run's time), rather than sending the "no fresh model run" warning under today's key.
+    if age_h > args.max_age_hours and not args.morning_only:
         # The model run failed or is late. Say so loudly: silence must never look like "all quiet".
         subject = "[Front Line] WARNING: no fresh model run (latest is %.0f h old), alerts NOT checked" % age_h
         body = ("The newest raw model run is %s UTC, %.1f hours old, so tonight's scan did not run.\n"
@@ -546,6 +603,12 @@ def main():
                 send(subject, body)
             except Exception as e:
                 print("[email FAILED: %s]" % e, file=sys.stderr)
+            try:  # the morning email must not go quiet just because the run is late
+                import morning_email
+                print("[morning email] " + morning_email.send(
+                    "3-day severe watch: NO fresh model run, nothing checked", body, morning_email.daily_key() + "/stale"))
+            except Exception as e:
+                print("[morning email FAILED: %s]" % e, file=sys.stderr)
         return
     published = load_json(PUBLISHED) if os.path.exists(PUBLISHED) else None
     try:  # heatwave + snow need outside data; if it fails the rest of the scan still runs
@@ -554,7 +617,23 @@ def main():
     except Exception as e:
         extra_note = "heat+snow SKIPPED (%s)" % e
     print("[extra hazards] " + extra_note)
-    report, new_state = scan(run, th, state, districts, published)
+    try:  # tropical cyclone / low; no Base44 token just means the cyclone rules stay idle
+        import tropical
+        tc_note = tropical.augment_run(run)
+    except Exception as e:
+        tc_note = "tropical SKIPPED (%s)" % e
+    print("[tropical] " + tc_note)
+    try:  # region-relative bars; a bad regions file must not silently revert to national ones
+        regions = Regions.load()
+        print("[regions] %d climate regions loaded, default %s" % (len(regions.regions), regions.default))
+    except Exception as e:
+        print("[regions] FAILED to load (%s) — refusing to scan on national bars instead" % e,
+              file=sys.stderr)
+        raise
+    report, new_state = scan(run, th, state, districts, published, regions)
+    rescan = lambda r2, t2: scan(r2, t2, state, districts, published, regions)[0]
+    if args.morning_only:
+        return morning(run, th, report, districts, [extra_note, tc_note], "test" if args.send else None, rescan)
     live = not args.dry_run
     pub_note = ""
     if published and published.get("run_date") != run["run_date"]:
@@ -584,6 +663,71 @@ def main():
             print("\n[email %s]" % ("sent" if sent else "not configured: saved to last_email.txt only"))
         except Exception as e:  # a mail failure must never fail the build
             print("\n[email FAILED: %s]" % e, file=sys.stderr)
+    morning(run, th, report, districts, [extra_note, tc_note], "daily" if live else None, rescan)
+
+
+def fine_for_morning(run, th, rescan):
+    """Our own ECMWF grids (fine_grid.py) for the morning email: the run with its wind, hail, gust
+    and rain refined over each point's box, the morning rules, the morning's events, and the grids
+    for drawing. Returns (run, th, events, fine, note); on any failure the inputs come back as they
+    were, with the reason in the note, and the email goes out on the outlook's boxes."""
+    try:
+        import numpy as np
+        import fine_grid
+        import fine_areas
+        from scipy.spatial import cKDTree
+        wait_until = time.time() + (900 if os.environ.get("GITHUB_ACTIONS") == "true" else 0)
+        while True:  # the 0.25 deg run reaches the bucket ~3:58 am AWST; the outlook ~4:05
+            mrun = fine_grid.latest_run(cache_dir=os.environ.get("MODEL_CACHE_DIR"))
+            fresh = mrun and (dt.datetime.now(dt.timezone.utc) - mrun.run).total_seconds() < 20 * 3600
+            if fresh or time.time() > wait_until:
+                break
+            time.sleep(60)
+        if not mrun:
+            return run, th, None, None, "fine grid SKIPPED (no complete ECMWF run in the last 40 h)"
+        tree = cKDTree([(p["lat"], p["lon"]) for p in run["points"]])
+        trop = np.array([bool(p.get("tropical")) for p in run["points"]])
+
+        def strict_of(lats, lons):
+            LA, LO = np.meshgrid(lats, lons, indexing="ij")
+            dist, idx = tree.query(np.column_stack([LA.ravel(), LO.ravel()]))
+            return (trop[idx] & (dist < 0.75)).reshape(LA.shape)
+
+        fine = fine_areas.FineDays(mrun, run["dates"][:3], th.get("fine"), strict_of=strict_of)
+        if not fine.dates:
+            return run, th, None, None, "fine grid SKIPPED (%s does not cover these days)" % mrun.label
+        import morning_email
+        run_m = fine_areas.patch_run(run, fine, morning_email._grid_step(run))
+        run_m["fine_key"] = mrun.key
+        th_m = fine_areas.morning_rules(th)
+        events = rescan(run_m, th_m)["events"]
+        return run_m, th_m, events, fine, "shapes, wind, hail and rain from %s" % mrun.label
+    except Exception as e:
+        return run, th, None, None, "fine grid SKIPPED (%s: %s)" % (type(e).__name__, e)
+
+
+def morning(run, th, report, districts, notes, mode, rescan=None):
+    """The 3-day severe email (pipeline/morning_email.py). mode: 'daily' sends once per AWST date,
+    'test' sends under a one-off key, None only prints. Never raises into the scan."""
+    try:
+        import morning_email
+        fine, events = None, report["events"]
+        if rescan and os.environ.get("MORNING_FINE", "1") != "0":
+            run, th, ev2, fine, note = fine_for_morning(run, th, rescan)
+            print("[fine] " + note)
+            notes = list(notes) + [note]
+            if ev2 is not None:
+                events = ev2
+        subject, body = morning_email.compose(run, th, events, districts, notes, fine=fine)
+        # This repo is public and so are its Actions logs: in CI only the subject goes to the log.
+        shown = subject if os.environ.get("GITHUB_ACTIONS") == "true" else subject + "\n\n" + body
+        print("\n" + "=" * 72 + "\n" + shown)
+        if mode:
+            key = morning_email.daily_key() if mode == "daily" else "morning-severe-test/" + dt.datetime.now(
+                dt.timezone.utc).strftime("%Y%m%dT%H%M%S")
+            print("\n[morning email] " + morning_email.send(subject, body, key))
+    except Exception as e:
+        print("[morning email FAILED: %s]" % e, file=sys.stderr)
 
 
 if __name__ == "__main__":

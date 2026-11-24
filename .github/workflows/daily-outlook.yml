@@ -85,6 +85,12 @@ jobs:
         timeout-minutes: 15
         run: Rscript -e 'install.packages(c("thunder","jsonlite")); if (!requireNamespace("thunder", quietly=TRUE)) stop("thunder failed to install")'
 
+      - name: Python libraries for radar verification
+        # pipeline/radar_obs.py decodes the app's radar PNG with numpy and Pillow. Optional: if
+        # this fails the radar check logs and skips, and the outlook is built regardless.
+        continue-on-error: true
+        run: python3 -m pip install --quiet --break-system-packages numpy pillow
+
       - name: Build outlook
         env:
           OPENMETEO_KEY: ${{ secrets.OPENMETEO_KEY }}

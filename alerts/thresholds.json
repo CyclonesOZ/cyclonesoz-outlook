@@ -5,6 +5,136 @@
     7
   ],
   "neighbour_deg": 1.1,
+  "_REGION_BARS": "Named thresholds that mean different things in different parts of Australia. A rule refers to one with {\"$ref_region_bar\": \"<name>\"} instead of a bare number, so a bar is tuned in ONE place rather than in every rule that uses it. 'default' is the old national number, so a region missing from by_region behaves exactly as the scan did before. Regions are defined in alerts/regions.json. FIRST PASS: these mm values come from each region's rainfall character, not from fitted climatology - there is no SILO/ERA5 percentile data in this repo yet (RULEBOOK.md section 0 makes the same admission). Replace with per-cell percentiles when pipeline/build_climatology.py grows rainfall, keeping these as the absolute floor.",
+  "_RAIN_3DAY_CALIBRATION": "The rain_3day bars are calibrated, not guessed. Against the 13 alerts in alerts/issued-calibration.json, the model's single-day peak over the area Josh alerted was 25-46 mm while the 3-day total was 43-86 mm; his validity windows run 4-7 days and the titles say 'persistent'. A single-day bar low enough to see those events would be ~25 mm, which fires constantly. These bars surface 10 of 10 issued alerts that have an archived run, at ~23 events per run. Two looser sets were tested and rejected: +10 mm caught 3 of 6 heavy-rainfall alerts, +25 mm caught 1 of 6. qld_inland is 40 rather than 45 because SWPA045's 3-day total was 43 mm, and that change cost +0.7 events per run. Re-run pipeline/calibrate_against_issued.py after any change - test_regions.py fails if a change drops one of Josh's issued alerts.",
+  "region_bars": {
+    "rain_heavy": {
+      "default": 75,
+      "by_region": {
+        "tropical_qld_coast": 120,
+        "tropical_north": 100,
+        "nsw_qld_coast": 90,
+        "alpine": 80,
+        "tasmania": 70,
+        "qld_inland": 60,
+        "vic_south": 55,
+        "southwest_wa": 50,
+        "murray_darling": 50,
+        "pilbara_gascoyne": 50,
+        "sa_southeast": 45,
+        "nullarbor_goldfields": 40,
+        "interior_arid": 40
+      }
+    },
+    "frost_tmin": {
+      "default": 0,
+      "by_region": {
+        "murray_darling": 0,
+        "sa_southeast": 0,
+        "vic_south": 0,
+        "southwest_wa": 0,
+        "qld_inland": 0,
+        "tasmania": -1,
+        "interior_arid": -2,
+        "nullarbor_goldfields": -2,
+        "alpine": -5,
+        "nsw_qld_coast": -1,
+        "pilbara_gascoyne": -99,
+        "tropical_north": -99,
+        "tropical_qld_coast": -99
+      }
+    },
+    "frost_tmin_severe": {
+      "default": -3,
+      "by_region": {
+        "murray_darling": -3,
+        "sa_southeast": -3,
+        "vic_south": -3,
+        "southwest_wa": -3,
+        "qld_inland": -3,
+        "tasmania": -4,
+        "interior_arid": -5,
+        "nullarbor_goldfields": -5,
+        "alpine": -10,
+        "nsw_qld_coast": -3,
+        "pilbara_gascoyne": -99,
+        "tropical_north": -99,
+        "tropical_qld_coast": -99
+      }
+    },
+    "rain_3day": {
+      "default": 60,
+      "by_region": {
+        "tropical_qld_coast": 110,
+        "tropical_north": 90,
+        "tasmania": 60,
+        "alpine": 60,
+        "nsw_qld_coast": 50,
+        "qld_inland": 40,
+        "murray_darling": 45,
+        "sa_southeast": 45,
+        "southwest_wa": 45,
+        "vic_south": 45,
+        "pilbara_gascoyne": 45,
+        "interior_arid": 40,
+        "nullarbor_goldfields": 40
+      }
+    },
+    "rain_extreme": {
+      "default": 150,
+      "by_region": {
+        "tropical_qld_coast": 250,
+        "tropical_north": 200,
+        "nsw_qld_coast": 180,
+        "alpine": 160,
+        "tasmania": 150,
+        "qld_inland": 140,
+        "vic_south": 120,
+        "pilbara_gascoyne": 120,
+        "southwest_wa": 110,
+        "murray_darling": 110,
+        "sa_southeast": 100,
+        "nullarbor_goldfields": 90,
+        "interior_arid": 90
+      }
+    },
+    "gust_damaging": {
+      "default": 90,
+      "by_region": {
+        "tropical_qld_coast": 90,
+        "tropical_north": 90,
+        "nsw_qld_coast": 90,
+        "alpine": 110,
+        "tasmania": 100,
+        "qld_inland": 90,
+        "vic_south": 90,
+        "southwest_wa": 90,
+        "murray_darling": 90,
+        "pilbara_gascoyne": 90,
+        "sa_southeast": 90,
+        "nullarbor_goldfields": 90,
+        "interior_arid": 90
+      }
+    },
+    "gust_destructive": {
+      "default": 125,
+      "by_region": {
+        "tropical_qld_coast": 125,
+        "tropical_north": 125,
+        "nsw_qld_coast": 125,
+        "alpine": 140,
+        "tasmania": 135,
+        "qld_inland": 125,
+        "vic_south": 125,
+        "southwest_wa": 125,
+        "murray_darling": 125,
+        "pilbara_gascoyne": 125,
+        "sa_southeast": 125,
+        "nullarbor_goldfields": 125,
+        "interior_arid": 125
+      }
+    }
+  },
   "rules": [
     {
       "id": "storms_minor",
@@ -279,8 +409,206 @@
       "source": "published"
     },
     {
-      "id": "rain_minor",
-      "label": "Heavy rain (75+ mm/day)",
+      "id": "gust_minor",
+      "level": 1,
+      "label": "Damaging wind gusts (90+ km/h)",
+      "min_points": 3,
+      "days": [
+        1,
+        3
+      ],
+      "when": [
+        {
+          "field": "gust",
+          "op": ">=",
+          "value": {
+            "$ref_region_bar": "gust_damaging"
+          }
+        }
+      ]
+    },
+    {
+      "id": "gust_mod",
+      "level": 2,
+      "label": "Destructive wind gusts (125+ km/h)",
+      "min_points": 1,
+      "days": [
+        1,
+        3
+      ],
+      "when": [
+        {
+          "field": "gust",
+          "op": ">=",
+          "value": {
+            "$ref_region_bar": "gust_destructive"
+          }
+        }
+      ]
+    },
+    {
+      "id": "tc_minor",
+      "label": "Tropical low in range",
+      "level": 1,
+      "days": [
+        1,
+        7
+      ],
+      "min_points": 1,
+      "when": [
+        {
+          "field": "tc_cat",
+          "op": ">=",
+          "value": 0
+        },
+        {
+          "field": "tc_prob",
+          "op": ">=",
+          "value": 0.4
+        }
+      ]
+    },
+    {
+      "id": "tc_mod",
+      "label": "Tropical cyclone, category 1",
+      "level": 2,
+      "days": [
+        1,
+        7
+      ],
+      "min_points": 1,
+      "when": [
+        {
+          "field": "tc_cat",
+          "op": ">=",
+          "value": 1
+        },
+        {
+          "field": "tc_prob",
+          "op": ">=",
+          "value": 0.4
+        }
+      ]
+    },
+    {
+      "id": "tc_sig",
+      "label": "Severe tropical cyclone, category 2-3",
+      "level": 3,
+      "days": [
+        1,
+        7
+      ],
+      "min_points": 1,
+      "when": [
+        {
+          "field": "tc_cat",
+          "op": ">=",
+          "value": 2
+        },
+        {
+          "field": "tc_prob",
+          "op": ">=",
+          "value": 0.3
+        }
+      ]
+    },
+    {
+      "id": "tc_major",
+      "label": "Severe tropical cyclone, category 4-5",
+      "level": 4,
+      "days": [
+        1,
+        7
+      ],
+      "min_points": 1,
+      "when": [
+        {
+          "field": "tc_cat",
+          "op": ">=",
+          "value": 4
+        },
+        {
+          "field": "tc_prob",
+          "op": ">=",
+          "value": 0.25
+        }
+      ]
+    },
+    {
+      "id": "frost_minor",
+      "label": "Frost (2+ nights at or below the region's frost point)",
+      "level": 1,
+      "days": [
+        1,
+        7
+      ],
+      "min_points": 2,
+      "when": [
+        {
+          "field": "frost_nights",
+          "op": ">=",
+          "value": 2
+        },
+        {
+          "field": "tmin",
+          "op": "<=",
+          "value": {
+            "$ref_region_bar": "frost_tmin"
+          }
+        }
+      ]
+    },
+    {
+      "id": "frost_mod",
+      "label": "Severe frost (2+ nights, region severe point)",
+      "level": 2,
+      "days": [
+        1,
+        7
+      ],
+      "min_points": 2,
+      "when": [
+        {
+          "field": "frost_nights",
+          "op": ">=",
+          "value": 2
+        },
+        {
+          "field": "tmin",
+          "op": "<=",
+          "value": {
+            "$ref_region_bar": "frost_tmin_severe"
+          }
+        }
+      ]
+    },
+    {
+      "id": "frost_sig",
+      "label": "Widespread severe frost",
+      "level": 3,
+      "days": [
+        1,
+        7
+      ],
+      "min_points": 6,
+      "when": [
+        {
+          "field": "frost_nights",
+          "op": ">=",
+          "value": 2
+        },
+        {
+          "field": "tmin",
+          "op": "<=",
+          "value": {
+            "$ref_region_bar": "frost_tmin_severe"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rain3_minor",
+      "label": "Persistent rain (3-day region bar)",
       "level": 1,
       "days": [
         1,
@@ -291,13 +619,16 @@
         {
           "field": "rain",
           "op": ">=",
-          "value": 75
+          "accumulate_days": 3,
+          "value": {
+            "$ref_region_bar": "rain_3day"
+          }
         }
       ]
     },
     {
-      "id": "rain_mod",
-      "label": "Widespread heavy rain, or 150+ mm isolated",
+      "id": "rain3_mod",
+      "label": "Widespread persistent rain (3-day region bar)",
       "level": 2,
       "days": [
         1,
@@ -308,13 +639,54 @@
         {
           "field": "rain",
           "op": ">=",
-          "value": 75
+          "accumulate_days": 3,
+          "value": {
+            "$ref_region_bar": "rain_3day"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rain_minor",
+      "label": "Heavy rain (region heavy bar)",
+      "level": 1,
+      "days": [
+        1,
+        5
+      ],
+      "min_points": 2,
+      "when": [
+        {
+          "field": "rain",
+          "op": ">=",
+          "value": {
+            "$ref_region_bar": "rain_heavy"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rain_mod",
+      "label": "Widespread heavy rain",
+      "level": 2,
+      "days": [
+        1,
+        5
+      ],
+      "min_points": 6,
+      "when": [
+        {
+          "field": "rain",
+          "op": ">=",
+          "value": {
+            "$ref_region_bar": "rain_heavy"
+          }
         }
       ]
     },
     {
       "id": "rain_mod_hi",
-      "label": "Extreme rain (150+ mm/day)",
+      "label": "Extreme rain (region extreme bar)",
       "level": 2,
       "days": [
         1,
@@ -325,13 +697,15 @@
         {
           "field": "rain",
           "op": ">=",
-          "value": 150
+          "value": {
+            "$ref_region_bar": "rain_extreme"
+          }
         }
       ]
     },
     {
       "id": "rain_sig",
-      "label": "Widespread extreme rain (150+ mm/day)",
+      "label": "Widespread extreme rain",
       "level": 3,
       "days": [
         1,
@@ -342,7 +716,9 @@
         {
           "field": "rain",
           "op": ">=",
-          "value": 150
+          "value": {
+            "$ref_region_bar": "rain_extreme"
+          }
         }
       ]
     },
@@ -614,5 +990,11 @@
       }
     }
   },
-  "_README2": "19 Oct 2026: rules with source=published read Josh's edited map (storm category, hail, wind tiers) instead of the raw model run. rain3/rain5 rules are PROVISIONAL placeholders fitted to one event (the SEQ rain event, 100 mm over 5 days at 4+ points); real values come from the rulebook's climate-zone rain table."
+  "_README2": "19 Oct 2026: rules with source=published read Josh's edited map (storm category, hail, wind tiers) instead of the raw model run. rain3/rain5 rules are PROVISIONAL placeholders fitted to one event (the SEQ rain event, 100 mm over 5 days at 4+ points); real values come from the rulebook's climate-zone rain table.",
+  "_GUST_RULES": "Added 19 Nov 2026 for the morning 3-day email (Josh: 'severe storms, heavy rain, winds etc.'). The storm wind tiers only see convective winds; these read Open-Meteo's daily max 10 m gust (pipeline/extra_hazards.py) so fronts, lows and east coast lows are caught too. FIRST PASS, NOT CALIBRATED: no issued severe_weather alert exists to test against. Alpine and Tasmania bars are higher because model gusts over high ground run hot every winter.",
+  "fine": {
+    "_README": "Morning email only (pipeline/fine_areas.py). Josh, 20 Nov 2026: \"Damaging winds often are overstated by the model by 20-40%\". Gust potential is divided by these before the 90/125/160 km/h tiers: 1.3 is the middle of his range. wind_overstatement: convective gust potential from DCAPE/DCP (the outlook's own wind tiers, made continuous). gust_overstatement: ECMWF's 10 m gusts for the synoptic gust rules.",
+    "wind_overstatement": 1.3,
+    "gust_overstatement": 1.3
+  }
 }

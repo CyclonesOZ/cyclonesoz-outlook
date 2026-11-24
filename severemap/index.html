@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Severe Watch Map</title>
+<link rel="stylesheet" href="/vendor/maplibre-gl@6.14.0/dist/maplibre-gl.css">
+<script src="/vendor/pmtiles@4.5.0/dist/pmtiles.js"></script>
+<style>
+  :root {
+    --ink: #1d232b; --muted: #5d6570; --line: #e3e0da; --card: #ffffffee; --chip: #f1efeb; --chip-on: #1d232b;
+    --storms: #e4572e; --rain: #2b7bd6; --wind: #7b4fd1; --fire: #d99a00; --heat: #a3123a;
+    --frost: #1fa99c; --snow: #6aa6dc; --tc: #c2185b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #d9e8f2; color: var(--ink);
+    font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  #map { position: absolute; inset: 0; }
+  #panel { position: absolute; top: 12px; left: 12px; bottom: 12px; width: 340px; display: flex; flex-direction: column;
+    background: var(--card); backdrop-filter: blur(6px); border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: 0 6px 24px #0002; overflow: hidden; z-index: 2; }
+  header { padding: 14px 16px 10px; border-bottom: 1px solid var(--line); }
+  h1 { font-size: 16px; margin: 0 0 2px; }
+  .run { color: var(--muted); font-size: 12.5px; }
+  .days, .chips { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+  .days button, .chips button { border: 0; border-radius: 999px; padding: 5px 11px; background: var(--chip); color: var(--ink);
+    font: inherit; font-size: 13px; cursor: pointer; }
+  .chips button { padding: 4px 9px; font-size: 12.5px; }
+  .days button[aria-pressed="true"], .chips button[aria-pressed="true"] { background: var(--chip-on); color: #fff; }
+  ol { list-style: none; margin: 0; padding: 6px 0; overflow-y: auto; flex: 1; }
+  li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; padding: 8px 16px; cursor: pointer; align-items: start; }
+  li:hover, li.on { background: #0000000a; }
+  li.off { opacity: .35; }
+  li .h { font-weight: 600; }
+  li .s { color: var(--muted); font-size: 12.5px; }
+  .sep { padding: 10px 16px 2px; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; cursor: default; display: block; }
+  .badge { width: 24px; height: 24px; border-radius: 50%; color: #fff; font-weight: 700; font-size: 12.5px;
+    display: grid; place-items: center; border: 2px solid #fff; box-shadow: 0 1px 4px #0005; }
+  .badge.small { width: 14px; height: 14px; margin: 5px; border-width: 2px; }
+  .marker { cursor: pointer; }
+  .empty { padding: 16px; color: var(--muted); }
+  footer { padding: 8px 16px 10px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11.5px; }
+  #layers { position: absolute; top: 12px; right: 52px; width: 300px; z-index: 2; background: var(--card);
+    backdrop-filter: blur(6px); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 6px 24px #0002;
+    padding: 10px 12px; }
+  #layers .t { font-weight: 600; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
+  #layers .chips { margin-top: 8px; }
+  #layers .row { display: flex; gap: 8px; align-items: center; margin-top: 8px; font-size: 12.5px; color: var(--muted); }
+  #layers select { font: inherit; font-size: 12.5px; padding: 3px 4px; border-radius: 6px; border: 1px solid var(--line); background: #fff; flex: 1; }
+  #layers input[type=range] { flex: 1; }
+  #legend { margin-top: 8px; display: none; }
+  #legend canvas { width: 100%; height: 10px; border-radius: 3px; display: block; border: 1px solid #0001; }
+  #legend .tk { position: relative; height: 14px; font-size: 10.5px; color: var(--muted); }
+  #legend .tk span { position: absolute; transform: translateX(-50%); }
+  #status { font-size: 12px; color: var(--muted); margin-top: 6px; min-height: 1em; }
+  #probe { position: absolute; pointer-events: none; z-index: 3; background: #1d232be6; color: #fff; font-size: 12px;
+    padding: 3px 7px; border-radius: 6px; display: none; white-space: nowrap; }
+  .maplibregl-popup-content { font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 10px 12px; }
+  .maplibregl-popup-content b { display: block; margin-bottom: 2px; }
+  .maplibregl-popup-content a.post { display: inline-block; margin-top: 8px; padding: 5px 10px; border-radius: 6px;
+    background: var(--chip-on); color: #fff; text-decoration: none; font-weight: 600; font-size: 12.5px; }
+  .maplibregl-popup-content a.post[aria-disabled] { opacity: .5; pointer-events: none; }
+  @media (max-width: 700px) {
+    #panel { top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; max-height: 45vh; }
+    #layers { left: 8px; right: 52px; width: auto; top: 8px; }
+  }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<aside id="panel">
+  <header>
+    <h1>3-day severe watch</h1>
+    <div class="run" id="run">Loading…</div>
+    <div class="days" id="days"></div>
+  </header>
+  <ol id="list"></ol>
+  <footer>Automatic detection from the raw model run. Not a forecast. Nothing here has gone to members.</footer>
+</aside>
+<section id="layers" aria-label="Model overlays">
+  <div class="t"><span>Model overlay</span><span id="mrun" class="run"></span></div>
+  <div class="chips" id="fields"></div>
+  <div class="row"><select id="when" aria-label="Overlay time"></select></div>
+  <div class="row"><span>Strength</span><input id="op" type="range" min="0.15" max="1" step="0.05" value="0.65" aria-label="Overlay strength"></div>
+  <div id="legend"><canvas id="lg" width="256" height="1"></canvas><div class="tk" id="ticks"></div></div>
+  <div id="status"></div>
+</section>
+<div id="probe"></div>
+<script type="module">
+import * as maplibregl from '/vendor/maplibre-gl@6.14.0/dist/maplibre-gl.mjs';
+
+// The morning email's link carries the areas after '#' (pipeline/morning_email.py map_link); nothing
+// after '#' ever reaches a server. "#1." = the outlook's 0.72 deg boxes (links before 20 Nov 2026);
+// "#2." = drawn outlines (fine_areas.py): i: [[n, family, level, headline, when, day bits, outer, inner, seed]...],
+// rings packed as hundredths of a degree, [lon0, lat0, dlon, dlat, ...]. n is the item's number in the
+// email, 0 for areas listed only as "also on the map".
+const TIER = { 1: 'Minor', 2: 'Moderate', 3: 'Significant', 4: 'Major' };
+const FILL = { 1: 0.24, 2: 0.34, 3: 0.44, 4: 0.54 };
+const css = getComputedStyle(document.documentElement);
+const colour = (fam) => css.getPropertyValue('--' + fam).trim() || '#888';
+const KEY = 'severe-watch-last';
+
+async function decode(hash) {
+  const m = /^#([12])\.([A-Za-z0-9_-]+)$/.exec(hash);
+  if (!m) return null;
+  const bin = atob(m[2].replace(/-/g, '+').replace(/_/g, '/'));
+  const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+  const text = await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+  return JSON.parse(text);
+}
+
+// The newest morning scan this Mac ran itself (severemap/refresh.py, server.py /latest.json).
+// Opened without a link, the map shows that and checks for a newer one every 10 minutes
+// (Josh, 23 Nov 2026: "so it refreshes every day").
+let latest = null;
+async function fetchLatest() {
+  try {
+    const r = await fetch('/latest.json', { cache: 'no-store' });
+    return r.ok ? await r.json() : null;
+  } catch { return null; }
+}
+
+async function load() {
+  let data = null, hash = location.hash;
+  try { data = await decode(hash); } catch (e) { console.error('bad map link', e); }
+  if (data) {
+    try { localStorage.setItem(KEY, hash); } catch { /* storage blocked: the link still works */ }
+    return data;
+  }
+  latest = await fetchLatest();
+  if (latest?.fragment) {
+    try { data = await decode(latest.fragment); } catch (e) { console.error('bad latest.json', e); }
+    if (data) return data;
+  }
+  if (latest) return null; // today's scan found nothing: say so rather than show an old link
+  try { if ((hash = localStorage.getItem(KEY))) data = await decode(hash); } catch { /* none */ }
+  return data;
+}
+
+const unpack = (rings) => (rings || []).map((flat) => {
+  const out = [];
+  let x = 0, y = 0;
+  for (let i = 0; i < flat.length; i += 2) { x += flat[i]; y += flat[i + 1]; out.push([x / 100, y / 100]); }
+  out.push(out[0]);
+  return out;
+});
+
+maplibregl.setWorkerUrl('/vendor/maplibre-gl@6.14.0/dist/maplibre-gl-worker.mjs');
+maplibregl.addProtocol('pmtiles', new pmtiles.Protocol().tile);
+const data = await load();
+const styleText = await (await fetch('/basemap-style.json')).text();
+const style = JSON.parse(styleText.replaceAll('__ORIGIN__', location.origin + '/tiles'));
+
+const map = new maplibregl.Map({
+  container: 'map', style, bounds: [[112, -44], [154, -10]],
+  fitBoundsOptions: { padding: pad() }, attributionControl: { compact: true }, dragRotate: false, pitchWithRotate: false,
+});
+map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+map.touchZoomRotate.disableRotation();
+
+function pad() {
+  const narrow = innerWidth <= 700;
+  return narrow ? { top: 40, right: 40, bottom: innerHeight * 0.47, left: 40 } : { top: 40, right: 360, bottom: 40, left: 380 };
+}
+
+const V2 = data?.v === 2;
+const days = data?.days || [];
+const half = (data?.step || 0.72) / 2;
+const items = (data?.i || []).map((row, k) => {
+  if (V2) {
+    const [n, fam, level, head, when, bits, outer, inner, seed] = row;
+    return { k, n, fam, level, head, when, bits, outer: unpack(outer), inner: unpack(inner), packed: { outer, inner }, seed };
+  }
+  const [n, fam, level, head, when, pts, seed] = row;
+  return { k, n, fam, level, head, when, pts, seed };
+});
+let day = -1; // -1 = all three days
+let markers = [];
+
+const checked = latest?.generated_at
+  ? ` · updated ${new Date(latest.generated_at).toLocaleString('en-AU', { timeZone: 'Australia/Perth', weekday: 'short', hour: 'numeric', minute: '2-digit' })}`
+  : '';
+document.getElementById('run').textContent = data
+  ? `${days[0] || ''} to ${days[days.length - 1] || ''} · from the ${data.run} run${location.hash ? '' : checked}`
+  : latest ? `${latest.note || 'No areas'}${checked}` : 'Open this from the map link in the morning email.';
+
+const showsOn = (it) => day < 0 || (V2 ? (it.bits >> day) & 1 : it.pts.some(([, , m]) => (m >> day) & 1));
+const cells = (it) => it.pts.filter(([, , m]) => day < 0 || (m >> day) & 1);
+const ringArea = (r) => { let a = 0; for (let i = 0; i < r.length - 1; i++) a += r[i][0] * r[i + 1][1] - r[i + 1][0] * r[i][1]; return Math.abs(a / 2); };
+
+function geojson() {
+  const features = [];
+  for (const it of [...items].reverse()) { // the email's order, drawn so number 1 ends up on top
+    if (!showsOn(it)) continue;
+    const base = { k: it.k, c: colour(it.fam), main: it.n ? 1 : 0 };
+    if (V2) {
+      if (it.outer.length) features.push({ type: 'Feature', properties: { ...base, o: it.n ? FILL[it.level] : 0.14, w: it.n ? (it.level >= 3 ? 2.4 : 1.8) : 1, part: 'outer' },
+        geometry: { type: 'MultiPolygon', coordinates: it.outer.map((r) => [r]) } });
+      if (it.inner.length) features.push({ type: 'Feature', properties: { ...base, o: it.n ? 0.32 : 0.14, w: 2.2, part: 'inner' },
+        geometry: { type: 'MultiPolygon', coordinates: it.inner.map((r) => [r]) } });
+      continue;
+    }
+    for (const [lat, lon] of cells(it)) {
+      features.push({
+        type: 'Feature', properties: { ...base, o: it.n ? FILL[it.level] : 0.16, w: it.n && it.level >= 3 ? 1.6 : 0.6, part: 'outer' },
+        geometry: { type: 'Polygon', coordinates: [[[lon - half, lat - half], [lon + half, lat - half], [lon + half, lat + half], [lon - half, lat + half], [lon - half, lat - half]]] },
+      });
+    }
+  }
+  return { type: 'FeatureCollection', features };
+}
+
+function anchorOf(it) {
+  // the badge sits at the middle of the item's biggest outline (its first vertex if the middle falls outside)
+  if (V2) {
+    const r = [...it.outer].sort((a, b) => ringArea(b) - ringArea(a))[0];
+    if (!r) return null;
+    let x = 0, y = 0;
+    for (const p of r.slice(0, -1)) { x += p[0]; y += p[1]; }
+    return { at: [x / (r.length - 1), y / (r.length - 1)], small: ringArea(r) < 1.2, top: Math.max(...r.map((p) => p[1])) };
+  }
+  const pts = cells(it).length ? cells(it) : it.pts;
+  let lat = 0, lon = 0;
+  for (const p of pts) { lat += p[0]; lon += p[1]; }
+  return { at: [lon / pts.length, lat / pts.length], small: pts.length <= 3, top: Math.max(...pts.map((p) => p[0])) + half };
+}
+
+function bounds(it) {
+  const b = new maplibregl.LngLatBounds();
+  if (V2) it.outer.forEach((r) => r.forEach((p) => b.extend(p)));
+  else (cells(it).length ? cells(it) : it.pts).forEach(([lat, lon]) => b.extend([lon - half, lat - half]).extend([lon + half, lat + half]));
+  return b;
+}
+
+// "Add to Post Alert drafts": the website's /post-alert page reads this seed after the '#', saves it
+// as a draft and opens it (cyclonesoz repo, src/lib/alertSeed.js). The seed is the email's, rebuilt
+// here from the outlines so the map link does not carry every area twice.
+const POST_ALERT = 'https://cyclonesoz.com.au/post-alert';
+async function postAlertLink(it) {
+  const seed = V2 ? { v: 2, ...it.seed, outer: it.packed.outer, inner: it.packed.inner }
+    : { v: 1, ...it.seed, step: data.step, cells: it.pts.map(([lat, lon, , inner]) => [lat, lon, inner ? 1 : 0]) };
+  const stream = new Blob([JSON.stringify(seed)]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+  const bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return `${POST_ALERT}#seed=1.${btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')}`;
+}
+
+function popupBody(it) {
+  const el = document.createElement('div');
+  const b = document.createElement('b');
+  b.textContent = (it.n ? it.n + '. ' : '') + it.head;
+  el.append(b, `${it.when} · ${TIER[it.level]}`);
+  if (it.seed) {
+    const a = document.createElement('a');
+    a.className = 'post';
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.textContent = 'Add to Post Alert drafts';
+    a.setAttribute('aria-disabled', 'true');
+    // Built before the click, so the new tab is not blocked as a pop-up opened after an await.
+    postAlertLink(it).then((url) => { a.href = url; a.removeAttribute('aria-disabled'); });
+    el.append(a);
+  }
+  return el;
+}
+
+const popup = new maplibregl.Popup({ closeButton: false, maxWidth: '280px', offset: 14 });
+function show(it, at) {
+  popup.setLngLat(at || anchorOf(it)?.at || bounds(it).getCenter()).setDOMContent(popupBody(it)).addTo(map);
+  document.querySelectorAll('li[data-k]').forEach((li) => li.classList.toggle('on', +li.dataset.k === it.k));
+}
+
+function draw() {
+  map.getSource('areas')?.setData(geojson());
+  markers.forEach((m) => m.remove());
+  markers = [];
+  for (const it of items) {
+    const on = showsOn(it);
+    document.querySelector(`li[data-k="${it.k}"]`)?.classList.toggle('off', !on);
+    const a = on && anchorOf(it);
+    if (!a) continue;
+    const el = document.createElement('div');
+    el.className = 'marker';
+    el.innerHTML = `<div class="badge${it.n ? '' : ' small'}" style="background:${colour(it.fam)}">${it.n || ''}</div>`;
+    el.addEventListener('click', (e) => { e.stopPropagation(); show(it); });
+    // A badge would cover a small area, so those get it just above.
+    markers.push(new maplibregl.Marker({ element: el, anchor: a.small ? 'bottom' : 'center', offset: a.small ? [0, -2] : [0, 0] })
+      .setLngLat(a.small ? [a.at[0], a.top] : a.at).addTo(map));
+  }
+}
+
+function list() {
+  const ol = document.getElementById('list');
+  if (!data) {
+    ol.innerHTML = latest
+      ? '<div class="empty">This morning\'s scan found nothing to show. The map checks again by itself.</div>'
+      : '<div class="empty">No areas loaded yet. The Mac runs the scan every morning; until then, the link in the morning email opens this map with that morning\'s areas.</div>';
+    return;
+  }
+  if (!items.length) { ol.innerHTML = '<div class="empty">Nothing in the next 3 days reaches an SWPA threshold.</div>'; return; }
+  const row = (it) => {
+    const li = document.createElement('li');
+    li.dataset.k = it.k;
+    li.innerHTML = `<div class="badge${it.n ? '' : ' small'}" style="background:${colour(it.fam)}">${it.n || ''}</div>
+      <div><div class="h"></div><div class="s"></div></div>`;
+    li.querySelector('.h').textContent = it.head;
+    li.querySelector('.s').textContent = `${it.when} · ${TIER[it.level]}`;
+    li.addEventListener('click', () => {
+      map.fitBounds(bounds(it), { padding: pad(), maxZoom: 7, duration: 600 });
+      show(it);
+    });
+    return li;
+  };
+  const main = items.filter((it) => it.n), rest = items.filter((it) => !it.n);
+  main.forEach((it) => ol.append(row(it)));
+  if (rest.length) {
+    const s = document.createElement('li');
+    s.className = 'sep';
+    s.textContent = 'Also on the map';
+    ol.append(s);
+    rest.forEach((it) => ol.append(row(it)));
+  }
+}
+
+function dayButtons() {
+  const wrap = document.getElementById('days');
+  if (!data) return;
+  ['All 3 days', ...days].forEach((label, i) => {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.setAttribute('aria-pressed', String(i - 1 === day));
+    b.addEventListener('click', () => {
+      day = i - 1;
+      wrap.querySelectorAll('button').forEach((x, j) => x.setAttribute('aria-pressed', String(j - 1 === day)));
+      popup.remove();
+      draw();
+      if (ov.field && ov.whenFollowsDay) { whenSel.value = day < 0 ? defaultWhen() : 'd' + day; paintOverlay(); }
+    });
+    wrap.append(b);
+  });
+}
+
+// --------------------------------------------------------------------------- model overlays
+// Josh, 20 Nov 2026: "have certain model overlays on the map too like PWAT, total rain, temp, wind,
+// wind shear, cape, scp, stp and ship like what you do on the outlook editor". The model viewer's
+// frames (16-bit PNG: value = q * scale + offset, 65535 = none) through this map's own server, which
+// holds the gate key. Colours are the viewer's own (src/components/modelViewer/palettes.js, exported
+// as 256-step tables; regenerate them if the viewer's change). Outlook days run 00Z to 00Z.
+const PAL = {"pw":{"min":0,"max":80,"log":0,"sqrt":false,"floor":null,"ticks":[10,20,30,40,50,60,70],"lut":"eaf1f4ffe9f0f4ffe7f0f3ffe6eff3ffe5eef2ffe3eef2ffe2edf1ffe1ecf1ffdfecf0ffdeebf0ffddeaefffdceaefffdae9eeffd9e8eeffd8e8edffd6e7edffd5e6ecffd4e6ecffd2e5ecffd1e4ebffd0e4ebffcee3eaffcde3eaffcce2e9ffcae1e9ffc9e1e8ffc8e0e8ffc6dfe7ffc5dfe7ffc4dee6ffc2dde6ffc1dde5ffc0dce5ffbedbe4ffbcdae4ffbad9e3ffb8d9e2ffb6d8e2ffb4d7e1ffb2d6e1ffb0d5e0ffafd5dfffadd4dfffabd3deffa9d2ddffa7d1ddffa5d0dcffa3d0dcffa1cfdbff9fcedaff9dcddaff9bccd9ff99ccd8ff98cbd8ff96cad7ff94c9d6ff92c8d6ff90c8d5ff8ec7d5ff8cc6d4ff8ac5d3ff88c4d3ff86c3d2ff84c3d1ff83c2d1ff81c1d0ff7fc0cfff7dbfcfff7bbeceff79bdcdff77bcccff76bbccff74bacbff72b9caff70b8c9ff6eb7c9ff6cb6c8ff6ab6c7ff69b5c6ff67b4c6ff65b3c5ff63b2c4ff61b1c3ff5fb0c3ff5eafc2ff5caec1ff5aadc0ff58acbfff56abbfff54aabeff52a9bdff51a8bcff4fa7bcff4da6bbff4ba6baff49a5b9ff48a4b9ff47a3b8ff46a2b8ff46a1b7ff45a0b7ff449fb6ff449eb5ff439eb5ff429db4ff429cb4ff419bb3ff409ab3ff3f99b2ff3f98b1ff3e97b1ff3d96b0ff3d96b0ff3c95afff3b94afff3b93aeff3a92adff3991adff3990acff388facff378fabff368eabff368daaff358caaff348ba9ff348aa8ff3389a8ff3288a7ff3288a7ff3287a7ff3286a7ff3385a7ff3384a7ff3383a7ff3382a7ff3381a7ff3480a7ff347fa7ff347ea7ff347ea7ff347da7ff357ca7ff357ba7ff357aa7ff3579a6ff3578a6ff3577a6ff3676a6ff3675a6ff3674a6ff3674a6ff3673a6ff3772a6ff3771a6ff3770a6ff376fa6ff376ea6ff386da6ff386ca6ff386ba6ff396aa6ff3a69a6ff3b68a5ff3c67a5ff3c67a5ff3d66a4ff3e65a4ff3f64a4ff4063a4ff4162a3ff4261a3ff4360a3ff445fa2ff455ea2ff465da2ff475ca2ff485ba1ff495aa1ff4a59a1ff4b58a0ff4c57a0ff4d56a0ff4e55a0ff4f549fff50539fff51529fff52519eff53509eff544f9eff554e9eff564d9dff574c9dff584c9dff594b9cff5b4b9cff5c4a9cff5d4a9bff5f499bff60499aff61489aff63489aff644799ff654799ff664699ff684698ff694698ff6a4597ff6c4597ff6d4497ff6e4496ff704396ff714396ff724295ff744295ff754194ff764194ff784094ff794093ff7a3f93ff7c3f93ff7d3e92ff7e3e92ff803e91ff813d91ff813d91ff813d91ff813d91ff813d91ff813d91ff813d91ff813d91ff813d91ff813d91ff813d91ff813d91ff813d91ff813d91ff813d91ff813d91ff813d91ff813d91ff813d91ff813d91ff813d91ff813d91ff813d91ff813d91ff813d91ff813d91ff813d91ff813d91ff813d91ff813d91ff813d91ff813d91ff813d91ff"},"rain":{"min":0,"max":2000,"log":1000,"sqrt":false,"floor":0.5,"ticks":[1,5,10,25,50,100,200,400,1000,2000],"lut":"000000000000000000000000000000000000000000000000000000000000000000000000c7ced411c3cdd627becbd73ebacad956b5c8db6eb0c7dc87abc5dea0a6c4dfbba0c2e1d69bc1e2f195bfe4ff8fbee5ff89bce7ff83bbe8ff7db9eaff77b8ebff70b6edff6ab4eeff65b0eeff5fadeeff5aa9eeff54a6edff4ea2edff489eedff429aedff3c96edff3792edff318eecff2c8aecff2685ecff2080ebff1a7cebff1777ebff1671eaff156be9ff1566e8ff1460e7ff1359e6ff145be2ff165eddff1862d7ff1b66d2ff1d6accff1f6ec6ff2172c0ff2376b9ff267bb3ff287facff2b84a6ff2e899cff319090ff359784ff389e77ff3ca66aff40ae5dff44b54fff48be41ff4cc633ff51c935ff56cc3aff5bce40ff60d145ff66d44bff6bd650ff71d956ff77dc5cff7ddf63ff83e269ff89e56fff8fe976ff96ec7dff9feb7bffa8e979ffb1e877ffbae775ffc4e573ffcee470ffd8e26effe3e06cffeddf69fff3dc66fff2d962fff2d65efff1d35afff1cf56fff0cc51fff0c84dffefc448ffeec144ffeebd40ffedb93bffecb536ffebb132ffeaad2dffeaaa29ffe9a726ffe9a424ffe9a021ffe89d1effe8991bffe79617ffe79214ffe78e11ffe68a0dffe6850cffe57e0cffe4780cffe4710cffe36a0cffe3620cffe25b0cffe1530cffde4c0cffda440bffd53d0bffd1350bffcc2d0bffc8240affc31e0affbe1d0affb91d0affb41c09ffaf1c09ffa91b09ffa41a09ff9f1809ff9a1508ff951308ff8f1108ff8f1215ff8f1423ff8f1531ff8f1740ff8e1d56ff8c266eff8a2f88ff8838a2ff8d3ba6ff923da7ff9840a8ff9e42a9ffa445aaffab48abffb14badffb84daeffb14aa6ffa6469cff9b4191ff8f3c86ff84377bff77326fff6c2c68ff68277eff632195ff5e1badff5915c5ff530fddff4a0ee9ff3c11e9ff2e14e9ff2017e9ff111be9ff0d1ae2ff0d18d6ff0e16caff0f13beff1011b1ff110ea4ff120b97ff130889ff150f82ff182083ff1a3284ff1d4485ff205686ff236987ff257c88ff257c84ff23777eff217279ff1f6c73ff1d676dff1b6168ff195b61ff17555bff154f55ff13494eff13464bff1d4c55ff27535fff315a69ff3c6174ff47687fff526f8aff5d7795ff697ea1ff7787adff858fb9ff9498c6ffa3a0d3ffb2a9e1ffc2b3efffcfbbf7ffd7c0f2ffdec6eeffe6cceaffedd2e5fff5d8e1fff7d1d6fff4c4c8fff2b7bbfff0a9acffee9b9effd7898bffba7677ff9c6262ff7d4d4cff6e4342ff764846ff7d4d4bff855250ff8a5754ff8c5c59ff8e625dff906861ff926e66ff95746bff977a70ff998175ff9d887affa1917fffa69b84ffaca58affb1af90ffb6b996ffbcc49cffb9c39affb2bb94ffaab38effa2aa87ff99a280ff91997aff899173ff81896cff798165ff71795eff687057ff"},"temp":{"min":-75,"max":44,"log":0,"sqrt":false,"floor":null,"ticks":[-60,-40,-30,-20,-10,0,10,20,30,40],"lut":"121a47ff121a47ff121a47ff121a47ff121a47ff121a47ff121a47ff121a47ff121a47ff121a47ff121a47ff121a47ff121a47ff121a47ff121a47ff121a47ff121a47ff121a47ff121a47ff121a47ff121a47ff121a47ff121a47ff121a47ff121a47ff121a47ff121a47ff121a47ff121a47ff121a47ff121a47ff121a47ff121a47ff121a47ff121b48ff121b49ff131b49ff131b4aff131c4aff131c4bff131c4bff131c4cff131d4dff141d4dff141d4eff141e4eff141e4fff141e4fff141e50ff141f50ff151f51ff151f52ff152052ff152053ff152053ff152054ff152154ff152155ff162155ff162256ff162257ff162257ff162258ff162358ff162359ff172359ff17235aff17245bff17245bff17245cff17255cff17255dff18255dff18255eff18265eff18265fff182660ff182760ff182761ff192761ff192762ff192863ff192863ff192864ff192964ff1a2965ff1a2966ff1a2966ff1a2a67ff1a2a67ff1a2a68ff1b2a69ff1b2b69ff1b2b6aff1b2b6bff1b2c6bff1b2c6cff1c2c6cff1c2c6dff1c2d6eff1c2d6eff1c2d6fff1c2e6fff1d2e70ff1d2e71ff1d2e71ff1d2f72ff1d2f72ff1d2f73ff1e3074ff1e3074ff1e3075ff1e3075ff1e3176ff1e3177ff1f3177ff1f3178ff1f3278ff1f3279ff1f327aff1f337bff20337bff20337cff20347dff20347eff21347eff21357fff213580ff213581ff213581ff223682ff223683ff223684ff223784ff233785ff233786ff233887ff233887ff233888ff243989ff24398aff24398aff243a8bff243a8cff253a8dff253a8dff253b8eff253b8fff263b90ff263c90ff263c91ff274094ff284597ff29499aff2a4d9dff2c51a0ff2d56a3ff2e5aa7ff2f5eaaff3063adff3167b0ff336bb3ff3470b4ff3675b6ff387ab8ff3a7fbaff3c84bcff3e89beff408ec0ff4193c1ff4398c3ff459dc5ff49a1c6ff4da5c5ff52a9c5ff56adc5ff5bb1c4ff5fb5c4ff64b9c4ff69bdc3ff6dc1c3ff72c5c2ff76c8c2ff7ccabfff82ccbbff89cdb7ff8fcfb4ff95d0b0ff9bd2acffa1d3a8ffa7d5a5ffaed6a1ffb4d89dffbad999ffbed895ffc2d891ffc7d78dffcbd789ffd0d685ffd4d681ffd8d57dffddd479ffe1d474ffe5d370ffe8d16dffe8cc69ffe8c866ffe8c363ffe8be60ffe9ba5dffe9b55affe9b056ffe9ac53ffe9a750ffe9a24dffe89c4bffe6964bffe58f4affe38949ffe28248ffe07c47ffdf7546ffdd6f46ffdc6845ffda6244ffd95b43ffd55743ffd05342ffcc4f42ffc74b41ffc34641ffbe4240ffba3e40ffb53a3fffb1363fffac323effa92f3effa92f3effa92f3effa92f3effa92f3effa92f3effa92f3effa92f3effa92f3effa92f3effa92f3effa92f3effa92f3effa92f3effa92f3effa92f3effa92f3effa92f3effa92f3effa92f3eff"},"wind":{"min":0,"max":205,"log":0,"sqrt":false,"floor":null,"ticks":[10,20,30,40,50,65,80,100,120,150,200],"lut":"d8eaf5ffd2e7f4ffcde5f3ffc7e2f1ffc1dff0ffbcdcefffb6daeeffb1d7edffabd4ebffa5d1eaffa0cfe9ff9acce8ff94c9e7ff8fc6e5ff89c2e3ff84bfe0ff7ebbdeff78b8dcff73b4daff6db0d8ff67add6ff62a9d3ff5ca5d1ff57a2cfff519ecdff4c9bcbff4997c8ff4694c5ff4391c2ff408ebfff3d8bbdff3a87baff3784b7ff3481b4ff317eb1ff2e7aafff2b77acff2874a9ff3278a4ff427f9fff52879aff638e95ff739690ff839d8bff93a486ffa3ac80ffb3b37bffc3bb76ffd4c271ffe4c96cfff0ce68fff0cc66fff0ca64fff0c863ffefc561ffefc35fffefc15effefbe5cffefbc5affefba59ffefb857ffefb555ffefb354ffeeb152ffeeae51ffeeac4fffeeaa4dffeea74cffeea54affeea348ffeea147ffed9e45ffed9c43ffed9a42ffed9740ffed953fffec933fffeb903fffeb8e3effea8b3effe9893effe9863effe8843effe7813effe77f3dffe67c3dffe57a3dffe5773dffe4753dffe3723dffe3703dffe26d3cffe16b3cffe0683cffe0663cffdf633cffde613cffde5e3bffdd5c3bffdc593bffdb573bffd9553bffd7533bffd5513bffd34f3affd14d3affcf4b3affcd493affcb473affc9453affc7433affc4413affc23f39ffc03d39ffbe3b39ffbc3939ffba3839ffb83639ffb63439ffb43239ffb23039ffb02e38ffae2c38ffac2a38ffaa2838ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ffa92738ff"},"shear":{"min":0,"max":100,"log":0,"sqrt":false,"floor":10,"ticks":[15,20,30,40,50,60,70,80],"lut":"0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000b4d6e902b1d5e807afd3e70bacd2e60faad1e514a7cfe418a5cee41ca2cce321a0cbe2259dc9e1299bc8e02e98c7df3296c5de3693c4dd3b91c2dc3f8ec1dc438cc0db4889beda4c87bdd95084bbd85582bad7597fb8d65d7db7d5627ab6d46678b4d46b76b2d36f74b1d27371afd1786faed07c6daccf806baacf8569a9ce8967a7cd8d64a5cc9262a4cb9660a2ca9a5ea0c99f5c9fc9a35a9dc8a7579cc7ac559ac6b05398c5b45197c4b94f95c4bd4d93c3c14a92c2c64890c1ca468ec0cf448dbfd3438bbed7428abedc4288bde04187bce44086bbe94084baed3f83b9f13f81b8f63e80b7fa3e7fb6fe3d7db5ff3c7cb4ff3c7ab3ff3b79b2ff3b77b1ff3a76b1ff3a75b0ff3973afff3972aeff3870adff376facff376eabff366caaff366ba9ff3569a8ff3668a8ff3767a7ff3966a7ff3a65a6ff3b63a6ff3d62a5ff3e61a5ff3f60a4ff405fa4ff425ea3ff435ca3ff445ba2ff465aa2ff4759a1ff4858a1ff4956a0ff4b55a0ff4c549fff4d539fff4f529eff50519eff514f9dff534e9dff544d9cff554c9cff574b9cff594b9cff5a4a9cff5c4a9cff5e499cff60499cff62489cff63489cff65479cff67479cff69469cff6a469cff6c459cff6e459cff70449cff72449cff73439cff75439cff77429cff79419cff7a419cff7c409cff7e409cff803f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff813f9cff"},"cape":{"min":0,"max":6000,"log":0,"sqrt":true,"floor":100,"ticks":[100,400,1000,1500,2200,3000,4000,6000],"lut":"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e8d88c01e8d78b09e8d78a11e8d68919e8d68822e8d5872ae8d58633e8d4853de8d38446e8d38250e8d2815ae8d18064e8d17f6fe8d07d79e8cf7c84e8ce7b90e8ce799be8cd78a7e8cc77b3e8cb75bfe8ca74cbe8ca72d8e8c971e4e8c86ff1e8c76effe8c66cffe8c56affe8c469ffe8c367ffe8c265ffe8c163ffe8c062ffe8bf60ffe8be5effe8bd5cffe8bc5affe8bb58ffe8ba56ffe8b954ffe8b852ffe8b750ffe8b64fffe8b44effe8b34effe8b24dffe8b14dffe8af4cffe7ae4cffe7ad4bffe7ab4affe7aa4affe7a949ffe7a749ffe7a648ffe7a547ffe7a347ffe7a246ffe7a046ffe69f45ffe69d44ffe69c44ffe69a43ffe69942ffe69742ffe69641ffe69440ffe69240ffe5913fffe58f3effe58e3effe58c3dffe58a3cffe5893cffe5883cffe4873cffe4863cffe4853cffe4843cffe3833cffe3823cffe3813dffe3803dffe27f3dffe27d3dffe27c3dffe27b3dffe17a3dffe1793dffe1783dffe1773dffe0753dffe0743dffe0733dffdf723dffdf713dffdf6f3effdf6e3effde6d3effde6c3effde6a3effdd693effdd683effdd673effdd653effdc643effdc633effdc613effdb603effdb5f3fffdb5d3fffda5c3fffda5b3fffda593fffd9583fffd9563fffd85640ffd75541ffd65442ffd55443ffd35345ffd25246ffd15247ffd05148ffcf5049ffcd504bffcc4f4cffcb4e4dffca4e4effc94d4fffc74c51ffc64c52ffc54b53ffc34a55ffc24a56ffc14957ffc04858ffbe475affbd475bffbc465cffba455effb9445fffb84460ffb64362ffb54263ffb44264ffb24166ffb14067ffaf3f69ffae3f6affac3f6bffaa3f6dffa83f6effa63e6fffa43e71ffa33e72ffa13e73ff9f3e75ff9d3e76ff9b3e78ff993d79ff973d7aff953d7cff933d7dff913d7fff8f3d80ff8d3d82ff8b3c83ff893c85ff873c86ff853c88ff833c89ff813c8bff7f3b8cff7d3b8eff7b3b8fff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff"},"scp":{"min":0,"max":24,"log":0,"sqrt":false,"floor":1,"ticks":[1,2,4,6,8,12,16,20],"lut":"0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e8d78a04e8d58610e8d3821de8d07e29e8ce7a34e8cc7641e8ca724de8c76d59e8c56964e8c36571e8c1617de8bf5f88e8be5e94e8bc5da1e8bb5cade8ba5ab9e8b859c4e8b758d1e8b557dde8b456e8e8b355f4e7b153ffe7b052ffe7af51ffe7ad50ffe7ac4fffe7ab4dffe7a94cffe7a84bffe7a64affe7a549ffe7a448ffe7a247ffe7a146ffe79f46ffe69e45ffe69c45ffe69b44ffe69944ffe69843ffe59643ffe59542ffe59342ffe59241ffe59041ffe48f40ffe48d3fffe48c3fffe48a3effe4893effe4873dffe3863dffe3843cffe3833cffe3813cffe27f3cffe27d3cffe17b3dffe17a3dffe1783dffe0763dffe0743dffe0723dffdf713dffdf6f3effde6d3effde6b3effde6a3effdd683effdd663effdd643effdc623fffdc613fffdb5f3fffdb5d3fffda5d40ffda5c40ffd95c41ffd95b41ffd85b42ffd75a42ffd75a43ffd65944ffd55944ffd55845ffd45845ffd45746ffd35746ffd25647ffd25647ffd15548ffd15549ffd05549ffcf544affcf544affce534bffce534bffcd524cffcc524dffcc514dffcb514effca504effca504fffc94f4fffc94f50ffc84e51ffc74e51ffc74d52ffc64d52ffc64d53ffc54c53ffc44c54ffc44b54ffc34b55ffc34a56ffc24a56ffc14957ffc14957ffc04958ffbf4859ffbe4859ffbd485affbd485bffbc475bffbb475cffba475dffb9475dffb9465effb8465fffb74660ffb64660ffb54561ffb54562ffb44562ffb34463ffb24464ffb14464ffb14465ffb04366ffaf4366ffae4367ffad4368ffad4268ffac4269ffab426affaa426affa9416bffa9416cffa8416cffa7416dffa6406effa5406fffa5406fffa44070ffa33f71ffa23f71ffa13f72ffa13f73ffa03e73ff9f3e74ff9e3e75ff9d3e75ff9c3e76ff9b3e77ff9a3e77ff993e78ff993e79ff983d79ff973d7aff963d7bff953d7cff943d7cff933d7dff923d7eff913d7eff903d7fff8f3d80ff8e3d80ff8e3d81ff8d3d82ff8c3d82ff8b3c83ff8a3c84ff893c84ff883c85ff873c86ff863c86ff853c87ff843c88ff833c88ff833c89ff823c8aff813c8bff803c8bff7f3c8cff7e3b8dff7d3b8dff7c3b8eff7b3b8fff7a3b8fff793b90ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff"},"stp":{"min":0,"max":12,"log":0,"sqrt":false,"floor":0.5,"ticks":[0.5,1,2,3,4,6,8,10],"lut":"0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e8d78a04e8d58610e8d3821de8d07e29e8ce7a34e8cc7641e8ca724de8c76d59e8c56964e8c36571e8c1617de8bf5f88e8be5e94e8bc5da1e8bb5cade8ba5ab9e8b859c4e8b758d1e8b557dde8b456e8e8b355f4e7b153ffe7b052ffe7af51ffe7ad50ffe7ac4fffe7ab4dffe7a94cffe7a84bffe7a64affe7a549ffe7a448ffe7a247ffe7a146ffe79f46ffe69e45ffe69c45ffe69b44ffe69944ffe69843ffe59643ffe59542ffe59342ffe59241ffe59041ffe48f40ffe48d3fffe48c3fffe48a3effe4893effe4873dffe3863dffe3843cffe3833cffe3813cffe27f3cffe27d3cffe17b3dffe17a3dffe1783dffe0763dffe0743dffe0723dffdf713dffdf6f3effde6d3effde6b3effde6a3effdd683effdd663effdd643effdc623fffdc613fffdb5f3fffdb5d3fffda5d40ffda5c40ffd95c41ffd95b41ffd85b42ffd75a42ffd75a43ffd65944ffd55944ffd55845ffd45845ffd45746ffd35746ffd25647ffd25647ffd15548ffd15549ffd05549ffcf544affcf544affce534bffce534bffcd524cffcc524dffcc514dffcb514effca504effca504fffc94f4fffc94f50ffc84e51ffc74e51ffc74d52ffc64d52ffc64d53ffc54c53ffc44c54ffc44b54ffc34b55ffc34a56ffc24a56ffc14957ffc14957ffc04958ffbf4859ffbe4859ffbd485affbd485bffbc475bffbb475cffba475dffb9475dffb9465effb8465fffb74660ffb64660ffb54561ffb54562ffb44562ffb34463ffb24464ffb14464ffb14465ffb04366ffaf4366ffae4367ffad4368ffad4268ffac4269ffab426affaa426affa9416bffa9416cffa8416cffa7416dffa6406effa5406fffa5406fffa44070ffa33f71ffa23f71ffa13f72ffa13f73ffa03e73ff9f3e74ff9e3e75ff9d3e75ff9c3e76ff9b3e77ff9a3e77ff993e78ff993e79ff983d79ff973d7aff963d7bff953d7cff943d7cff933d7dff923d7eff913d7eff903d7fff8f3d80ff8e3d80ff8e3d81ff8d3d82ff8c3d82ff8b3c83ff8a3c84ff893c84ff883c85ff873c86ff863c86ff853c87ff843c88ff833c88ff833c89ff823c8aff813c8bff803c8bff7f3c8cff7e3b8dff7d3b8dff7c3b8eff7b3b8fff7a3b8fff793b90ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff"},"ship":{"min":0,"max":6,"log":0,"sqrt":false,"floor":0.5,"ticks":[0.5,1,1.5,2,2.5,3,4,5],"lut":"00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e8d78a06e8d6880ee8d58616e8d4841ee8d38226e8d2802ee8d07e36e8cf7c3ee8ce7a46e8cd784ee8cc7656e8cb745ee8ca7266e8c8706ee8c76d76e8c66b7ee8c56986e8c4678ee8c36596e8c2639ee8c161a6e8bf5faee8be5eb6e8bd5dbee8bb5cc6e8ba5bcee8b85ad6e8b758dee8b657e6e8b456eee8b355f6e8b254fee7b052ffe7af51ffe7ae50ffe7ac4fffe7ab4effe7a94dffe7a84bffe7a74affe7a549ffe7a448ffe7a347ffe7a146ffe7a046ffe69e45ffe69d45ffe69b44ffe69a44ffe69843ffe59743ffe59542ffe59442ffe59241ffe59141ffe58f40ffe48e40ffe48c3fffe48b3fffe4893effe4883effe3863dffe3853dffe3833cffe3813cffe27f3cffe27e3cffe17c3dffe17a3dffe1783dffe0763dffe0753dffe0733dffdf713dffdf6f3effde6e3effde6c3effde6a3effdd683effdd663effdd653effdc633fffdc613fffdb5f3fffdb5d3fffda5c40ffd95b41ffd85a42ffd65943ffd55944ffd45845ffd35747ffd25648ffd05549ffcf544affce534bffcd524cffcb514dffca504fffc94f50ffc84e51ffc74d52ffc54c53ffc44b54ffc34a55ffc24956ffc14957ffc04958ffbf4859ffbe4859ffbd485affbd485bffbc475bffbb475cffba475dffb9475dffb9465effb8465fffb74660ffb64660ffb54561ffb54562ffb44562ffb34463ffb24464ffb14464ffb14465ffb04366ffaf4366ffae4367ffad4368ffad4268ffac4269ffab426affaa426affa9416bffa9416cffa8416cffa7416dffa6406effa5406fffa5406fffa44070ffa33f71ffa23f71ffa13f72ffa13f73ffa03e73ff9f3e74ff9e3e75ff9d3e75ff9c3e76ff9b3e77ff9a3e77ff993e78ff993e79ff983d79ff973d7aff963d7bff953d7cff943d7cff933d7dff923d7eff913d7eff903d7fff8f3d80ff8e3d80ff8e3d81ff8d3d82ff8c3d82ff8b3c83ff8a3c84ff893c84ff883c85ff873c86ff863c86ff853c87ff843c88ff833c88ff833c89ff823c8aff813c8bff803c8bff7f3c8cff7e3b8dff7d3b8dff7c3b8eff7b3b8fff7a3b8fff793b90ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff783b91ff"}};
+const FIELDS = {
+  pw:    { label: 'PWAT',  src: 'tcwv',   unit: 'mm',   k: 1,       agg: 'max', title: 'Precipitable water, day max' },
+  rain:  { label: 'Rain',  src: 'tp',     unit: 'mm',   k: 1,       agg: 'acc', title: 'Rain, total' },
+  temp:  { label: 'Temp',  src: 't2m',    unit: '°C',   k: 1,       agg: 'max', title: 'Temperature, day max' },
+  wind:  { label: 'Wind',  src: 'gust',   unit: 'km/h', k: 3.6,     agg: 'max', title: 'Wind gusts, day max (raw model)' },
+  shear: { label: 'Shear', src: 'shear6', unit: 'kt',   k: 1.94384, agg: 'max', title: '0–6 km shear, day max' },
+  cape:  { label: 'CAPE',  src: 'mucape', unit: 'J/kg', k: 1,       agg: 'max', title: 'MUCAPE, day max' },
+  scp:   { label: 'SCP',   src: 'scp',    unit: '',     k: 1,       agg: 'max', title: 'Supercell composite, day max' },
+  stp:   { label: 'STP',   src: 'stp',    unit: '',     k: 1,       agg: 'max', title: 'Significant tornado parameter, day max' },
+  ship:  { label: 'SHIP',  src: 'ship',   unit: '',     k: 1,       agg: 'max', title: 'Significant hail parameter, day max' },
+};
+for (const p of Object.values(PAL)) {
+  p.rgba = [];
+  for (let i = 0; i < 256; i++) p.rgba.push([0, 2, 4, 6].map((o) => parseInt(p.lut.slice(i * 8 + o, i * 8 + o + 2), 16)));
+}
+const palT = (p, v) => {
+  let t = Math.min(1, Math.max(0, (v - p.min) / (p.max - p.min)));
+  if (p.log) return Math.log1p(p.log * t) / Math.log1p(p.log);
+  return p.sqrt ? Math.sqrt(t) : t;
+};
+const BOX = { w: 105, e: 165, s: -48, n: -5 }, PPD = 24;
+const ov = { field: null, man: null, frames: new Map(), grid: null, seq: 0, whenFollowsDay: true };
+const whenSel = document.getElementById('when'), opInput = document.getElementById('op'), status = document.getElementById('status');
+
+async function json(path) {
+  const r = await fetch(path);
+  if (!r.ok) throw new Error(r.status === 502 ? "the model data couldn't be reached" : 'model data answered ' + r.status);
+  return r.json();
+}
+
+async function modelRun() {
+  if (ov.man) return ov.man;
+  let key = data?.model;
+  if (!key) {
+    const ix = await json('/models/index.json');
+    key = ix.runs.filter((r) => r.status === 'complete' && /^ifs-0p25\/\d{10}$/.test(r.key)).map((r) => r.key).sort().reverse()[0];
+  }
+  if (!key) throw new Error('no model run yet');
+  ov.man = { ...(await json(`/models/${key}/manifest.json`)), key };
+  document.getElementById('mrun').textContent = `ECMWF ${ov.man.resolution < 0.2 ? '9 km' : '25 km'} ${key.slice(-4, -2)}/${key.slice(-2)}Z`;
+  return ov.man;
+}
+
+function frame(man, src, step) {
+  const f = man.fields[src], url = `/models/${man.key}/${src}/${String(step).padStart(3, '0')}.png`;
+  if (ov.frames.has(url)) return ov.frames.get(url);
+  if (ov.frames.size > 120) ov.frames.delete(ov.frames.keys().next().value);
+  const p = fetch(url).then((r) => { if (!r.ok) throw new Error('a model frame answered ' + r.status); return r.blob(); })
+    .then((b) => createImageBitmap(b, { colorSpaceConversion: 'none', premultiplyAlpha: 'none' }))
+    .then((bmp) => {
+      const cv = document.createElement('canvas'); cv.width = bmp.width; cv.height = bmp.height;
+      const ctx = cv.getContext('2d', { willReadFrequently: true }); ctx.drawImage(bmp, 0, 0); bmp.close?.();
+      const px = ctx.getImageData(0, 0, cv.width, cv.height).data, out = new Float32Array(cv.width * cv.height);
+      for (let i = 0, j = 0; i < out.length; i++, j += 4) { const q = (px[j] << 8) | px[j + 1]; out[i] = q === 65535 ? NaN : q * f.scale + f.offset; }
+      return { data: out, w: cv.width, h: cv.height };
+    });
+  p.catch(() => ov.frames.delete(url));
+  ov.frames.set(url, p);
+  return p;
+}
+
+const runTime = (man) => Date.parse(man.run);
+function windowSteps(man, src, d0, d1) {           // steps of src in (00Z of day d0, 00Z after day d1]
+  const t0 = Date.parse(data.dates[d0] + 'T00:00:00Z'), t1 = Date.parse(data.dates[d1] + 'T00:00:00Z') + 86400e3;
+  const h0 = Math.round((t0 - runTime(man)) / 3600e3), h1 = Math.round((t1 - runTime(man)) / 3600e3);
+  return { h0, h1, steps: man.fields[src].steps.filter((s) => s > h0 && s <= h1) };
+}
+
+async function overlayGrid(fieldKey, when) {
+  const man = await modelRun(), F = FIELDS[fieldKey], src = F.src;
+  if (!man.fields[src]) throw new Error(`${F.label} isn't in this run`);
+  const [d0, d1] = when === 'all' ? [0, data.dates.length - 1] : [+when.slice(1), +when.slice(1)];
+  const { h0, h1, steps } = windowSteps(man, src, d0, d1);
+  if (F.agg === 'acc') {
+    const end = await frame(man, src, h1);
+    const start = h0 > 0 ? await frame(man, src, h0) : null;
+    const out = new Float32Array(end.data.length);
+    for (let i = 0; i < out.length; i++) out[i] = Math.max(0, end.data[i] - (start ? start.data[i] : 0));
+    return { data: out, w: end.w, h: end.h };
+  }
+  const frames = await Promise.all(steps.map((s) => frame(man, src, s)));
+  if (!frames.length) throw new Error('no frames in that window');
+  const out = new Float32Array(frames[0].data.length).fill(NaN);
+  for (const fr of frames) for (let i = 0; i < out.length; i++) { const v = fr.data[i]; if (v === v && !(out[i] >= v)) out[i] = v; }
+  return { data: out, w: frames[0].w, h: frames[0].h };
+}
+
+const mercY = (lat) => Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
+const unmercY = (y) => ((2 * Math.atan(Math.exp(y)) - Math.PI / 2) * 180) / Math.PI;
+function sample(grid, man, lat, lon) {
+  const bb = man.bbox, x = ((lon - bb[0]) / (bb[2] - bb[0])) * (grid.w - 1), y = ((bb[3] - lat) / (bb[3] - bb[1])) * (grid.h - 1);
+  if (x < 0 || y < 0 || x > grid.w - 1 || y > grid.h - 1) return NaN;
+  const x0 = Math.floor(x), y0 = Math.floor(y), x1 = Math.min(x0 + 1, grid.w - 1), y1 = Math.min(y0 + 1, grid.h - 1), tx = x - x0, ty = y - y0, d = grid.data;
+  return (d[y0 * grid.w + x0] * (1 - tx) + d[y0 * grid.w + x1] * tx) * (1 - ty) + (d[y1 * grid.w + x0] * (1 - tx) + d[y1 * grid.w + x1] * tx) * ty;
+}
+
+function paint(grid, man, fieldKey) {                // bilinear onto the map's own (Mercator) projection
+  const F = FIELDS[fieldKey], p = PAL[fieldKey], W = Math.round((BOX.e - BOX.w) * PPD), ya = mercY(BOX.n), yb = mercY(BOX.s);
+  const H = Math.round(((ya - yb) / (((BOX.e - BOX.w) * Math.PI) / 180)) * W);
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d'), img = ctx.createImageData(W, H), o = img.data;
+  for (let r = 0; r < H; r++) {
+    const lat = unmercY(ya - ((r + 0.5) / H) * (ya - yb));
+    for (let c = 0; c < W; c++) {
+      const v = sample(grid, man, lat, BOX.w + ((c + 0.5) / W) * (BOX.e - BOX.w)) * F.k;
+      if (!(v === v) || (p.floor != null && v < p.floor)) continue;
+      const col = p.rgba[Math.round(palT(p, v) * 255)], q = (r * W + c) * 4;
+      o[q] = col[0]; o[q + 1] = col[1]; o[q + 2] = col[2]; o[q + 3] = col[3];
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  return cv;
+}
+
+function legend(fieldKey) {
+  const p = PAL[fieldKey], lg = document.getElementById('legend');
+  lg.style.display = 'block';
+  const cv = document.getElementById('lg'), ctx = cv.getContext('2d'), img = ctx.createImageData(256, 1);
+  for (let x = 0; x < 256; x++) img.data.set(p.rgba[x][3] ? p.rgba[x] : [255, 255, 255, 255], x * 4);
+  ctx.putImageData(img, 0, 0);
+  document.getElementById('ticks').innerHTML = (p.ticks || []).map((t) => `<span style="left:${palT(p, t) * 100}%">${t}</span>`).join('');
+}
+
+const defaultWhen = () => (FIELDS[ov.field]?.agg === 'acc' ? 'all' : day < 0 ? 'd0' : 'd' + day);
+function whenOptions() {
+  const acc = FIELDS[ov.field]?.agg === 'acc';
+  whenSel.innerHTML = '';
+  if (acc) whenSel.append(new Option('All 3 days, total', 'all'));
+  days.forEach((d, i) => whenSel.append(new Option(`${d}${acc ? ', day total' : ', day max'}`, 'd' + i)));
+  whenSel.value = day < 0 ? defaultWhen() : 'd' + day;
+}
+
+async function paintOverlay() {
+  const seq = ++ov.seq, key = ov.field;
+  if (!key) {
+    if (map.getLayer('model')) map.setLayoutProperty('model', 'visibility', 'none');
+    document.getElementById('legend').style.display = 'none';
+    status.textContent = ''; ov.grid = null;
+    return;
+  }
+  status.textContent = `Loading ${FIELDS[key].label}…`;
+  try {
+    const grid = await overlayGrid(key, whenSel.value);
+    if (seq !== ov.seq) return;
+    const cv = paint(grid, ov.man, key);
+    const url = cv.toDataURL('image/png');
+    const coords = [[BOX.w, BOX.n], [BOX.e, BOX.n], [BOX.e, BOX.s], [BOX.w, BOX.s]];
+    if (map.getSource('model')) map.getSource('model').updateImage({ url, coordinates: coords });
+    else {
+      map.addSource('model', { type: 'image', url, coordinates: coords });
+      map.addLayer({ id: 'model', type: 'raster', source: 'model', paint: { 'raster-opacity': +opInput.value, 'raster-fade-duration': 0 } }, 'areas-fill');
+    }
+    map.setLayoutProperty('model', 'visibility', 'visible');
+    ov.grid = grid;
+    legend(key);
+    status.textContent = FIELDS[key].title + (FIELDS[key].unit ? ` (${FIELDS[key].unit})` : '');
+  } catch (e) {
+    if (seq === ov.seq) status.textContent = `${FIELDS[key].label}: ${e.message}`;
+  }
+}
+
+function fieldButtons() {
+  const wrap = document.getElementById('fields');
+  const all = [['', 'Off'], ...Object.entries(FIELDS).map(([k, f]) => [k, f.label])];
+  for (const [k, label] of all) {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.setAttribute('aria-pressed', String((ov.field || '') === k));
+    b.addEventListener('click', () => {
+      ov.field = k || null;
+      wrap.querySelectorAll('button').forEach((x, j) => x.setAttribute('aria-pressed', String(all[j][0] === k)));
+      whenOptions();
+      paintOverlay();
+    });
+    wrap.append(b);
+  }
+  if (!data?.dates) { document.getElementById('layers').style.display = 'none'; }
+}
+whenSel.addEventListener('change', paintOverlay);
+opInput.addEventListener('input', () => { if (map.getLayer('model')) map.setPaintProperty('model', 'raster-opacity', +opInput.value); });
+
+const probe = document.getElementById('probe');
+map.on('mousemove', (e) => {
+  if (!ov.grid || !ov.field) { probe.style.display = 'none'; return; }
+  const F = FIELDS[ov.field], v = sample(ov.grid, ov.man, e.lngLat.lat, e.lngLat.lng) * F.k;
+  if (!(v === v)) { probe.style.display = 'none'; return; }
+  probe.textContent = `${F.label} ${v >= 100 ? Math.round(v) : v.toFixed(1)} ${F.unit}`;
+  probe.style.left = e.point.x + 14 + 'px'; probe.style.top = e.point.y + 10 + 'px'; probe.style.display = 'block';
+});
+map.getCanvas().addEventListener('mouseleave', () => { probe.style.display = 'none'; });
+
+addEventListener('hashchange', () => location.reload()); // another morning's link opened in this tab
+// Opened without a link: pick up the next morning's scan by itself.
+if (!location.hash) {
+  setInterval(async () => {
+    const l = await fetchLatest();
+    if (l?.generated_at && l.generated_at !== latest?.generated_at && l.fragment !== latest?.fragment) location.reload();
+  }, 10 * 60 * 1000);
+}
+list();
+dayButtons();
+fieldButtons();
+// 'style.load', not 'load': 'load' waits for every basemap tile, terrain included, before the areas show.
+map.once('style.load', () => {
+  // Weather layers go under the basemap's labels: the style leaves an empty 'radar-slot' layer for that.
+  map.addSource('areas', { type: 'geojson', data: geojson() });
+  map.addLayer({ id: 'areas-fill', type: 'fill', source: 'areas', paint: { 'fill-color': ['get', 'c'], 'fill-opacity': ['get', 'o'] } }, 'radar-slot');
+  map.addLayer({ id: 'areas-line', type: 'line', source: 'areas', filter: ['==', ['get', 'main'], 1],
+    paint: { 'line-color': ['get', 'c'], 'line-opacity': 0.9, 'line-width': ['get', 'w'] } }, 'radar-slot');
+  map.addLayer({ id: 'areas-line-minor', type: 'line', source: 'areas', filter: ['==', ['get', 'main'], 0],
+    paint: { 'line-color': ['get', 'c'], 'line-opacity': 0.6, 'line-width': 1, 'line-dasharray': [2, 2] } }, 'radar-slot');
+  map.on('click', 'areas-fill', (e) => show(items[e.features[0].properties.k], e.lngLat));
+  map.on('mouseenter', 'areas-fill', () => { map.getCanvas().style.cursor = 'pointer'; });
+  map.on('mouseleave', 'areas-fill', () => { map.getCanvas().style.cursor = ''; });
+  draw();
+  if (items.length) {
+    const b = new maplibregl.LngLatBounds();
+    items.forEach((it) => b.extend(bounds(it)));
+    map.fitBounds(b, { padding: pad(), maxZoom: 6, duration: 0 });
+  }
+});
+</script>
+</body>
+</html>

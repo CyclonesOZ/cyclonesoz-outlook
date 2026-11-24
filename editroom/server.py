@@ -26,6 +26,7 @@ import importlib
 import json
 import os
 import posixpath
+import re
 import socketserver
 import subprocess
 import sys
@@ -109,6 +110,24 @@ def raw_sources():
     return os.path.join(rd, "outlook.json"), os.path.join(rd, "frames"), "raw"
 
 
+_dense = {}            # the densified raw run, kept until the run changes (building it takes seconds)
+
+
+def dense_run():
+    """(raw run, its frames, the run as JSON bytes) on the finer lattice. The model's own run stays
+    on its 0.72 degree lattice (docs/archive/raw); the editor, the preview and the publish all work
+    on the lattice pipeline/manual_compose.densify makes from it -- about four times the squares."""
+    m = mc()
+    raw_path, frames_dir, _ = raw_sources()
+    st = os.stat(raw_path)
+    key = (raw_path, st.st_mtime_ns, st.st_size, os.stat(frames_dir).st_mtime_ns if os.path.isdir(frames_dir) else 0)
+    if _dense.get("key") != key:
+        raw, frames = m.densify(m.read_json(raw_path), m.load_frames(frames_dir))
+        _dense.clear()
+        _dense.update(key=key, raw=raw, frames=frames, bytes=dumps(raw))
+    return _dense["raw"], _dense["frames"], _dense["bytes"]
+
+
 def current_edits():
     """The last published edit: the live one, or the sandbox one in sandbox mode."""
     p = os.path.join(SANDBOX, "edits.json") if mode() == "sandbox" else \
@@ -145,23 +164,31 @@ def _sharp(a, b, coarse, m):
     return ((a >= 2) != (b >= 2)) or abs(a - b) >= 2
 
 
+def archived_run(m, base):
+    """The model run with run_date == base, from the raw archive (docs/archive/raw/<day-1 date>.json),
+    on the finer lattice, or None if it isn't there (pruned, or overwritten by a later run the same
+    day)."""
+    try:
+        d0 = (dt.datetime.strptime(base, "%Y-%m-%dT%H:%M:%SZ") + dt.timedelta(hours=8)).date()
+    except (TypeError, ValueError):
+        return None
+    for d in (d0, d0 - dt.timedelta(days=1)):
+        pth = os.path.join(DOCS, "archive", "raw", d.isoformat() + ".json")
+        if os.path.exists(pth):
+            old = m.read_json(pth)
+            if old.get("run_date") == base:
+                return m.densify(old)[0]
+    return None
+
+
 def previous_raw(m, edits, raw):
     """{date: [category per current point]} from the model run the last edit was made on, read from
     the raw archive (docs/archive/raw/<day-1 date>.json), or None if it isn't there."""
     base = (edits or {}).get("base_run")
     if not base or base == raw.get("run_date"):
         return None
-    try:
-        d0 = (dt.datetime.strptime(base, "%Y-%m-%dT%H:%M:%SZ") + dt.timedelta(hours=8)).date()
-    except ValueError:
-        return None
-    for d in (d0, d0 - dt.timedelta(days=1)):
-        pth = os.path.join(DOCS, "archive", "raw", d.isoformat() + ".json")
-        if not os.path.exists(pth):
-            continue
-        old = m.read_json(pth)
-        if old.get("run_date") != base:
-            continue
+    old = archived_run(m, base)
+    if old is not None:
         idx = {m.pkey(p["lat"], p["lon"]): p for p in old["points"]}
         out = {}
         for j, dd in enumerate(m.run_dates(old)):
@@ -169,6 +196,32 @@ def previous_raw(m, edits, raw):
                        for p in raw["points"]]
         return out
     return None
+
+
+def editor_points(m, body, raw):
+    """[lat, lon] of each square in the editor's grids, so they can be matched to a run by place.
+    Editors since 11 Nov 2026 send them. An older editor tab doesn't, so they are taken from the run
+    the tab opened on: the current run when that's the one, else that run from the raw archive, else
+    the current run's squares when the grid sizes match and the current run is complete (a run
+    missing any model point has fewer squares, so equal sizes mean the same squares in the same
+    order). None when the grids can't be placed safely."""
+    pts = body.get("points")
+    grids = [d.get("cat") or [] for d in (body.get("dates") or {}).values()]
+    n = len(grids[0]) if grids else 0
+    if pts:
+        return [[float(a), float(b)] for a, b in pts] if all(len(g) == len(pts) for g in grids) else None
+    cur = [[p["lat"], p["lon"]] for p in raw["points"]]
+    if body.get("base_run") == raw.get("run_date"):
+        return cur
+    old = archived_run(m, body.get("base_run"))
+    if old is not None and len(old["points"]) == n:
+        return [[p["lat"], p["lon"]] for p in old["points"]]
+    try:
+        with open(os.path.join(REPO, "data", "grid.json")) as f:
+            complete = sum(1 for p in raw["points"] if not p.get("interp")) == len(json.load(f))
+    except Exception:
+        complete = False
+    return cur if complete and n == len(cur) else None
 
 
 def review_flags(m, raw, edits, cats, raw_cats, info):
@@ -239,13 +292,16 @@ def run_checks(out, raw, frames):
 
 
 # ---------------------------------------------------------------- compose -------------------
-def build(edit_dates, published_at=None):
-    """Composes the raw run with the editor's grids. Returns (out, frames, report, raw)."""
+def build(edit_dates, published_at=None, points=None):
+    """Composes the raw run with the editor's grids, matched to it square by square by place
+    (points: [lat, lon] per grid entry; default the current run's squares). An edit made on an
+    older run is laid over the newest one exactly as the overnight carry-forward would: by date,
+    with a date that has moved from the coarse to the full scale re-based on the new run.
+    Returns (out, frames, report, raw, edits)."""
     m = mc()
-    raw_path, frames_dir, _ = raw_sources()
-    raw = m.read_json(raw_path)
-    frames = m.load_frames(frames_dir)
-    edits = {"version": 1, "points": [[p["lat"], p["lon"]] for p in raw["points"]],
+    raw, frames, _ = dense_run()
+    edits = {"version": 1, "grid_step": raw.get("grid_step"),
+             "points": points or [[p["lat"], p["lon"]] for p in raw["points"]],
              "base_run": raw.get("run_date"), "published_at": published_at, "dates": edit_dates}
     out, fo, rep = m.compose(raw, frames, edits, published_at=published_at)
     return out, fo, rep, raw, edits
@@ -266,7 +322,8 @@ def sandbox_carry_forward():
         if json.load(f).get("run_date") == raw.get("run_date"):
             return
     with _lock:
-        out, fo, rep = m.compose(raw, m.load_frames(frames_dir), edits)
+        # fine=False, as the overnight run: only a Publish writes the finer squares
+        out, fo, rep = m.compose(raw, m.load_frames(frames_dir), edits, fine=False)
         m.write_json_atomic(sp, out)
         if fo:
             m.write_frames(os.path.join(SANDBOX, "frames"), fo)
@@ -275,6 +332,51 @@ def sandbox_carry_forward():
 
 def dumps(o):
     return json.dumps(o, separators=(",", ":"), ensure_ascii=False).encode()
+
+
+# ---------------------------------------------------------------- model viewer data ---------
+# The model viewer's fields (SCP, SHIP, SWEAT...) live in a public bucket that only lets the
+# website's own origins read it from a browser. The editor is on 127.0.0.1, so this server fetches
+# them and hands them on: the browser asks here, never at the bucket. Only the run list, a run's
+# manifest and its ECMWF field frames can be asked for.
+MODELS_URL = "https://models.cyclonesoz.com"
+MODEL_PATH = re.compile(r"^(index\.json|ifs-0p(?:1|25)/\d{10}/(?:manifest\.json|[a-z0-9]+/\d{3}\.png(?:\?g=\d+x\d+)?))$")
+_models = {}           # path -> (fetched at, bytes)
+MODELS_KEEP = 400      # frames kept; a day's worth of three fields at 0.1 deg is a few dozen
+
+
+def gate_key():
+    """Our server key for the model data gate, from ~/.cyclonesoz/models.env (MODEL_GATE_KEY)."""
+    try:
+        with open(os.path.expanduser("~/.cyclonesoz/models.env")) as f:
+            for line in f:
+                if line.startswith("MODEL_GATE_KEY="):
+                    return line.split("=", 1)[1].strip().strip('"')
+    except OSError:
+        pass
+    return ""
+
+
+def model_file(rel):
+    """(body, content type) for a model-viewer file, or None if the bucket won't give it."""
+    hit = _models.get(rel)
+    is_json = rel.split("?")[0].endswith(".json")
+    if hit and (not is_json or time.time() - hit[0] < 60):     # frames never change; run lists do
+        return hit[1], ("application/json" if is_json else "image/png")
+    # The paid fields need our server key since models.cyclonesoz.com went behind
+    # the gate (Josh, 10 Nov 2026: "close the back door"; cyclonesoz repo,
+    # workers/model-gate). Handed to curl on stdin so it never shows in `ps`.
+    key = gate_key()
+    r = subprocess.run(["curl", "-sf", "--max-time", "30", "-H", "@-", MODELS_URL + "/" + rel],
+                       input=(f"X-Gate-Key: {key}\n" if key else "").encode(),
+                       capture_output=True, timeout=45)
+    if r.returncode != 0 or not r.stdout:
+        return None
+    if len(_models) >= MODELS_KEEP:
+        for k in sorted(_models, key=lambda k: _models[k][0])[:MODELS_KEEP // 4]:
+            del _models[k]
+    _models[rel] = (time.time(), r.stdout)
+    return r.stdout, ("application/json" if is_json else "image/png")
 
 
 # ---------------------------------------------------------------- viewer patches ------------
@@ -374,9 +476,19 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 got = live_published_at()
                 return self._send(200, {"live": bool(want) and got == want, "serving": got})
             if p == "/data/raw.json":
-                return self._file(raw_sources()[0])
+                return self._send(200, dense_run()[2])
             if p in ("/data/coastline.geo.json", "/data/states.geo.json"):
                 return self._file(os.path.join(DOCS, p.split("/")[-1]))
+            if p == "/data/towns.json":                  # the website's town list (name, lat, lon, tier)
+                return self._file(os.path.join(HERE, "towns.json"))
+            if p.startswith("/models/"):
+                rel = p[len("/models/"):] + (("?" + url.query) if url.query else "")
+                if not MODEL_PATH.match(rel):
+                    return self._send(404, {"error": "not a model file"})
+                got = model_file(rel)
+                if not got:
+                    return self._send(502, {"error": "the model viewer's data could not be reached"})
+                return self._send(200, got[0], got[1], cache=not rel.endswith(".json"))
             if p.startswith("/preview/") or p.startswith("/sandbox/"):
                 return self._viewer_file(p)
             return self._send(404, {"error": "not found"})
@@ -412,8 +524,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         with _lock:
             sync_note = sync_repo(force=force)
         m = mc()
-        raw_path, _, raw_kind = raw_sources()
-        raw = m.read_json(raw_path)
+        raw_kind = raw_sources()[2]
+        raw = dense_run()[0]
         edits = current_edits()
         cats, raw_cats, info = m.edited_cats(raw, edits)
         review = review_flags(m, raw, edits, cats, raw_cats, info)
@@ -456,35 +568,48 @@ class Handler(http.server.BaseHTTPRequestHandler):
             log("POST %s failed: %s" % (p, traceback.format_exc()))
             return self._send(500, {"error": str(e)})
 
-    def _check_base(self, body):
-        raw_path = raw_sources()[0]
-        with open(raw_path) as f:
-            run = json.load(f).get("run_date")
-        if body.get("base_run") != run:
-            self._send(409, {"error": "A newer model run has landed since you opened the editor. "
-                                      "Reload to bring your edits onto it.", "run_date": run})
-            return False
-        return True
+    def _resolve(self, body):
+        """(square positions for the editor's grids, note) -- the note says when the grids are being
+        laid onto a newer run than the tab opened on. Sends a 409 and returns None when they can't
+        be placed on it safely."""
+        m = mc()
+        raw = dense_run()[0]
+        pts = editor_points(m, body, raw)
+        if pts is None:
+            self._send(409, {"error": "A newer model run has landed and this editor tab can't be matched to it. "
+                                      "Reload, then Restore your edits.", "run_date": raw.get("run_date")})
+            return None
+        note = None
+        if body.get("base_run") != raw.get("run_date"):
+            at = (dt.datetime.strptime(raw["run_date"], "%Y-%m-%dT%H:%M:%SZ") + dt.timedelta(hours=8)).strftime("%-I:%M %p %-d %b")
+            note = ("A newer model run landed (%s) since this tab opened. Your categories will be laid onto it the "
+                    "way the overnight run carries them forward. Reload afterwards to see its numbers." % at)
+        return pts, note
 
     def _preview_post(self, body):
         global _preview
-        if not self._check_base(body):
+        res = self._resolve(body)
+        if res is None:
             return
-        out, fo, rep, raw, _ = build(body.get("dates") or {})
+        out, fo, rep, raw, _ = build(body.get("dates") or {}, points=res[0])
         pv = {"outlook.json": dumps(out)}
         for n, fd in (fo or {}).items():
             pv["d%d.json" % int(n)] = dumps(fd)
         _preview = pv
         problems, warnings = run_checks(out, raw, fo)
-        return self._send(200, {"ok": True, "report": rep, "problems": problems, "warnings": warnings})
+        if res[1]:
+            warnings.insert(0, res[1])
+        return self._send(200, {"ok": True, "report": rep, "problems": problems, "warnings": warnings,
+                                "run_date": raw.get("run_date"), "newer_run": bool(res[1])})
 
     def _publish(self, body):
         if mode() == "live":
             return self._publish_live(body)
-        if not self._check_base(body):
+        res = self._resolve(body)
+        if res is None:
             return
         now = dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
-        out, fo, rep, raw, edits = build(body.get("dates") or {}, published_at=now)
+        out, fo, rep, raw, edits = build(body.get("dates") or {}, published_at=now, points=res[0])
         problems, warnings = run_checks(out, raw, fo)
         if problems:
             return self._send(422, {"ok": False, "problems": problems, "warnings": warnings})
@@ -497,7 +622,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         changed = [x["changed"] for x in rep["days"]]
         log("sandbox publish: base %s, changed per day %s" % (raw.get("run_date"), changed))
         return self._send(200, {"ok": True, "mode": "sandbox", "published_at": now, "report": rep,
-                                "warnings": warnings, "url": "/sandbox/"})
+                                "warnings": warnings, "url": "/sandbox/", "run_date": raw.get("run_date"),
+                                "newer_run": bool(res[1])})
 
 
     def _publish_live(self, body):
@@ -513,13 +639,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 if note != "synced":
                     return self._send(503, {"ok": False, "problems": ["Couldn't reach GitHub to publish: " + note]})
                 m = mc()
-                with open(raw_sources()[0]) as f:
-                    run = json.load(f).get("run_date")
-                if body.get("base_run") != run:
-                    return self._send(409, {"error": "A newer model run has landed since you opened the editor. "
-                                                     "Reload to bring your edits onto it.", "run_date": run})
+                res = self._resolve(body)
+                if res is None:
+                    return
+                run = dense_run()[0].get("run_date")
                 now = dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
-                out, fo, rep, raw, edits = build(body.get("dates") or {}, published_at=now)
+                out, fo, rep, raw, edits = build(body.get("dates") or {}, published_at=now, points=res[0])
                 problems, warnings = run_checks(out, raw, fo)
                 if problems:
                     return self._send(422, {"ok": False, "problems": problems, "warnings": warnings})
@@ -546,9 +671,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     log("live publish attempt %d timed out" % (attempt + 1))
                     continue
                 sha = git("rev-parse", "--short", "HEAD").stdout.strip()
-                log("LIVE publish %s: base %s, changed per day %s" % (sha, run, changed))
+                log("LIVE publish %s: base %s%s, changed per day %s" % (sha, run, " (tab opened on %s)" % body.get("base_run") if res[1] else "", changed))
                 return self._send(200, {"ok": True, "mode": "live", "published_at": now, "report": rep,
-                                        "warnings": warnings, "commit": sha, "url": LIVE_URL})
+                                        "warnings": warnings, "commit": sha, "url": LIVE_URL,
+                                        "run_date": run, "newer_run": bool(res[1])})
             return self._send(502, {"ok": False, "problems": ["Couldn't push to GitHub after 3 tries: " + last[-300:]]})
 
 
