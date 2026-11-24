@@ -1473,4 +1473,13 @@ if (is.null(HIST_DATE)) {
   cat(paste(vres, collapse="\n"), "\n")
   st <- attr(vres, "status")
   if (!is.null(st) && st != 0) cat(sprintf("Verification exited %s -- outlook is unaffected.\n", st))
+
+  # Radar layer: files last night's 24 h radar rainfall total from the app's feed (it keeps only
+  # the newest frame, so this has to run nightly) and scores every run against it. Same wrapper
+  # and same reason as above: a diagnostic that must never cost us an outlook.
+  rres <- tryCatch(system2("python3", c("pipeline/radar_obs.py"), stdout=TRUE, stderr=TRUE),
+                   error=function(e) paste("radar verification could not start:", conditionMessage(e)))
+  cat(paste(rres, collapse="\n"), "\n")
+  rst <- attr(rres, "status")
+  if (!is.null(rst) && rst != 0) cat(sprintf("Radar verification exited %s -- outlook is unaffected.\n", rst))
 }
