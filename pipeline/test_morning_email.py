@@ -54,6 +54,17 @@ class MorningEmailTest(unittest.TestCase):
         self.assertEqual(items[0]["dates"], DATES[:3])
         self.assertEqual(items[0]["level"], 2)
 
+    def test_very_dangerous_comes_from_the_published_high_not_the_model_wind_tier(self):
+        # The model puts wind tier 2 on both points; Josh's published map has HIGH on one only.
+        pts = [(-30.0, 146.0), (-30.7, 146.0)]
+        ev = event(DATES[0], pts, ["storms_minor", "wind_mod"])
+        ev["published_high"] = ["-30.00,146.00"]
+        items = M.build_items([ev], TH)
+        self.assertTrue(items[0]["pub_known"])
+        self.assertEqual(items[0]["pub_high"], ["-30.00,146.00"])
+        # with no published map for the day the item says so, and the model's tiers stand in
+        self.assertFalse(M.build_items([event(DATES[0], pts, ["storms_minor"])], TH)[0]["pub_known"])
+
     def test_day_four_is_left_out(self):
         self.assertEqual(M.build_items([event(DATES[3], [(-30.0, 146.0)], ["storms_minor"])], TH), [])
 

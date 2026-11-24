@@ -406,7 +406,8 @@ def item_support(it, fine, run_step):
         f = fine.days[k]["fam"][fam]
         hit |= (f >= 1) & near
         if fam == "storms":
-            danger |= (f >= 2) & near
+            if not it.get("pub_known"):   # with Josh's published map for these days, only his HIGH is "very dangerous"
+                danger |= (f >= 2) & near
         elif lvl_in and lvl_in > 1:
             danger |= (f >= lvl_in) & near
     I, J = np.nonzero(hit)

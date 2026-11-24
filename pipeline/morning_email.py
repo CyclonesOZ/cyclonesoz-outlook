@@ -290,6 +290,9 @@ def build_items(events, th, places=None):
             "dates": sorted({e["date"] for e in evs}), "rules": rules,
             "first_seen": min((e.get("first_seen") or "9") for e in evs),
             "pub_cat": max((e.get("published_cat_max", -1) for e in evs), default=-1),
+            # points Josh's published map calls HIGH; pub_known says that map covered these days at all
+            "pub_high": sorted({k for e in evs for k in e.get("published_high", [])}),
+            "pub_known": any("published_high" in e for e in evs),
             "n_pc": places.postcodes_near(pts) if places else 0,
         })
     # Tier first (Josh's scheme), then the item that touches the most postcodes.
@@ -440,8 +443,15 @@ def describe(it, run, places, labels):
         cond = "%s. CAPE %s J/kg, shear %d kt.%s" % (
             said[:1].upper() + said[1:], format(r100(cape), ","), shear,
             "" if it["pub_cat"] < 0 else " Not in your outlook." if it["pub_cat"] == 0 else " Your outlook: %s." % CAT[it["pub_cat"]])
-        inner = [(lat, lon) for lat, lon, _, r in ranked
-                 if (r.get("cat") or 0) >= 4 or (r.get("wind") or 0) >= 2 or (r.get("hail") or 0) >= 3 or (r.get("stp") or 0) >= 2]
+        if it.get("pub_known"):
+            # Josh's published map decides what is "very dangerous": only where he has drawn HIGH.
+            # (The model's own wind tier 2 alone marked 21 and 79 points on 25 and 26 Nov, 2026, with no
+            # HIGH on his map.) With no published map for these days, the model's tiers stand in.
+            high = set(it.get("pub_high", []))
+            inner = [(lat, lon) for lat, lon, _, r in ranked if "%.2f,%.2f" % (lat, lon) in high]
+        else:
+            inner = [(lat, lon) for lat, lon, _, r in ranked
+                     if (r.get("cat") or 0) >= 4 or (r.get("wind") or 0) >= 2 or (r.get("hail") or 0) >= 3 or (r.get("stp") or 0) >= 2]
         inner_towns = places.towns_near(inner, n=3) if inner else []
         it["inner"] = set(inner)
         writer = "Writer: Severe thunderstorms · %s. Outer: %s%s." % (TIER[it["level"]], place, around)
