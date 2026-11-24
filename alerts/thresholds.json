@@ -151,7 +151,8 @@
           "op": ">=",
           "value": 3
         }
-      ]
+      ],
+      "source": "published"
     },
     {
       "id": "storms_mod_wide",
@@ -168,7 +169,8 @@
           "op": ">=",
           "value": 3
         }
-      ]
+      ],
+      "source": "published"
     },
     {
       "id": "storms_mod_high",
@@ -185,7 +187,8 @@
           "op": ">=",
           "value": 4
         }
-      ]
+      ],
+      "source": "published"
     },
     {
       "id": "storms_sig",
@@ -202,7 +205,8 @@
           "op": ">=",
           "value": 4
         }
-      ]
+      ],
+      "source": "published"
     },
     {
       "id": "hail_minor",
@@ -219,7 +223,8 @@
           "op": ">=",
           "value": 2
         }
-      ]
+      ],
+      "source": "published"
     },
     {
       "id": "hail_mod",
@@ -236,7 +241,8 @@
           "op": ">=",
           "value": 2
         }
-      ]
+      ],
+      "source": "published"
     },
     {
       "id": "hail_mod_vl",
@@ -253,7 +259,8 @@
           "op": ">=",
           "value": 3
         }
-      ]
+      ],
+      "source": "published"
     },
     {
       "id": "hail_sig",
@@ -270,7 +277,8 @@
           "op": ">=",
           "value": 3
         }
-      ]
+      ],
+      "source": "published"
     },
     {
       "id": "wind_minor",
@@ -292,7 +300,8 @@
           "op": ">=",
           "value": 3
         }
-      ]
+      ],
+      "source": "published"
     },
     {
       "id": "wind_mod",
@@ -309,7 +318,8 @@
           "op": ">=",
           "value": 2
         }
-      ]
+      ],
+      "source": "published"
     },
     {
       "id": "wind_sig",
@@ -326,7 +336,8 @@
           "op": ">=",
           "value": 3
         }
-      ]
+      ],
+      "source": "published"
     },
     {
       "id": "tor_minor",
@@ -348,7 +359,8 @@
           "op": ">=",
           "value": 3
         }
-      ]
+      ],
+      "source": "published"
     },
     {
       "id": "tor_mod",
@@ -370,7 +382,8 @@
           "op": ">=",
           "value": 3
         }
-      ]
+      ],
+      "source": "published"
     },
     {
       "id": "tor_sig",
@@ -392,7 +405,8 @@
           "op": ">=",
           "value": 4
         }
-      ]
+      ],
+      "source": "published"
     },
     {
       "id": "gust_minor",
@@ -860,6 +874,82 @@
           "value": 100
         }
       ]
+    },
+    {
+      "id": "rain5_minor",
+      "label": "Heavy rain over 5 days (100+ mm)",
+      "level": 1,
+      "days": [
+        3,
+        7
+      ],
+      "min_points": 4,
+      "when": [
+        {
+          "field": "rain5",
+          "op": ">=",
+          "value": 100
+        }
+      ],
+      "provisional": true,
+      "window_days": 5
+    },
+    {
+      "id": "rain5_mod",
+      "label": "Very heavy rain over 5 days (150+ mm)",
+      "level": 2,
+      "days": [
+        3,
+        7
+      ],
+      "min_points": 3,
+      "when": [
+        {
+          "field": "rain5",
+          "op": ">=",
+          "value": 150
+        }
+      ],
+      "provisional": true,
+      "window_days": 5
+    },
+    {
+      "id": "rain3_minor",
+      "label": "Heavy rain over 3 days (100+ mm)",
+      "level": 1,
+      "days": [
+        3,
+        7
+      ],
+      "min_points": 2,
+      "when": [
+        {
+          "field": "rain3",
+          "op": ">=",
+          "value": 100
+        }
+      ],
+      "provisional": true,
+      "window_days": 3
+    },
+    {
+      "id": "rain3_mod",
+      "label": "Very heavy rain over 3 days (150+ mm)",
+      "level": 2,
+      "days": [
+        3,
+        7
+      ],
+      "min_points": 2,
+      "when": [
+        {
+          "field": "rain3",
+          "op": ">=",
+          "value": 150
+        }
+      ],
+      "provisional": true,
+      "window_days": 3
     }
   ],
   "escalation": {
@@ -900,6 +990,7 @@
       }
     }
   },
+  "_README2": "19 Oct 2026: rules with source=published read Josh's edited map (storm category, hail, wind tiers) instead of the raw model run. rain3/rain5 rules are PROVISIONAL placeholders fitted to one event (the SEQ rain event, 100 mm over 5 days at 4+ points); real values come from the rulebook's climate-zone rain table.",
   "_GUST_RULES": "Added 19 Nov 2026 for the morning 3-day email (Josh: 'severe storms, heavy rain, winds etc.'). The storm wind tiers only see convective winds; these read Open-Meteo's daily max 10 m gust (pipeline/extra_hazards.py) so fronts, lows and east coast lows are caught too. FIRST PASS, NOT CALIBRATED: no issued severe_weather alert exists to test against. Alpine and Tasmania bars are higher because model gusts over high ground run hot every winter.",
   "fine": {
     "_README": "Morning email only (pipeline/fine_areas.py). Josh, 20 Nov 2026: \"Damaging winds often are overstated by the model by 20-40%\". Gust potential is divided by these before the 90/125/160 km/h tiers: 1.3 is the middle of his range. wind_overstatement: convective gust potential from DCAPE/DCP (the outlook's own wind tiers, made continuous). gust_overstatement: ECMWF's 10 m gusts for the synoptic gust rules.",

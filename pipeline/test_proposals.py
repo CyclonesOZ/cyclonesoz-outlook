@@ -20,5 +20,18 @@ class T(unittest.TestCase):
         self.assertEqual([x["id"] for x in p.build_proposals([lo, EV], TH, PC)], ["e1", "e0"])
 
 
+
+class Episodes(unittest.TestCase):
+    def test_week_of_events_is_one_proposal_with_union_postcodes_and_max_tier(self):
+        mk = lambda d, lvl, pts: dict(EV, date=d, level=lvl, id=d, episode_id="E-1", points=pts, bbox=[-27.6, 151.9, -27.6, 151.9])
+        evs = [mk("2026-10-20", 1, ["-27.60,151.90"]), mk("2026-10-21", 3, ["-27.60,151.90"]), mk("2026-10-22", 1, ["-27.60,151.90"])]
+        out = p.build_episode_proposals(evs, TH, PC)
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0]["kind"], "multi_day")
+        self.assertEqual((out[0]["first_date"], out[0]["last_date"]), ("2026-10-20", "2026-10-22"))
+        self.assertEqual(out[0]["postcodes"], {"4350": "significant"})   # highest tier reached, once
+        self.assertEqual(len(out[0]["days"]), 3)
+
+
 if __name__ == "__main__":
     unittest.main()

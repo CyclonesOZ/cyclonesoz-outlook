@@ -155,8 +155,90 @@ class Email(unittest.TestCase):
         run = make_run(square(1, 1, 2, 0, scp=5))
         rep, _ = A.scan(run, TH, {}, NO_DISTRICTS)
         subject, body = A.compose_email(run, TH, rep, "note")
-        self.assertIn("1 alert", subject)
+        self.assertIn("1 episode", subject)
         self.assertIn("NEW", body)
+
+
+class PublishedAndEpisodes(unittest.TestCase):
+    TH2 = {"scan_days": [1, 7], "neighbour_deg": 1.1,
+           "rules": [{"id": "storms_x", "label": "Storms", "level": 1, "days": [1, 7], "min_points": 1, "source": "published",
+                      "when": [{"field": "cat", "op": ">=", "value": 3}]},
+                     {"id": "rain_x", "label": "Rain", "level": 1, "days": [1, 7], "min_points": 2,
+                      "when": [{"field": "rain", "op": ">=", "value": 40}]}],
+           "escalation": {"area_factor": 1.5, "area_min_extra_points": 3, "shift_deg": 1.5}}
+
+    def published_with(self, hot):
+        import copy
+        pub = copy.deepcopy(make_run(hot))
+        pub["manual"] = {"published_at": "2026-10-31T21:00:00Z"}
+        return pub
+
+    def test_storm_rule_reads_the_published_map_not_the_raw_run(self):
+        raw = make_run({})                                   # raw model: nothing
+        pub = self.published_with({(2, 2, 0): {"cat": 3}})    # Josh edited one point up to MDT
+        rep, _ = A.scan(raw, self.TH2, {}, NO_DISTRICTS, pub)
+        self.assertEqual(len(rep["events"]), 1)
+        self.assertEqual(rep["events"][0]["basis"], "published map")
+        rep0, _ = A.scan(raw, self.TH2, {}, NO_DISTRICTS, None)   # no published map: falls back to raw, which is quiet
+        self.assertEqual(rep0["events"], [])
+
+    def test_raw_only_storm_signal_is_ignored_when_published_map_disagrees(self):
+        raw = make_run({(2, 2, 0): {"cat": 3}})              # model says MDT
+        pub = self.published_with({})                         # Josh's map says no
+        rep, _ = A.scan(raw, self.TH2, {}, NO_DISTRICTS, pub)
+        self.assertEqual(rep["events"], [])
+
+    def test_non_storm_rules_still_use_the_raw_run(self):
+        raw = make_run(square(1, 1, 2, 0, rain=50))
+        pub = self.published_with({})
+        rep, _ = A.scan(raw, self.TH2, {}, NO_DISTRICTS, pub)
+        self.assertEqual(len(rep["events"]), 1)
+        self.assertEqual(rep["events"][0]["basis"], "raw model run")
+
+    def test_rolling_rain_sums_the_days_ending_on_each_day(self):
+        run = make_run({(0, 0, 0): {"rain": 30}, (0, 0, 1): {"rain": 30}, (0, 0, 2): {"rain": 30}})
+        A.add_rolling_rain(run)
+        self.assertEqual([d["rain3"] for d in run["points"][0]["d"]], [30, 60, 90])
+
+    def test_three_days_of_rain_is_one_multi_day_episode(self):
+        hot = {}
+        for d in range(3):
+            hot.update(square(1, 1, 2, d, rain=50))
+        run = make_run(hot)
+        rep, _ = A.scan(run, self.TH2, {}, NO_DISTRICTS)
+        self.assertEqual(len(rep["events"]), 3)               # three daily detections ...
+        self.assertEqual(len(rep["episodes"]), 1)             # ... one episode
+        self.assertEqual(rep["episodes"][0]["kind"], "multi_day")
+        subject, body = A.compose_email(run, self.TH2, rep, "note")
+        self.assertIn("1 episode", subject)
+        self.assertIn("1 multi-day", subject)
+        self.assertIn("MULTI-DAY EPISODE", body)
+        self.assertEqual(body.count("MULTI-DAY EPISODE"), 1)
+
+    def test_five_day_rule_event_starts_four_days_before_it_fires(self):
+        th = dict(self.TH2, rules=[{"id": "rain5_x", "label": "5-day rain", "level": 1, "days": [1, 7], "min_points": 1,
+                                    "window_days": 5, "when": [{"field": "rain5", "op": ">=", "value": 100}]}])
+        run = make_run({})
+        for p in run["points"][:1]:
+            p["d"][2]["rain5"] = 120
+        rep, _ = A.scan(run, th, {}, NO_DISTRICTS)
+        ev = rep["events"][0]
+        self.assertEqual(ev["date"], "2026-11-03")
+        self.assertEqual(ev["start_date"], "2026-11-01")      # clipped to the first day of the run
+
+    def test_a_single_day_stays_a_one_off(self):
+        rep, _ = A.scan(make_run(square(1, 1, 2, 0, rain=50)), self.TH2, {}, NO_DISTRICTS)
+        self.assertEqual(rep["episodes"][0]["kind"], "one_off")
+
+    def test_episode_id_survives_into_the_next_scan(self):
+        hot = {}
+        for d in range(3):
+            hot.update(square(1, 1, 2, d, rain=50))
+        run = make_run(hot)
+        rep, state = A.scan(run, self.TH2, {}, NO_DISTRICTS)
+        rep2, _ = A.scan(make_run(hot, run_date="2026-11-01T20:00:00Z"), self.TH2, state, NO_DISTRICTS)
+        self.assertEqual(rep2["episodes"][0]["episode_id"], rep["episodes"][0]["episode_id"])
+        self.assertEqual(rep2["changes"], [])                  # nothing changed, so nothing to email
 
 
 if __name__ == "__main__":
