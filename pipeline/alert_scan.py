@@ -314,6 +314,12 @@ def build_events(run, th, districts, published=None, regions=None):
                 ev["published_cat_max"] = max(pts_pub["d"][j].get("cat", 0)
                                               for pts_pub in published["points"]
                                               if point_key(pts_pub) in set(ev["points"]) and j < len(pts_pub["d"]))
+                # The points Josh's published map calls HIGH that day: the storm alert's "very dangerous"
+                # outline is drawn from these, not from the model's own wind and hail tiers (which put a red
+                # outline over 79 points on a day his map had no HIGH at all).
+                ev_pts = set(ev["points"])
+                ev["published_high"] = sorted(point_key(pp) for pp in published["points"]
+                                              if point_key(pp) in ev_pts and j < len(pp["d"]) and (pp["d"][j].get("cat") or 0) >= 4)
             events.append(ev)
     return events
 
