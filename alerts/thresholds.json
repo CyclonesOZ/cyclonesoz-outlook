@@ -80,6 +80,24 @@
         "nullarbor_goldfields": 40
       }
     },
+    "rain_5day": {
+      "default": 96,
+      "by_region": {
+        "tropical_qld_coast": 176,
+        "tropical_north": 144,
+        "tasmania": 96,
+        "alpine": 96,
+        "nsw_qld_coast": 80,
+        "qld_inland": 64,
+        "murray_darling": 72,
+        "sa_southeast": 72,
+        "southwest_wa": 72,
+        "vic_south": 72,
+        "pilbara_gascoyne": 72,
+        "interior_arid": 64,
+        "nullarbor_goldfields": 64
+      }
+    },
     "rain_extreme": {
       "default": 150,
       "by_region": {
@@ -877,18 +895,21 @@
     },
     {
       "id": "rain5_minor",
-      "label": "Heavy rain over 5 days (100+ mm)",
+      "label": "Persistent rain over 5 days (5-day region bar)",
       "level": 1,
       "days": [
-        3,
-        7
+        1,
+        4
       ],
       "min_points": 4,
       "when": [
         {
-          "field": "rain5",
+          "field": "rain",
           "op": ">=",
-          "value": 100
+          "accumulate_days": 5,
+          "value": {
+            "$ref_region_bar": "rain_5day"
+          }
         }
       ],
       "provisional": true,
@@ -896,18 +917,21 @@
     },
     {
       "id": "rain5_mod",
-      "label": "Very heavy rain over 5 days (150+ mm)",
+      "label": "Very heavy rain over 5 days (region extreme bar)",
       "level": 2,
       "days": [
-        3,
-        7
+        1,
+        4
       ],
       "min_points": 3,
       "when": [
         {
-          "field": "rain5",
+          "field": "rain",
           "op": ">=",
-          "value": 150
+          "accumulate_days": 5,
+          "value": {
+            "$ref_region_bar": "rain_extreme"
+          }
         }
       ],
       "provisional": true,
