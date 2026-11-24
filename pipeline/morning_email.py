@@ -318,10 +318,13 @@ def point_days(it, run):
     return out
 
 
-def rain72(run, lat, lon):
+def rain72(run, lat, lon, start=0):
+    """Rain over the 3 days from model day `start`. The rain rules sum 3 days from the day they fire on,
+    so the text has to total the same window: always summing the run's first 3 days printed
+    "0-0 mm" for a fall that began on day 3."""
     for p in run["points"]:
         if p["lat"] == lat and p["lon"] == lon:
-            return sum((p["d"][i].get("rain") or 0) for i in range(min(DAYS, len(p["d"]))))
+            return sum((p["d"][i].get("rain") or 0) for i in range(start, min(start + DAYS, len(p["d"]))))
     return 0
 
 
@@ -377,6 +380,7 @@ def describe(it, run, places, labels):
                 districts.append(d)
     peak = lambda f: max(((r.get(f) or 0), di) for _, _, di, r in pds) if pds else (0, 0)
     hazards = [labels[r] for r in it["rules"]]
+    win0 = run["dates"].index(it["dates"][0]) if it["dates"][0] in run["dates"] else 0  # the rain rule's own 3-day window
 
     head = "%s %s" % (HEAD[fam], area)
     if fam == "fire" and any(r.startswith("fire_") and r != "fire_minor" for r in it["rules"]):
@@ -452,7 +456,7 @@ def describe(it, run, places, labels):
         notes.append("Rain is secondary: up to about %d mm under storms." % r5(rain) if rain >= 5 else "Little rain with them.")
     elif fam == "rain" and run.get("fine"):
         # patch_run's numbers: ECMWF rain over each point's box, the month's normal, and the moisture
-        totals = sorted(rain72(run, lat, lon) for lat, lon in sorted(set(pts)))
+        totals = sorted(rain72(run, lat, lon, win0) for lat, lon in sorted(set(pts)))
         day_peak, day_i = peak("rain")
         pw = max((r.get("pw") or 0) for _, _, _, r in pds)
         thr = statistics.median([r.get("pw_thr") or 0 for _, _, _, r in pds])
@@ -468,7 +472,7 @@ def describe(it, run, places, labels):
                      % (r5(max(totals)), pct, day_name(run["dates"][day_i]), r5(day_peak)))
         notes.append("The air is very moist for this time of year, so falls can be heavy where rain sets in.")
     elif fam == "rain":
-        totals = sorted(rain72(run, lat, lon) for lat, lon in sorted(set(pts)))
+        totals = sorted(rain72(run, lat, lon, win0) for lat, lon in sorted(set(pts)))
         lo, hi = (statistics.quantiles(totals, n=4)[0], statistics.quantiles(totals, n=4)[2]) if len(totals) >= 4 else (min(totals), max(totals))
         day_peak, day_i = peak("rain")
         cond = "Mostly %d-%d mm over 3 days, up to %d mm. Heaviest %s, up to %d mm." % (
