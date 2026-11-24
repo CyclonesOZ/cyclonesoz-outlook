@@ -912,44 +912,6 @@
       ],
       "provisional": true,
       "window_days": 5
-    },
-    {
-      "id": "rain3_minor",
-      "label": "Heavy rain over 3 days (100+ mm)",
-      "level": 1,
-      "days": [
-        3,
-        7
-      ],
-      "min_points": 2,
-      "when": [
-        {
-          "field": "rain3",
-          "op": ">=",
-          "value": 100
-        }
-      ],
-      "provisional": true,
-      "window_days": 3
-    },
-    {
-      "id": "rain3_mod",
-      "label": "Very heavy rain over 3 days (150+ mm)",
-      "level": 2,
-      "days": [
-        3,
-        7
-      ],
-      "min_points": 2,
-      "when": [
-        {
-          "field": "rain3",
-          "op": ">=",
-          "value": 150
-        }
-      ],
-      "provisional": true,
-      "window_days": 3
     }
   ],
   "escalation": {
