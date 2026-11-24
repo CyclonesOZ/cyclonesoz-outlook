@@ -328,6 +328,21 @@ def rain72(run, lat, lon, start=0):
     return 0
 
 
+def rain_peak(run, pts, start):
+    """(heaviest single-day rain at any of `pts`, its day index) across the same 3-day window rain72
+    totals. The item's own dates are only the days the rule fired, so a fall on a later day of the
+    window was missed and the "heaviest" line understated the peak."""
+    best = (0, start)
+    for p in run["points"]:
+        if (p["lat"], p["lon"]) not in pts:
+            continue
+        for i in range(start, min(start + DAYS, len(p["d"]))):
+            v = p["d"][i].get("rain") or 0
+            if v > best[0]:
+                best = (v, i)
+    return best
+
+
 def strength(fam, r):
     if fam == "storms":
         return (r.get("cape") or 0) * (r.get("shear") or 0) * (1 + (r.get("wind") or 0) + (r.get("hail") or 0))
@@ -457,7 +472,7 @@ def describe(it, run, places, labels):
     elif fam == "rain" and run.get("fine"):
         # patch_run's numbers: ECMWF rain over each point's box, the month's normal, and the moisture
         totals = sorted(rain72(run, lat, lon, win0) for lat, lon in sorted(set(pts)))
-        day_peak, day_i = peak("rain")
+        day_peak, day_i = rain_peak(run, set(pts), win0)
         pw = max((r.get("pw") or 0) for _, _, _, r in pds)
         thr = statistics.median([r.get("pw_thr") or 0 for _, _, _, r in pds])
         normals = [r.get("normal") for _, _, _, r in pds if r.get("normal")]
@@ -474,7 +489,7 @@ def describe(it, run, places, labels):
     elif fam == "rain":
         totals = sorted(rain72(run, lat, lon, win0) for lat, lon in sorted(set(pts)))
         lo, hi = (statistics.quantiles(totals, n=4)[0], statistics.quantiles(totals, n=4)[2]) if len(totals) >= 4 else (min(totals), max(totals))
-        day_peak, day_i = peak("rain")
+        day_peak, day_i = rain_peak(run, set(pts), win0)
         cond = "Mostly %d-%d mm over 3 days, up to %d mm. Heaviest %s, up to %d mm." % (
             r5(lo), r5(hi), r5(max(totals)), day_name(run["dates"][day_i]), r5(day_peak))
         writer = general("Heavy rainfall")
