@@ -1,213 +1,199 @@
-[Front Line] ACTION: 9 episode(s) to look at (5 multi-day, 4 one-off) (model run Wed 25 Nov 03:59 AWST)
+[Front Line] ACTION: 15 episode(s) to look at (6 multi-day, 9 one-off) (model run Thu 26 Nov 04:00 AWST)
 
 LIVE scan. Shadow mode: this goes only to you, nothing is published to subscribers.
 
-Model: ecmwf_ifs025, second opinion GFS. Run 2026-11-24T19:59:27Z UTC. Scanned days 1-7 against alerts/thresholds.json.
-25 daily detections grouped into 12 episodes (6 multi-day, 6 one-off). Thunderstorm rules read your published map.
+Model: ecmwf_ifs025, second opinion GFS. Run 2026-11-25T20:00:08Z UTC. Scanned days 1-7 against alerts/thresholds.json.
+34 daily detections grouped into 15 episodes (6 multi-day, 9 one-off). Thunderstorm rules read your published map.
 
-MULTI-DAY EPISODE  Wed 25 Nov to Sun 29 Nov  (5 days)  Fire weather
-   Peak:    Significant on Wed 25 Nov, 148 model points
-   Where:   North Interior, Tanami, South Interior, Barkly, Pilbara, Kimberley
+MULTI-DAY EPISODE  Thu 26 Nov to Fri 27 Nov  (2 days)  Thunderstorms
+   Peak:    Significant on Thu 26 Nov, 52 model points
+   Where:   Channel Country, Simpson, Barkly, Lasseter, Tanami, North West Pastoral
    By day:
-      Wed 25 Nov Significant  148 pts  Very destructive winds (160+ km/h); Widespread severe storms (MDT)  [ESCALATED]
-      Wed 25 Nov Minor          1 pts  Severe storms (MDT)  [WEAKENED]
-      Thu 26 Nov Minor         33 pts  Severe fire danger (FFDI 50+)  [NEW]
-      Thu 26 Nov Significant  102 pts  Very destructive winds (160+ km/h); Widespread severe storms (MDT)  [SHIFTED]
-      Fri 27 Nov Minor         16 pts  Severe fire danger (FFDI 50+)
-      Sun 29 Nov Minor         66 pts  Severe fire danger (FFDI 50+)  [NEW]
+      Thu 26 Nov Minor          1 pts  Severe storms (MDT)  [NEW]
+      Thu 26 Nov Minor          3 pts  Severe storms (MDT); Damaging winds (90+ km/h)  [NEW]
+      Thu 26 Nov Minor          1 pts  Severe storms (MDT)  [WEAKENED]
+      Thu 26 Nov Significant   52 pts  Very destructive winds (160+ km/h); Widespread severe storms (MDT)  [WEAKENED]
+      Fri 27 Nov Significant   29 pts  Very destructive winds (160+ km/h); Widespread severe storms (MDT)  [NEW]
+      Fri 27 Nov Significant    4 pts  Very destructive winds (160+ km/h); Destructive winds (125+ km/h)  [NEW]
    Basis:   your published (edited) map
 
-MULTI-DAY EPISODE  Wed 25 Nov to Fri 27 Nov  (3 days)  Heavy rain
-   Peak:    Moderate on Thu 26 Nov, 11 model points
-   Where:   Mallee, South West, North East, North Central, Central, Northern Country
+MULTI-DAY EPISODE  Thu 26 Nov to Fri 27 Nov  (2 days)  Heavy rain
+   Peak:    Moderate on Thu 26 Nov, 17 model points
+   Where:   North East, Riverina, North Central, Northern Country, West and South Gippsland, Central
    By day:
-      Wed 25 Nov Minor          2 pts  Persistent rain (3-day region bar)  [NEW]
-      Wed 25 Nov Moderate       7 pts  Widespread persistent rain (3-day region bar); Persistent rain (3-day region bar)  [NEW]
-      Thu 26 Nov Moderate      11 pts  Widespread persistent rain (3-day region bar); Persistent rain (3-day region bar)  [ESCALATED]
-      Fri 27 Nov Minor          5 pts  Persistent rain (3-day region bar)  [NEW]
+      Thu 26 Nov Moderate      17 pts  Widespread persistent rain (3-day region bar); Persistent rain (3-day region bar)  [ESCALATED]
+      Fri 27 Nov Minor          5 pts  Persistent rain (3-day region bar); Heavy rain (region heavy bar)
    Basis:   raw model run
 
-MULTI-DAY EPISODE  Wed 25 Nov to Thu 26 Nov  (2 days)  Heavy rain
-   Peak:    Minor on Wed 25 Nov, 3 model points
-   Where:   Lower Western
+MULTI-DAY EPISODE  Thu 26 Nov to Sun 29 Nov  (4 days)  Heavy rain
+   Peak:    Moderate on Fri 27 Nov, 11 model points
+   Where:   North West Slopes & Plains, Northern Tablelands, Darling Downs and Granite Belt, Wide Bay and Burnett, Mid North Coast
    By day:
-      Wed 25 Nov Minor          3 pts  Persistent rain (3-day region bar)  [WEAKENED]
-      Thu 26 Nov Minor          3 pts  Persistent rain (3-day region bar)  [WEAKENED]
+      Thu 26 Nov Minor          2 pts  Persistent rain (3-day region bar)  [NEW]
+      Thu 26 Nov Minor          2 pts  Persistent rain (3-day region bar)  [NEW]
+      Fri 27 Nov Moderate      11 pts  Widespread persistent rain (3-day region bar); Persistent rain (3-day region bar)
+      Sat 28 Nov Minor          2 pts  Persistent rain (3-day region bar)  [WEAKENED]
+      Sat 28 Nov Moderate       9 pts  Widespread persistent rain (3-day region bar); Persistent rain (3-day region bar)  [NEW]
+      Sun 29 Nov Minor          3 pts  Persistent rain (3-day region bar); Severe storms (MDT)  [NEW]
+   Basis:   raw model run
+
+MULTI-DAY EPISODE  Thu 26 Nov to Mon 30 Nov  (5 days)  Fire weather
+   Peak:    Minor on Sun 29 Nov, 39 model points
+   Where:   Pilbara, North Interior, Gascoyne, Central West, Kimberley
+   By day:
+      Thu 26 Nov Minor          9 pts  Severe fire danger (FFDI 50+)  [WEAKENED]
+      Fri 27 Nov Minor         17 pts  Severe fire danger (FFDI 50+)
+      Sat 28 Nov Minor         18 pts  Severe fire danger (FFDI 50+)
+      Sun 29 Nov Minor         39 pts  Severe fire danger (FFDI 50+); Heatwave (max +12C, warm nights)
+      Sun 29 Nov Minor         36 pts  Severe fire danger (FFDI 50+)  [WEAKENED]
+      Mon 30 Nov Minor         31 pts  Severe fire danger (FFDI 50+); Heatwave (max +12C, warm nights)  [NEW]
+      Mon 30 Nov Minor         30 pts  Severe fire danger (FFDI 50+)  [NEW]
    Basis:   raw model run
 
 ONE-OFF  Thu 26 Nov  Thunderstorms
-   Peak:    Minor on Thu 26 Nov, 1 model points
-   Where:   North East Pastoral
-   WEAKENED  Thu 26 Nov  (day 2)
-      Where:   North East Pastoral  [centre -29.1, 138.2; 1 model points]
-      Window:  Thu 26 Nov 10:30 ACDT to Fri 27 Nov 10:30 ACDT  (model day is 00Z-24Z)
+   Peak:    Minor on Thu 26 Nov, 2 model points
+   Where:   Kimberley, Tanami
+   NEW  Thu 26 Nov  (day 1)
+      Where:   Kimberley, Tanami  [centre -19.1, 129.2; 2 model points]
+      Window:  Thu 26 Nov 09:30 ACST to Fri 27 Nov 09:30 ACST  (model day is 00Z-24Z)
       Why:     Severe storms (MDT)
-      Peak:    CAPE 407, shear 27 kt, SCP 0.7, SHIP 0.0, DCAPE 444, rain up to 11 mm (13 mm over 3 days from this one); hail tier 0, wind tier 0
+      Peak:    CAPE 2823, shear 22 kt, SCP 1.4, SHIP 0.3, DCAPE 966, rain up to 7 mm (9 mm over 3 days from this one); hail tier 0, wind tier 1
       Your published map: up to MDT over these points
-      Was:     2 points, level 2  ->  now 1 points, level 1
    Basis:   your published (edited) map
 
-MULTI-DAY EPISODE  Fri 27 Nov to Sun 29 Nov  (3 days)  Heavy rain
-   Peak:    Moderate on Sat 28 Nov, 10 model points
-   Where:   Darling Downs and Granite Belt, Northern Tablelands, Mid North Coast, North West Slopes & Plains
+MULTI-DAY EPISODE  Thu 26 Nov to Fri 27 Nov  (2 days)  Heavy rain
+   Peak:    Minor on Fri 27 Nov, 3 model points
+   Where:   Central North, North West Coast, Midlands
    By day:
-      Fri 27 Nov Moderate       8 pts  Widespread persistent rain (3-day region bar); Persistent rain (3-day region bar)
-      Sat 28 Nov Moderate      10 pts  Widespread persistent rain (3-day region bar); Persistent rain (3-day region bar)
-      Sun 29 Nov Minor          3 pts  Persistent rain (3-day region bar)  [NEW]
+      Thu 26 Nov Minor          2 pts  Persistent rain (3-day region bar)  [NEW]
+      Fri 27 Nov Minor          3 pts  Persistent rain (3-day region bar)  [NEW]
+   Basis:   raw model run
+
+ONE-OFF  Fri 27 Nov  Thunderstorms
+   Peak:    Moderate on Fri 27 Nov, 10 model points
+   Where:   Channel Country
+   NEW  Fri 27 Nov  (day 2)
+      Where:   Channel Country  [centre -26.8, 143.0; 10 model points]
+      Window:  Fri 27 Nov 10:00 AEST to Sat 28 Nov 10:00 AEST  (model day is 00Z-24Z)
+      Why:     Widespread severe storms (MDT); Severe storms (MDT); Damaging winds (90+ km/h)
+      Peak:    CAPE 2486, shear 38 kt, SCP 8.3, SHIP 0.5, DCAPE 903, rain up to 31 mm (32 mm over 3 days from this one); hail tier 1, wind tier 1
+      Your published map: up to MDT over these points
+   Basis:   your published (edited) map
+
+MULTI-DAY EPISODE  Fri 27 Nov to Sat 28 Nov  (2 days)  Heavy rain
+   Peak:    Minor on Fri 27 Nov, 2 model points
+   Where:   Central Highlands and Coalfields, Maranoa and Warrego
+   By day:
+      Fri 27 Nov Minor          2 pts  Persistent rain (3-day region bar)  [NEW]
+      Sat 28 Nov Minor          2 pts  Persistent rain (3-day region bar)  [NEW]
    Basis:   raw model run
 
 ONE-OFF  Fri 27 Nov  Thunderstorms
    Peak:    Minor on Fri 27 Nov, 1 model points
-   Where:   North West Coast
-   WEAKENED  Fri 27 Nov  (day 3)
-      Where:   North West Coast  [centre -41.4, 146.1; 1 model points]
-      Window:  Fri 27 Nov 11:00 AEDT to Sat 28 Nov 11:00 AEDT  (model day is 00Z-24Z)
+   Where:   Central West
+   NEW  Fri 27 Nov  (day 2)
+      Where:   Central West  [centre -21.9, 142.5; 1 model points]
+      Window:  Fri 27 Nov 10:00 AEST to Sat 28 Nov 10:00 AEST  (model day is 00Z-24Z)
       Why:     Severe storms (MDT)
-      Peak:    CAPE 98, shear 12 kt, SCP 0.0, SHIP 0.0, DCAPE 88, rain up to 26 mm (30 mm over 3 days from this one); hail tier 0, wind tier 0
+      Peak:    CAPE 1626, shear 30 kt, SCP 2.0, SHIP 0.2, DCAPE 775, rain up to 2 mm (2 mm over 3 days from this one); hail tier 0, wind tier 0
       Your published map: up to MDT over these points
-      Was:     2 points, level 1  ->  now 1 points, level 1
    Basis:   your published (edited) map
 
 ONE-OFF  Fri 27 Nov  Thunderstorms
-   Peak:    Minor on Fri 27 Nov, 2 model points
-   Where:   Central, South West
-   WEAKENED  Fri 27 Nov  (day 3)
-      Where:   Central, South West  [centre -38.1, 143.6; 2 model points]
-      Window:  Fri 27 Nov 11:00 AEDT to Sat 28 Nov 11:00 AEDT  (model day is 00Z-24Z)
-      Why:     Severe storms (MDT)
-      Peak:    CAPE 613, shear 25 kt, SCP 0.5, SHIP 0.1, DCAPE 206, rain up to 27 mm (29 mm over 3 days from this one); hail tier 0, wind tier 0
+   Peak:    Minor on Fri 27 Nov, 5 model points
+   Where:   Gulf Country
+   ESCALATED  Fri 27 Nov  (day 2)
+      Where:   Gulf Country  [centre -18.6, 139.7; 5 model points]
+      Window:  Fri 27 Nov 10:00 AEST to Sat 28 Nov 10:00 AEST  (model day is 00Z-24Z)
+      Why:     Severe storms (MDT); Damaging winds (90+ km/h)
+      Peak:    CAPE 3656, shear 25 kt, SCP 2.8, SHIP 0.4, DCAPE 803, rain up to 17 mm (28 mm over 3 days from this one); hail tier 0, wind tier 1
       Your published map: up to MDT over these points
-      Was:     4 points, level 1  ->  now 2 points, level 1
+      Was:     1 points, level 1  ->  now 5 points, level 1
    Basis:   your published (edited) map
 
-ONE-OFF  Sat 28 Nov  Thunderstorms
-   Peak:    Minor on Sat 28 Nov, 1 model points
-   Where:   Illawarra
-   WEAKENED  Sat 28 Nov  (day 4)
-      Where:   Illawarra  [centre -34.9, 150.5; 1 model points]
-      Window:  Sat 28 Nov 11:00 AEDT to Sun 29 Nov 11:00 AEDT  (model day is 00Z-24Z)
+ONE-OFF  Sun 29 Nov  Thunderstorms
+   Peak:    Minor on Sun 29 Nov, 2 model points
+   Where:   Mid North Coast
+   WEAKENED  Sun 29 Nov  (day 4)
+      Where:   Mid North Coast  [centre -30.9, 152.6; 2 model points]
+      Window:  Sun 29 Nov 11:00 AEDT to Mon 30 Nov 11:00 AEDT  (model day is 00Z-24Z)
       Why:     Severe storms (MDT)
-      Peak:    CAPE 2027, shear 32 kt, SCP 6.6, SHIP 0.5, DCAPE 472, rain up to 20 mm (30 mm over 3 days from this one); hail tier 1, wind tier 0
+      Peak:    CAPE 3990, shear 39 kt, SCP 6.4, SHIP 1.3, DCAPE 789, rain up to 23 mm (53 mm over 3 days from this one); hail tier 2, wind tier 2
       Your published map: up to MDT over these points
-      Was:     2 points, level 1  ->  now 1 points, level 1
+      Was:     3 points, level 1  ->  now 2 points, level 1
    Basis:   your published (edited) map
 
-MULTI-DAY EPISODE  Sat 28 Nov to Sun 29 Nov  (2 days)  Fire weather
-   Peak:    Minor on Sun 29 Nov, 42 model points
-   Where:   Gascoyne, Pilbara, Central West
-   By day:
-      Sat 28 Nov Minor         24 pts  Severe fire danger (FFDI 50+)  [WEAKENED]
-      Sun 29 Nov Minor         42 pts  Severe fire danger (FFDI 50+)  [ESCALATED]
-   Basis:   raw model run
+ONE-OFF  Sun 29 Nov  Thunderstorms
+   Peak:    Minor on Sun 29 Nov, 1 model points
+   Where:   Herbert and Lower Burdekin
+   NEW  Sun 29 Nov  (day 4)
+      Where:   Herbert and Lower Burdekin  [centre -19.8, 146.9; 1 model points]
+      Window:  Sun 29 Nov 10:00 AEST to Mon 30 Nov 10:00 AEST  (model day is 00Z-24Z)
+      Why:     Severe storms (MDT)
+      Peak:    CAPE 3083, shear 26 kt, SCP 2.1, SHIP 0.3, DCAPE 516, rain up to 24 mm (32 mm over 3 days from this one); hail tier 0, wind tier 1
+      Your published map: up to MDT over these points
+   Basis:   your published (edited) map
 
-CLEARED  Wed 25 Nov  (day 2)
-   No longer triggered by the latest run. Last told: 2 points, rain3_minor.
+ONE-OFF  Sun 29 Nov  Thunderstorms
+   Peak:    Minor on Sun 29 Nov, 1 model points
+   Where:   Kimberley
+   NEW  Sun 29 Nov  (day 4)
+      Where:   Kimberley  [centre -16.9, 125.3; 1 model points]
+      Window:  Sun 29 Nov 08:00 AWST to Mon 30 Nov 08:00 AWST  (model day is 00Z-24Z)
+      Why:     Severe storms (MDT)
+      Peak:    CAPE 3471, shear 26 kt, SCP 0.5, SHIP 0.5, DCAPE 915, rain up to 9 mm (9 mm over 3 days from this one); hail tier 1, wind tier 1
+      Your published map: up to MDT over these points
+   Basis:   your published (edited) map
+
+ONE-OFF  Sun 29 Nov  Thunderstorms
+   Peak:    Minor on Sun 29 Nov, 1 model points
+   Where:   Kimberley
+   NEW  Sun 29 Nov  (day 4)
+      Where:   Kimberley  [centre -16.2, 128.9; 1 model points]
+      Window:  Sun 29 Nov 08:00 AWST to Mon 30 Nov 08:00 AWST  (model day is 00Z-24Z)
+      Why:     Severe storms (MDT)
+      Peak:    CAPE 4876, shear 29 kt, SCP 3.4, SHIP 0.5, DCAPE 1133, rain up to 3 mm (3 mm over 3 days from this one); hail tier 0, wind tier 2
+      Your published map: up to MDT over these points
+   Basis:   your published (edited) map
+
+ONE-OFF  Sun 29 Nov  Thunderstorms
+   Peak:    Minor on Sun 29 Nov, 1 model points
+   Where:   Kimberley
+   NEW  Sun 29 Nov  (day 4)
+      Where:   Kimberley  [centre -15.5, 126.7; 1 model points]
+      Window:  Sun 29 Nov 08:00 AWST to Mon 30 Nov 08:00 AWST  (model day is 00Z-24Z)
+      Why:     Severe storms (MDT)
+      Peak:    CAPE 3049, shear 26 kt, SCP 0.5, SHIP 0.4, DCAPE 899, rain up to 4 mm (4 mm over 3 days from this one); hail tier 0, wind tier 1
+      Your published map: up to MDT over these points
+   Basis:   your published (edited) map
+
+CLEARED  Thu 26 Nov  (day 2)
+   No longer triggered by the latest run. Last told: 4 points, rain3_minor.
+   Was in: Central West Slopes & Plains, Central Tablelands
+
+CLEARED  Thu 26 Nov  (day 2)
+   No longer triggered by the latest run. Last told: 1 points, storms_minor.
    Was in: North East Pastoral
 
-CLEARED  Wed 25 Nov  (day 2)
-   No longer triggered by the latest run. Last told: 3 points, wind_sig, wind_mod, storms_minor, wind_minor.
-   Was in: South Interior
+CLEARED  Thu 26 Nov  (day 2)
+   No longer triggered by the latest run. Last told: 3 points, rain3_minor.
+   Was in: Lower Western
 
-CLEARED  Wed 25 Nov  (day 2)
-   No longer triggered by the latest run. Last told: 2 points, rain3_minor.
-   Was in: Channel Country
+CLEARED  Fri 27 Nov  (day 3)
+   No longer triggered by the latest run. Last told: 2 points, storms_minor.
+   Was in: Central, South West
 
-CLEARED  Wed 25 Nov  (day 2)
-   No longer triggered by the latest run. Last told: 5 points, storms_minor, wind_minor.
-   Was in: North West, Barkly
-
-CLEARED  Wed 25 Nov  (day 2)
+CLEARED  Fri 27 Nov  (day 3)
    No longer triggered by the latest run. Last told: 4 points, rain3_minor.
-   Was in: South West, Central, Wimmera
+   Was in: Central West Slopes & Plains, Central Tablelands
 
-CLEARED  Thu 26 Nov  (day 3)
-   No longer triggered by the latest run. Last told: 14 points, fire_minor.
-   Was in: Pilbara, Gascoyne
+CLEARED  Fri 27 Nov  (day 3)
+   No longer triggered by the latest run. Last told: 2 points, storms_minor.
+   Was in: Gulf Country
 
-CLEARED  Thu 26 Nov  (day 3)
-   No longer triggered by the latest run. Last told: 2 points, rain3_minor.
-   Was in: North East, North West Coast
-
-CLEARED  Thu 26 Nov  (day 3)
-   No longer triggered by the latest run. Last told: 3 points, rain3_minor.
-   Was in: Northern Tablelands, North West Slopes & Plains
-
-CLEARED  Thu 26 Nov  (day 3)
-   No longer triggered by the latest run. Last told: 2 points, rain3_minor.
-   Was in: Central Highlands and Coalfields, Darling Downs and Granite Belt
-
-CLEARED  Thu 26 Nov  (day 3)
-   No longer triggered by the latest run. Last told: 2 points, rain3_minor.
-   Was in: Channel Country
-
-CLEARED  Thu 26 Nov  (day 3)
-   No longer triggered by the latest run. Last told: 2 points, rain3_minor.
-   Was in: Northern Goldfields and Upper Flinders
-
-CLEARED  Fri 27 Nov  (day 4)
-   No longer triggered by the latest run. Last told: 3 points, storms_minor.
-   Was in: Barkly
-
-CLEARED  Fri 27 Nov  (day 4)
-   No longer triggered by the latest run. Last told: 3 points, rain3_minor.
-   Was in: Northern Goldfields and Upper Flinders
-
-CLEARED  Fri 27 Nov  (day 4)
-   No longer triggered by the latest run. Last told: 2 points, rain3_minor.
-   Was in: South West Slopes, Southern Tablelands
-
-CLEARED  Fri 27 Nov  (day 4)
-   No longer triggered by the latest run. Last told: 5 points, rain3_minor, rain_minor.
-   Was in: Upper Western, Lower Western, Riverina
-
-CLEARED  Fri 27 Nov  (day 4)
-   No longer triggered by the latest run. Last told: 3 points, rain3_minor.
-   Was in: Darling Downs and Granite Belt, Central Highlands and Coalfields
-
-CLEARED  Fri 27 Nov  (day 4)
-   No longer triggered by the latest run. Last told: 9 points, storms_mod_wide, storms_minor.
-   Was in: North West, Channel Country
-
-CLEARED  Fri 27 Nov  (day 4)
+CLEARED  Sat 28 Nov  (day 4)
    No longer triggered by the latest run. Last told: 1 points, storms_minor.
-   Was in: Barkly
-
-CLEARED  Fri 27 Nov  (day 4)
-   No longer triggered by the latest run. Last told: 8 points, fire_minor.
-   Was in: Kimberley
-
-CLEARED  Fri 27 Nov  (day 4)
-   No longer triggered by the latest run. Last told: 29 points, storms_mod_wide, storms_minor.
-   Was in: Channel Country, Central West, Upper Western, Maranoa and Warrego
-
-CLEARED  Fri 27 Nov  (day 4)
-   No longer triggered by the latest run. Last told: 1 points, storms_minor.
-   Was in: Channel Country
-
-CLEARED  Fri 27 Nov  (day 4)
-   No longer triggered by the latest run. Last told: 3 points, storms_minor.
-   Was in: Tanami, Barkly
-
-CLEARED  Sat 28 Nov  (day 5)
-   No longer triggered by the latest run. Last told: 3 points, rain3_minor.
-   Was in: Darling Downs and Granite Belt, Central Highlands and Coalfields
-
-CLEARED  Sat 28 Nov  (day 5)
-   No longer triggered by the latest run. Last told: 1 points, storms_minor.
-   Was in: Northern Goldfields and Upper Flinders
-
-CLEARED  Sat 28 Nov  (day 5)
-   No longer triggered by the latest run. Last told: 1 points, storms_minor.
-   Was in: Tanami
-
-CLEARED  Mon 30 Nov  (day 7)
-   No longer triggered by the latest run. Last told: 4 points, heat_minor.
-   Was in: Gascoyne
-
-Still open, unchanged since you were last told (3 episodes):
-   E-20261126-13  Thu 26 Nov to Fri 27 Nov  rain  peak Minor  Central West Slopes & Plains, Central Tablelands
-   E-20261127-22  Fri 27 Nov  thunderstorm  peak Minor  Gulf Country
-   E-20261127-8  Fri 27 Nov  thunderstorm  peak Minor  Gulf Country
+   Was in: Illawarra
 
 This is an automatic detection. Thunderstorm rules use your published map; every other hazard uses the
 raw model run, so it does not know about your edits to those. It is not a forecast and not an official warning.
