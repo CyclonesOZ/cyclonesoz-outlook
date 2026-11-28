@@ -1,103 +1,124 @@
-[Front Line] ACTION: 8 episode(s) to look at (3 multi-day, 5 one-off) (model run Sat 28 Nov 04:02 AWST)
+[Front Line] ACTION: 9 episode(s) to look at (3 multi-day, 6 one-off) (model run Sun 29 Nov 03:59 AWST)
 
 LIVE scan. Shadow mode: this goes only to you, nothing is published to subscribers.
 
-Model: ecmwf_ifs025, second opinion GFS. Run 2026-11-27T20:02:30Z UTC. Scanned days 1-7 against alerts/thresholds.json.
-18 daily detections grouped into 9 episodes (3 multi-day, 6 one-off). Thunderstorm rules read your published map.
+Model: ecmwf_ifs025, second opinion GFS. Run 2026-11-28T19:59:40Z UTC. Scanned days 1-7 against alerts/thresholds.json.
+19 daily detections grouped into 10 episodes (3 multi-day, 7 one-off). Thunderstorm rules read your published map.
 
-MULTI-DAY EPISODE  Sat 28 Nov to Wed 2 Dec  (5 days)  Fire weather
-   Peak:    Minor on Sun 29 Nov, 76 model points
-   Where:   Tanami, Kimberley, North Interior, Pilbara, South Interior
-   By day:
-      Sat 28 Nov Minor          9 pts  Severe fire danger (FFDI 50+)  [SHIFTED]
-      Sun 29 Nov Minor         76 pts  Severe fire danger (FFDI 50+)
-      Mon 30 Nov Minor         40 pts  Severe fire danger (FFDI 50+)
-      Tue 1 Dec  Minor         23 pts  Severe fire danger (FFDI 50+)  [ESCALATED]
-      Wed 2 Dec  Minor         36 pts  Severe fire danger (FFDI 50+)  [NEW]
-   Basis:   raw model run
-
-MULTI-DAY EPISODE  Sat 28 Nov to Wed 2 Dec  (5 days)  Fire weather
-   Peak:    Minor on Wed 2 Dec, 82 model points
-   Where:   Gascoyne, Central West, Pilbara, Goldfields, South Interior, Eucla
-   By day:
-      Sat 28 Nov Minor         16 pts  Severe fire danger (FFDI 50+)
-      Sun 29 Nov Minor         21 pts  Severe fire danger (FFDI 50+)
-      Mon 30 Nov Minor          8 pts  Severe fire danger (FFDI 50+)  [WEAKENED]
-      Tue 1 Dec  Minor         25 pts  Severe fire danger (FFDI 50+)  [WEAKENED]
-      Wed 2 Dec  Minor         82 pts  Severe fire danger (FFDI 50+)  [NEW]
-   Basis:   raw model run
-
-ONE-OFF  Sat 28 Nov  Thunderstorms
-   Peak:    Minor on Sat 28 Nov, 1 model points
-   Where:   Mid North Coast
-   WEAKENED  Sat 28 Nov  (day 1)
-      Where:   Mid North Coast  [centre -30.6, 152.6; 1 model points]
-      Window:  Sat 28 Nov 11:00 AEDT to Sun 29 Nov 11:00 AEDT  (model day is 00Z-24Z)
-      Why:     Large hail (3-6 cm)
-      Peak:    CAPE 2696, shear 34 kt, SCP 4.4, SHIP 1.0, DCAPE 649, rain up to 10 mm (33 mm over 3 days from this one); hail tier 2, wind tier 1
-      Your published map: up to MRGL over these points
-      Was:     2 points, level 1  ->  now 1 points, level 1
+ONE-OFF  Sun 29 Nov  Thunderstorms
+   Peak:    Significant on Sun 29 Nov, 2 model points
+   Where:   Northern Rivers
+   NEW  Sun 29 Nov  (day 1)
+      Where:   Northern Rivers  [centre -28.8, 153.3; 2 model points]
+      Window:  Sun 29 Nov 10:00 AEST to Mon 30 Nov 10:00 AEST  (model day is 00Z-24Z)
+      Why:     Very destructive winds (160+ km/h); Destructive winds (125+ km/h); Large hail (3-6 cm); Severe storms (MDT)
+      Peak:    CAPE 3393, shear 41 kt, SCP 7.7, SHIP 1.4, DCAPE 991, rain up to 4 mm (7 mm over 3 days from this one); hail tier 2, wind tier 3
+      Your published map: up to MDT over these points
    Basis:   your published (edited) map
 
-ONE-OFF  Sat 28 Nov  Heavy rain
-   Peak:    Minor on Sat 28 Nov, 2 model points
-   Where:   Darling Downs and Granite Belt, Northern Tablelands
-   WEAKENED  Sat 28 Nov  (day 1)
-      Where:   Darling Downs and Granite Belt, Northern Tablelands  [centre -28.8, 151.5; 2 model points]
-      Window:  Sat 28 Nov 10:00 AEST to Sun 29 Nov 10:00 AEST  (model day is 00Z-24Z)
-      Why:     Persistent rain (3-day region bar)
-      Peak:    CAPE 993, shear 31 kt, SCP 2.2, SHIP 0.2, DCAPE 479, rain up to 46 mm (50 mm over 3 days from this one); hail tier 1, wind tier 0
-      Your published map: up to MRGL over these points
-      Was:     3 points, level 1  ->  now 2 points, level 1
+ONE-OFF  Sun 29 Nov  Thunderstorms
+   Peak:    Moderate on Sun 29 Nov, 1 model points
+   Where:   Gulf Country
+   NEW  Sun 29 Nov  (day 1)
+      Where:   Gulf Country  [centre -17.6, 138.2; 1 model points]
+      Window:  Sun 29 Nov 10:00 AEST to Mon 30 Nov 10:00 AEST  (model day is 00Z-24Z)
+      Why:     Destructive winds (125+ km/h); Severe storms (MDT)
+      Peak:    CAPE 3790, shear 31 kt, SCP 2.7, SHIP 0.4, DCAPE 1147, rain up to 5 mm (5 mm over 3 days from this one); hail tier 0, wind tier 2
+      Your published map: up to MDT over these points
+   Basis:   your published (edited) map
+
+MULTI-DAY EPISODE  Sun 29 Nov to Thu 3 Dec  (5 days)  Fire weather
+   Peak:    Minor on Thu 3 Dec, 164 model points
+   Where:   North Interior, Kimberley, Pilbara, South Interior, Tanami, North East Pastoral
+   By day:
+      Sun 29 Nov Minor         83 pts  Severe fire danger (FFDI 50+)
+      Mon 30 Nov Minor         40 pts  Severe fire danger (FFDI 50+)  [SHIFTED]
+      Tue 1 Dec  Minor          6 pts  Severe fire danger (FFDI 50+)  [WEAKENED]
+      Tue 1 Dec  Minor         19 pts  Severe fire danger (FFDI 50+)  [NEW]
+      Wed 2 Dec  Minor         45 pts  Severe fire danger (FFDI 50+)  [SHIFTED]
+      Thu 3 Dec  Minor        164 pts  Severe fire danger (FFDI 50+)  [NEW]
    Basis:   raw model run
 
-ONE-OFF  Sat 28 Nov  Heavy rain
-   Peak:    Minor on Sat 28 Nov, 2 model points
-   Where:   Central Highlands and Coalfields, Darling Downs and Granite Belt
-   NEW  Sat 28 Nov  (day 1)
-      Where:   Central Highlands and Coalfields, Darling Downs and Granite Belt  [centre -26.3, 150.1; 2 model points]
-      Window:  Sat 28 Nov 10:00 AEST to Sun 29 Nov 10:00 AEST  (model day is 00Z-24Z)
-      Why:     Persistent rain (3-day region bar)
-      Peak:    CAPE 1429, shear 29 kt, SCP 1.3, SHIP 0.3, DCAPE 586, rain up to 51 mm (53 mm over 3 days from this one); hail tier 0, wind tier 1
-      Your published map: up to MRGL over these points
+MULTI-DAY EPISODE  Sun 29 Nov to Thu 3 Dec  (5 days)  Fire weather
+   Peak:    Minor on Tue 1 Dec, 47 model points
+   Where:   Gascoyne, Central West, Goldfields, Central Wheat Belt, Pilbara, South Interior
+   By day:
+      Sun 29 Nov Minor         22 pts  Severe fire danger (FFDI 50+)
+      Tue 1 Dec  Minor         47 pts  Severe fire danger (FFDI 50+)  [ESCALATED]
+      Wed 2 Dec  Minor         23 pts  Severe fire danger (FFDI 50+)  [WEAKENED]
+      Thu 3 Dec  Minor         28 pts  Severe fire danger (FFDI 50+)  [NEW]
    Basis:   raw model run
+
+ONE-OFF  Sun 29 Nov  Fire weather
+   Peak:    Minor on Sun 29 Nov, 10 model points
+   Where:   Barkly, North West
+   NEW  Sun 29 Nov  (day 1)
+      Where:   Barkly, North West  [centre -20.4, 136.7; 10 model points]
+      Window:  Sun 29 Nov 09:30 ACST to Mon 30 Nov 09:30 ACST  (model day is 00Z-24Z)
+      Why:     Severe fire danger (FFDI 50+)
+      Peak:    CAPE 0, shear 0 kt, SCP 0.0, SHIP 0.0, DCAPE 1360, rain up to 0 mm; hail tier 0, wind tier 0
+      Your published map: up to none over these points
+   Basis:   raw model run
+
+ONE-OFF  Sun 29 Nov  Thunderstorms
+   Peak:    Minor on Sun 29 Nov, 1 model points
+   Where:   Carpentaria
+   NEW  Sun 29 Nov  (day 1)
+      Where:   Carpentaria  [centre -16.9, 136.1; 1 model points]
+      Window:  Sun 29 Nov 09:30 ACST to Mon 30 Nov 09:30 ACST  (model day is 00Z-24Z)
+      Why:     Severe storms (MDT)
+      Peak:    CAPE 3996, shear 35 kt, SCP 3.4, SHIP 0.4, DCAPE 1010, rain up to 2 mm (2 mm over 3 days from this one); hail tier 0, wind tier 0
+      Your published map: up to MDT over these points
+   Basis:   your published (edited) map
 
 MULTI-DAY EPISODE  Mon 30 Nov to Tue 1 Dec  (2 days)  Thunderstorms
-   Peak:    Minor on Tue 1 Dec, 4 model points
-   Where:   Gulf Country, Peninsula
+   Peak:    Moderate on Tue 1 Dec, 4 model points
+   Where:   Peninsula, Gulf Country
    By day:
-      Mon 30 Nov Minor          1 pts  Severe storms (MDT)
-      Tue 1 Dec  Minor          4 pts  Severe storms (MDT)  [NEW]
+      Mon 30 Nov Minor          4 pts  Severe storms (MDT)  [NEW]
+      Tue 1 Dec  Moderate       4 pts  Destructive winds (125+ km/h); Severe storms (MDT)  [ESCALATED]
    Basis:   your published (edited) map
 
-ONE-OFF  Mon 30 Nov  Thunderstorms
-   Peak:    Minor on Mon 30 Nov, 1 model points
-   Where:   Gulf Country
-   NEW  Mon 30 Nov  (day 3)
-      Where:   Gulf Country  [centre -17.6, 139.7; 1 model points]
-      Window:  Mon 30 Nov 10:00 AEST to Tue 1 Dec 10:00 AEST  (model day is 00Z-24Z)
-      Why:     Severe storms (MDT)
-      Peak:    CAPE 1477, shear 16 kt, SCP 0.1, SHIP 0.1, DCAPE 1430, rain up to 0 mm (10 mm over 3 days from this one); hail tier 0, wind tier 0
-      Your published map: up to MDT over these points
-   Basis:   your published (edited) map
+ONE-OFF  Sat 5 Dec  Heatwave
+   Peak:    Moderate on Sat 5 Dec, 9 model points
+   Where:   South East Coastal, Great Southern, Goldfields
+   NEW  Sat 5 Dec  (day 7)
+      Where:   South East Coastal, Great Southern, Goldfields  [centre -33.3, 120.7; 9 model points]
+      Window:  Sat 5 Dec 08:00 AWST to Sun 6 Dec 08:00 AWST  (model day is 00Z-24Z)
+      Why:     Heatwave (max +14C); Heatwave (max +12C, warm nights)
+      Peak:    CAPE 1459, shear 24 kt, SCP 1.9, SHIP 0.4, DCAPE 1042, rain up to 7 mm (13 mm over 3 days from this one); hail tier 0, wind tier 1
+      Your published map: up to none over these points
+   Basis:   raw model run
 
-ONE-OFF  Tue 1 Dec  Thunderstorms
-   Peak:    Minor on Tue 1 Dec, 1 model points
-   Where:   Peninsula
-   NEW  Tue 1 Dec  (day 4)
-      Where:   Peninsula  [centre -11.1, 142.5; 1 model points]
-      Window:  Tue 1 Dec 10:00 AEST to Wed 2 Dec 10:00 AEST  (model day is 00Z-24Z)
-      Why:     Severe storms (MDT)
-      Peak:    CAPE 3125, shear 26 kt, SCP 1.3, SHIP 0.3, DCAPE 678, rain up to 9 mm (23 mm over 3 days from this one); hail tier 0, wind tier 1
-      Your published map: up to MDT over these points
-   Basis:   your published (edited) map
+ONE-OFF  Sat 5 Dec  Heatwave
+   Peak:    Minor on Sat 5 Dec, 2 model points
+   Where:   Central Wheat Belt, Great Southern
+   NEW  Sat 5 Dec  (day 7)
+      Where:   Central Wheat Belt, Great Southern  [centre -32.4, 117.7; 2 model points]
+      Window:  Sat 5 Dec 08:00 AWST to Sun 6 Dec 08:00 AWST  (model day is 00Z-24Z)
+      Why:     Heatwave (max +12C, warm nights)
+      Peak:    CAPE 2042, shear 32 kt, SCP 6.1, SHIP 0.6, DCAPE 1118, rain up to 9 mm (10 mm over 3 days from this one); hail tier 1, wind tier 1
+      Your published map: up to none over these points
+   Basis:   raw model run
 
-CLEARED  Sat 28 Nov  (day 2)
-   No longer triggered by the latest run. Last told: 7 points, fire_minor.
-   Was in: North Interior, Kimberley, Pilbara
+CLEARED  Mon 30 Nov  (day 3)
+   No longer triggered by the latest run. Last told: 8 points, fire_minor.
+   Was in: Gascoyne
+
+CLEARED  Mon 30 Nov  (day 3)
+   No longer triggered by the latest run. Last told: 2 points, storms_minor.
+   Was in: Herbert and Lower Burdekin
+
+CLEARED  Mon 30 Nov  (day 3)
+   No longer triggered by the latest run. Last told: 1 points, storms_minor.
+   Was in: Gulf Country
+
+CLEARED  Mon 30 Nov  (day 3)
+   No longer triggered by the latest run. Last told: 1 points, storms_minor.
+   Was in: Gulf Country
 
 Still open, unchanged since you were last told (1 episodes):
-   E-20261130-3  Mon 30 Nov  thunderstorm  peak Minor  Herbert and Lower Burdekin
+   E-20261201-4  Tue 1 Dec  thunderstorm  peak Minor  Peninsula
 
 This is an automatic detection. Thunderstorm rules use your published map; every other hazard uses the
 raw model run, so it does not know about your edits to those. It is not a forecast and not an official warning.
